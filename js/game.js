@@ -337,17 +337,60 @@ function axis() {
 // ---------- level building ----------
 const START_PIECE = (() => { const r = []; for (let y = 0; y < 16; y++) r.push(y >= 12 ? "########" : y === 11 ? "  P     " : "        "); return r; })();
 const END_PIECE = (() => { const r = []; for (let y = 0; y < 16; y++) r.push(y >= 12 ? "########" : y === 11 ? "     E  " : "        "); return r; })();
+// procedural piece: flat ground with a random run of features, each kept within jump reach
+// (gaps <= 5 tiles, steps <= 2 up, pillars 3 tall); edges stay flat ground so pieces always join
+function genPiece(rng, m) {
+  const W = 16 + ((rng() * 11) | 0), c = [];
+  for (let y = 0; y < 16; y++) c.push(Array.from({ length: W }, () => (y >= 12 ? "#" : " ")));
+  const put = (x, y, ch) => { if (x >= 0 && x < W && y >= 0 && y < 16) c[y][x] = ch; };
+  let x = 3 + ((rng() * 2) | 0);
+  while (x < W - 5) {
+    const r = rng(), room = W - 3 - x;
+    if (r < .24 && room >= 5) {                                   // gap over thorns, kite above the wide ones
+      const gw = Math.min(room - 2, 2 + ((rng() * (m >= 2 ? 4 : 3)) | 0));
+      for (let k = 0; k < gw; k++) { for (let y = 12; y < 16; y++) put(x + k, y, " "); put(x + k, 15, "^"); }
+      if (gw >= 4 && rng() < .6) put(x + (gw >> 1), 6, "o");
+      x += gw + 2;
+    } else if (r < .44 && room >= 4) {                            // raised step with a guard on it
+      const sw = Math.min(room - 1, 3 + ((rng() * 4) | 0)), sh = 1 + ((rng() * 2) | 0);
+      for (let k = 0; k < sw; k++) for (let y = 12 - sh; y < 12; y++) put(x + k, y, "#");
+      if (rng() < .55) put(x + (sw >> 1), 11 - sh, "?");
+      x += sw + 1 + ((rng() * 2) | 0);
+    } else if (r < .62 && room >= 4) {                            // floating ledge (stand on it, jump up through it)
+      const lw = Math.min(room, 3 + ((rng() * 3) | 0)), ly = 8 + ((rng() * 2) | 0);
+      for (let k = 0; k < lw; k++) put(x + k, ly, "=");
+      if (rng() < .45) put(x + (lw >> 1), ly - 1, "?"); else if (rng() < .5) put(x + (lw >> 1), ly - 3, "*");
+      x += lw + 1;
+    } else if (r < .74 && room >= 3) {                            // short rock pillar
+      for (let y = 9; y < 12; y++) { put(x, y, "#"); put(x + 1, y, "#"); }
+      if (rng() < .4) put(x, 8, "?");
+      x += 3 + ((rng() * 2) | 0);
+    } else if (r < .84 && m >= 1 && room >= 4) {                  // 금줄 hung from a short roof
+      for (let k = -1; k <= 1; k++) put(x + 1 + k, 3, "#");
+      put(x + 1, 4, rng() < .5 ? "L" : "M");
+      x += 4;
+    } else {                                                      // open ground, maybe a guard or a hawk
+      if (rng() < .5) put(x + 1, 11, "?"); else if (rng() < .4) put(x + 1, 6, "*");
+      x += 3 + ((rng() * 3) | 0);
+    }
+  }
+  return c;
+}
 function buildMadangMap(seed, m) {
   const rng = mulberry(seed ^ Math.imul(m + 1, 0x9E3779B1));
   const rows = START_PIECE.slice();
   const used = new Set();
-  for (const tier of MADANG[m].tiers) {
+  const tiers = MADANG[m].tiers.slice();
+  for (let i = tiers.length - 1; i > 0; i--) { const j = (rng() * (i + 1)) | 0; [tiers[i], tiers[j]] = [tiers[j], tiers[i]]; }   // fresh order every run
+  for (const tier of tiers) {
     const kind = typeof tier === "string" ? tier[0] : "", t = kind ? +tier.slice(1) : tier;
     const fits = i => kind === "w" ? CHUNKS[i].wall && CHUNKS[i].tier <= t : kind === "m" ? CHUNKS[i].multi && CHUNKS[i].tier <= t : CHUNKS[i].tier === t && !CHUNKS[i].multi;
     let pool = CHUNKS.map((c, i) => i).filter(i => fits(i) && !used.has(i));
     if (!pool.length) pool = CHUNKS.map((c, i) => i).filter(fits);
-    const ci = pool[(rng() * pool.length) | 0]; used.add(ci);
-    const c = CHUNKS[ci].map.map(r => r.split(""));
+    const ci = pool[(rng() * pool.length) | 0];
+    let c;
+    if (rng() < .4) c = genPiece(rng, m);                          // about 40% of pieces are generated fresh
+    else { used.add(ci); c = CHUNKS[ci].map.map(r => r.split("")); if (rng() < .5) c.forEach(row => row.reverse()); }   // handmade, sometimes mirrored
     if (c[11][1] === " ") c[11][1] = "C";
     for (let y = 0; y < 16; y++) for (let x = 0; x < c[y].length; x++) {
       const ch = c[y][x];
