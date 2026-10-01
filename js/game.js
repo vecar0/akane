@@ -87,11 +87,11 @@ const CAL = { title: 0, death: 1, madang: [2, 3, 4, 5, 6], end: 7, clear: 8 };  
 const PROP = { rope: 0, aim: 1, reticle: 2, pine: 3, stoneLantern: 4, jars: 5, banner: 6, sotdae: 7, palisade: 8 };
 const DRESS = [[PROP.pine, 74, 3], [PROP.stoneLantern, 34, 2], [PROP.jars, 26, 1], [PROP.banner, 80, 3], [PROP.sotdae, 84, 3], [PROP.palisade, 28, 1]]; // [frame, world height, headroom tiles]
 const OBJ = { lanternOn: 0, lanternOff: 1, kite: 2, thorns: 3, seal: 4, emitter: 5, slash: 6, slashRed: 7, splat: 8 };
-for (const n of ["hero", "hero2", "foes", "objects", "ui", "fx", "hud", "hudsolid", "props", "props2", "rocks", "pines"]) {
+for (const n of ["hero", "hero2", "foes", "objects", "ui", "fx", "hud", "hudsolid", "props", "props2", "rocks", "pines", "slabs"]) {
   Promise.all([
     fetch(`assets/sprites/${n}.json`).then(r => r.json()),
     new Promise((res, rej) => { const im = new Image(); im.onload = () => res(im); im.onerror = rej; im.src = `assets/sprites/${n}.webp`; })
-  ]).then(([f, img]) => { SPR[n] = { f, img, inv: ["hero", "hero2", "foes", "objects", "fx", "props", "props2", "rocks", "pines"].includes(n) ? inkInverted(img) : null }; applyUiSprites(); }).catch(() => {});
+  ]).then(([f, img]) => { SPR[n] = { f, img, inv: ["hero", "hero2", "foes", "objects", "fx", "props", "props2", "rocks", "pines", "slabs"].includes(n) ? inkInverted(img) : null }; applyUiSprites(); }).catch(() => {});
 }
 function inkInverted(img) { // night palette: grey ink becomes bone white, coloured accents stay as they are
   const c = document.createElement("canvas"); c.width = img.width; c.height = img.height; const g = c.getContext("2d"); g.drawImage(img, 0, 0);
@@ -148,11 +148,24 @@ function buildScenery() {
     }
     x += n - 1;
   }
+  // upper floors: runs whose block has open air below get a painted slab with a jagged underside (aspect kept)
+  const slabs = []; LV.slabTiles = new Set();
+  if (SPR.slabs) for (let y = 1; y < LV.h - 1; y++) for (let x = 0; x < LV.w; x++) {
+    if (tileAt(x, y) !== 1 || tileAt(x, y - 1) === 1 || (x > 0 && tileAt(x - 1, y) === 1 && tileAt(x - 1, y - 1) !== 1)) continue;
+    let n = 0; while (x + n < LV.w && tileAt(x + n, y) === 1 && tileAt(x + n, y - 1) !== 1) n++;
+    const mid = x + (n >> 1); let d = 0; while (y + d < LV.h && tileAt(mid, y + d) === 1) d++;
+    if (y + d < LV.h && d <= 3) { // floating: air below within a few tiles
+      for (let yy = y; yy < y + d; yy++) for (let xx = x; xx < x + n; xx++) LV.slabTiles.add(yy * LV.w + xx);
+      const segs = Math.max(1, Math.round(n / 7)), w = n * T / segs;
+      for (let k = 0; k < segs; k++) slabs.push({ i: (rnd() * SPR.slabs.f.length) | 0, x: x * T + w * (k + .5), y: y * T - 2, w: w + 14, minH: d * T + 6, flip: rnd() < .5 });
+    }
+    x += n - 1;
+  }
   const pines = [], P = SPR.pines;
   if (P) for (let wx = 200 + rnd() * 200; wx < LV.w * T + 600; wx += 700 + rnd() * 600) pines.push({ i: (rnd() * Math.min(PINE_N, P.f.length)) | 0, x: wx, h: 260 + rnd() * 120, flip: rnd() < .5, a: .35 + rnd() * .2 });
   const front = []; // big pines rooted on cliff edges (behind the actors), like the reference art
   if (P) for (const c of skins) if (c.w >= 3 * T && rnd() < .2) { const right = rnd() < .5; front.push({ i: (rnd() * Math.min(PINE_N, P.f.length)) | 0, x: c.x + (right ? 1 : -1) * (c.w / 2 - 14), y: c.y - 2, h: 150 + rnd() * 70, flip: right }); }
-  LV.scenery = { skins, back, pines, front };
+  LV.scenery = { skins, back, pines, front, slabs };
 }
 function drawCliff(c, img, alpha) {
   const f = SPR.rocks.f[c.i], w = f.w * c.h / f.h;   // height fixed, width follows the art
@@ -853,6 +866,10 @@ function render(rdt) {
     const k = p.h / f.h; ctx.drawImage(pal.night ? SPR.pines.inv : SPR.pines.img, f.x, f.y, f.w, f.h, -f.w * k / 2, -p.h, f.w * k, p.h); ctx.restore();
   }
   ctx.globalAlpha = 1;
+  if (SC && SPR.slabs) for (const c of SC.slabs) if (Math.abs(c.x - cam.x) < vw / 2 + c.w) { // drawn before tiles so the walkable top stays crisp
+    const f = SPR.slabs.f[c.i], h = Math.max(c.minH + 18, c.w * f.h / f.w), w = h * f.w / f.h;
+    drawSprite("slabs", c.i, c.x, c.y, h / f.h, c.flip, .5, pal.night, 0);
+  }
   if (SC) for (const c of SC.back) if (Math.abs(c.x - cam.x) < vw / 2 + c.h * 2 + 200) drawCliff(c, pal.night ? SPR.rocks.inv : SPR.rocks.img, pal.night ? .25 : .45);
   // hints
   ctx.font = `600 11px ${BODY_FONT}`; ctx.textBaseline = "top";
@@ -882,7 +899,7 @@ function render(rdt) {
   }
   // tiles: all visible rock in one path, filled once with the stone texture
   const stone = pattern("tex-stone", 0.5), giwa = pattern("tex-giwa", 0.094), rock = new Path2D();
-  for (let ty = y0; ty <= y1; ty++) for (let tx = x0; tx <= x1; tx++) if (LV.grid[ty * LV.w + tx] === 1) rock.rect(tx * T - .3, ty * T - .3, T + .6, T + .6);
+  for (let ty = y0; ty <= y1; ty++) for (let tx = x0; tx <= x1; tx++) if (LV.grid[ty * LV.w + tx] === 1 && !(LV.slabTiles && LV.slabTiles.has(ty * LV.w + tx))) rock.rect(tx * T - .3, ty * T - .3, T + .6, T + .6);
   const granite = pattern("tex-granite", 0.32);
   ctx.fillStyle = pal.tile; ctx.fill(rock);
   if (granite) { // painted granite face, darkening with depth; night keeps it dim
@@ -905,7 +922,7 @@ function render(rdt) {
         ctx.beginPath(); ctx.moveTo(px - .5, py + 2); ctx.lineTo(px + 6 + s, py - 1.5); ctx.lineTo(px + 18, py + .5 - s * .2); ctx.lineTo(px + T + .5, py - 1); ctx.lineTo(px + T + .5, py + 3); ctx.closePath(); ctx.fill();
         if (pal.rim) { ctx.fillStyle = pal.rim; ctx.fillRect(px, py - 1, T, 1.2); }
       }
-      for (const sd of [-1, 1]) if (tileAt(tx + sd, ty) !== 1 && granite) { // dark ink edge where the rock face turns away
+      for (const sd of [-1, 1]) if (tileAt(tx + sd, ty) !== 1 && granite && !(LV.slabTiles && LV.slabTiles.has(ty * LV.w + tx))) { // dark ink edge where the rock face turns away
         const gx = sd < 0 ? px : px + T - 7, gg = ctx.createLinearGradient(gx, 0, gx + 7, 0);
         gg.addColorStop(sd < 0 ? 0 : 1, "rgba(15,14,16,.75)"); gg.addColorStop(sd < 0 ? 1 : 0, "rgba(15,14,16,0)"); ctx.fillStyle = gg; ctx.fillRect(gx, py, 7, T);
       }
@@ -1054,8 +1071,8 @@ function render(rdt) {
     ctx.fillStyle = "#f1ede4"; ctx.textAlign = "center"; ctx.textBaseline = "middle";
     const sf = SPR.pines && SPR.pines.f[DEATH_SEAL];
     if (sf) { // 絶命 seal slams down: oversized at first, settles with a slight tilt
-      const k = Math.min(1, deathT / .12), sz = Math.min(130, H / 3) * (1.5 - .5 * k);
-      ctx.save(); ctx.translate(W / 2, H / 2 - 14); ctx.rotate(-.06); ctx.drawImage(SPR.pines.img, sf.x, sf.y, sf.w, sf.h, -sz / 2, -sz / 2, sz, sz); ctx.restore();
+      const k = Math.min(1, deathT / .12), sh = Math.min(140, H / 2.8) * (1.5 - .5 * k), sw = sh * sf.w / sf.h;
+      ctx.save(); ctx.translate(W / 2, H / 2 - 14); ctx.rotate(-.06); ctx.drawImage(SPR.pines.img, sf.x, sf.y, sf.w, sf.h, -sw / 2, -sh / 2, sw, sh); ctx.restore();
     } else { ctx.font = `400 ${Math.min(72, W / 8)}px "Song Myung", serif`; ctx.fillText("절명", W / 2, H / 2 - 12); }
     if (mode !== "tutorial") { ctx.font = `600 13px ${BODY_FONT}`; ctx.fillText(run.breath > 0 ? `남은 숨 ${run.breath}` : "숨이 다했다", W / 2, H / 2 + Math.min(70, H / 5.5)); }
     ctx.textAlign = "left"; ctx.globalAlpha = 1;
@@ -1338,7 +1355,7 @@ $("bInstall").addEventListener("click", async () => { if (!installEvt) return; i
 const standalone = matchMedia("(display-mode: standalone)").matches || matchMedia("(display-mode: fullscreen)").matches || navigator.standalone;
 if (/iPhone|iPad|iPod/.test(navigator.userAgent) && !standalone) $("installNote").hidden = false;
 
-if (location.hash === "#debug") window.__dbg = { tp(tx, ty) { P.x = tx * T + 7; P.y = (ty + 1) * T - 30; P.vx = P.vy = 0; }, get state() { return state; }, get P() { return P; } };
+if (location.hash === "#debug") window.__dbg = { tp(tx, ty) { P.x = tx * T + 7; P.y = (ty + 1) * T - 30; P.vx = P.vy = 0; }, get state() { return state; }, get P() { return P; }, get LV() { return LV; } };
 resize();
 toMenu();
 P = null; cam.x = 600; cam.y = 300;
