@@ -573,7 +573,7 @@ function madangClear() {
   Music.sfx("seal");
   if (mode === "tutorial") { toast("수련을 마쳤다"); setTimeout(toMenu, 900); state = "result"; return; }
   if (run.m >= 4) { endRun(true); return; }
-  run.m++; run.cp = -1; run.dead = []; run.cutDrums = [];
+  run.m++; run.cp = -1; run.dead = []; run.cutDrums = []; run.breath = Math.max(run.breath, 3);   // breath refills each 마당
   saveRun();
   state = "result";
   setTimeout(showInterlude, 700);
@@ -589,7 +589,7 @@ function showChoice() {
     b.addEventListener("click", () => {
       run.perks = run.perks || [];
       if (c.id === "sum") run.breath = Math.min(5, run.breath + 1); else run.perks.push(c.id);
-      run.cycle = (run.cycle || 0) + 1; run.m = 0; run.cp = -1; run.dead = []; run.cutDrums = [];
+      run.cycle = (run.cycle || 0) + 1; run.m = 0; run.breath = Math.max(run.breath, 3); run.cp = -1; run.dead = []; run.cutDrums = [];
       saveRun(); Music.sfx("lantern"); Music.stop(); showInterlude();
     });
     box.appendChild(b);
@@ -984,8 +984,8 @@ function render(rdt) {
     const f = SPR.pines.f[p.i], px = p.x, gy = p.gy;   // fixed in the world, rooted behind the ground edge
     if (px < cam.x - vw / 2 - 300 || px > cam.x + vw / 2 + 300) continue;
     ctx.save(); ctx.translate(px, gy); if (p.flip) ctx.scale(-1, 1); ctx.globalAlpha = pal.night ? p.a * .6 : p.a * 1.6;
-    const k = p.h / f.h, im = pal.night ? SPR.pines.inv : SPR.pines.img; ctx.globalAlpha = pal.night ? .5 : .95;
-    for (let r = pal.night ? 1 : 3; r > 0; r--) ctx.drawImage(im, f.x, f.y, f.w, f.h, -f.w * k / 2, -p.h, f.w * k, p.h); // stacked passes deepen the pale ink
+    const k = p.h / f.h, im = pal.night ? SPR.pines.inv : SPR.pines.img; ctx.globalAlpha = pal.night ? .4 : .8;
+    for (let r = 1; r > 0; r--) ctx.drawImage(im, f.x, f.y, f.w, f.h, -f.w * k / 2, -p.h, f.w * k, p.h); // stacked passes deepen the pale ink
     ctx.restore();
   }
   ctx.globalAlpha = 1;
@@ -1085,7 +1085,7 @@ function render(rdt) {
       ctx.fill(); ctx.fillStyle = SEAL; for (let i = 0; i < 4; i++) ctx.fillRect(px + i * 8 + 2.5 + (i % 2), py + 11, 1.5, 3);
     }
   }
-  if (SC && SPR.pines) { ctx.globalAlpha = .95; for (const p of SC.front) if (visible(p.x)) for (let r = 3; r > 0; r--) drawSprite("pines", p.i, p.x, p.y + 6, p.h / SPR.pines.f[p.i].h, p.flip, .5, pal.night); ctx.globalAlpha = 1; }
+  if (SC && SPR.pines) { ctx.globalAlpha = .8; for (const p of SC.front) if (visible(p.x)) for (let r = 1; r > 0; r--) drawSprite("pines", p.i, p.x, p.y + 6, p.h / SPR.pines.f[p.i].h, p.flip, .5, pal.night); ctx.globalAlpha = 1; }
   for (const d of drumsInPlay()) if (visible(d.x)) { // 초식 drum on a lacquered stand, pulsing on the beat
     const beat = 1 - (songPos / Music.beatLen % 1), s = 1 + Math.max(0, beat - .75) * .4;
     const gl = ctx.createRadialGradient(d.x, d.y - 22, 4, d.x, d.y - 22, 44); gl.addColorStop(0, "rgba(195,22,28,.28)"); gl.addColorStop(1, "rgba(195,22,28,0)"); ctx.fillStyle = gl; ctx.fillRect(d.x - 44, d.y - 66, 88, 88);
