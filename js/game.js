@@ -25,6 +25,7 @@ Music.setVolume(settings.sound ? 1 : 0); Music.setOffset(settings.offset);
 
 // ---------- 마당 definitions & palettes ----------
 const ORD = ["첫째", "둘째", "셋째", "넷째", "다섯째"];
+const MNAME = ["초입", "연비", "망루", "승천", "결전"];   // 初入 鳶飛 望樓 昇天 決戰
 const MADANG = [
   // "w" entries draw from wall chunks (climb / wall-jump), so every 마당 has walls to run
   // "w" entries draw from wall chunks, "m" from multi-floor chunks with ledges
@@ -85,11 +86,11 @@ const CAL = { title: 0, death: 1, madang: [2, 3, 4, 5, 6], end: 7, clear: 8 };  
 const PROP = { rope: 0, aim: 1, reticle: 2, pine: 3, stoneLantern: 4, jars: 5, banner: 6, sotdae: 7, palisade: 8 };
 const DRESS = [[PROP.pine, 74, 3], [PROP.stoneLantern, 34, 2], [PROP.jars, 26, 1], [PROP.banner, 80, 3], [PROP.sotdae, 84, 3], [PROP.palisade, 28, 1]]; // [frame, world height, headroom tiles]
 const OBJ = { lanternOn: 0, lanternOff: 1, kite: 2, thorns: 3, seal: 4, emitter: 5, slash: 6, slashRed: 7, splat: 8 };
-for (const n of ["hero", "hero2", "foes", "objects", "ui", "fx", "hud", "hudsolid", "props", "props2", "calli"]) {
+for (const n of ["hero", "hero2", "foes", "objects", "ui", "fx", "hud", "hudsolid", "props", "props2", "rocks", "pines"]) {
   Promise.all([
     fetch(`assets/sprites/${n}.json`).then(r => r.json()),
     new Promise((res, rej) => { const im = new Image(); im.onload = () => res(im); im.onerror = rej; im.src = `assets/sprites/${n}.webp`; })
-  ]).then(([f, img]) => { SPR[n] = { f, img, inv: ["hero", "hero2", "foes", "objects", "fx", "props", "props2", "calli"].includes(n) ? inkInverted(img) : null }; applyUiSprites(); }).catch(() => {});
+  ]).then(([f, img]) => { SPR[n] = { f, img, inv: ["hero", "hero2", "foes", "objects", "fx", "props", "props2", "rocks", "pines"].includes(n) ? inkInverted(img) : null }; applyUiSprites(); }).catch(() => {});
 }
 function inkInverted(img) { // night palette: grey ink becomes bone white, coloured accents stay as they are
   const c = document.createElement("canvas"); c.width = img.width; c.height = img.height; const g = c.getContext("2d"); g.drawImage(img, 0, 0);
@@ -124,6 +125,38 @@ function applyUiSprites() { // brush-painted UI pieces become CSS images
     CAL.madang.forEach((i, m) => root.setProperty("--cal-m" + m, url("calli", i)));
     document.body.classList.add("ui-cal");
   }
+}
+
+// ---------- painted terrain: cliff sprites laid over the tile blocks, big pines behind and in front ----------
+function buildScenery() {
+  const R = SPR.rocks, rnd = mulberry(hashStr(LV.grid.length + ":" + LV.w)), skins = [], back = [];
+  const tall = [], wide = [];
+  R.f.forEach((f, i) => (f.h > f.w * 1.15 ? tall : wide).push(i));
+  for (let y = 1; y < LV.h; y++) for (let x = 0; x < LV.w; x++) {
+    if (tileAt(x, y) !== 1 || tileAt(x, y - 1) === 1 || (x > 0 && tileAt(x - 1, y) === 1 && tileAt(x - 1, y - 1) !== 1)) continue;
+    let n = 0; while (x + n < LV.w && tileAt(x + n, y) === 1 && tileAt(x + n, y - 1) !== 1) n++;
+    let d = 0; const mid = x + (n >> 1); while (y + d < LV.h && tileAt(mid, y + d) === 1) d++;
+    const W0 = n * T, h = Math.min(d * T, (LV.h - y) * T) + 24;
+    // long runs are cut into overlapping pieces close to the art's own proportions, so nothing gets smeared
+    const segs = Math.max(1, Math.round(W0 / Math.min(8 * T, Math.max(3 * T, h * 1.3))));
+    for (let k = 0; k < segs; k++) {
+      const w = W0 / segs, pool = h > w * 1.2 && tall.length ? tall : wide.length ? wide : tall;
+      const piece = (bias) => ({ i: pool[(rnd() * pool.length) | 0], flip: rnd() < .5, x: x * T + w * (k + .5) + bias, y: y * T - 4, w, h: h + 8 });
+      skins.push(piece(0));
+      if (d > 2 && y >= 8 && rnd() < .6) { const b = piece((rnd() - .5) * w * .7); b.y -= 18 + rnd() * 40; b.w *= .8 + rnd() * .5; b.h += 40; back.push(b); }
+    }
+    x += n - 1;
+  }
+  const pines = [], P = SPR.pines;
+  if (P) for (let wx = 200 + rnd() * 200; wx < LV.w * T + 600; wx += 700 + rnd() * 600) pines.push({ i: (rnd() * P.f.length) | 0, x: wx, h: 260 + rnd() * 120, flip: rnd() < .5, a: .35 + rnd() * .2 });
+  const front = []; // big pines rooted on cliff edges (behind the actors), like the reference art
+  if (P) for (const c of skins) if (c.w >= 3 * T && rnd() < .2) { const right = rnd() < .5; front.push({ i: (rnd() * P.f.length) | 0, x: c.x + (right ? 1 : -1) * (c.w / 2 - 14), y: c.y - 2, h: 150 + rnd() * 70, flip: right }); }
+  LV.scenery = { skins, back, pines, front };
+}
+function drawCliff(c, img, alpha) {
+  const f = SPR.rocks.f[c.i], ov = c.w * .14 + 8, w = c.w + ov * 2;
+  ctx.save(); ctx.translate(c.x, 0); if (c.flip) ctx.scale(-1, 1); ctx.globalAlpha = alpha;
+  ctx.drawImage(img, f.x, f.y, f.w, f.h, -w / 2, c.y, w, c.h); ctx.restore(); ctx.globalAlpha = 1;
 }
 
 // ---------- rng ----------
@@ -294,8 +327,7 @@ function loadMap(map, pal, hints) {
     for (let x = 2; x < w - 2; x++) {
       const y = surf(x, 3); if (y < 0) continue;
       const edge = (tile(x + 1, y) === 0 && tile(x + 1, y + 1) === 0) || (tile(x - 1, y) === 0 && tile(x - 1, y + 1) === 0);
-      if (edge && rnd() < .3) put("props", PROP.pine, x, y, 74, { flip: tile(x + 1, y) === 0, dx: tile(x + 1, y) === 0 ? 6 : -6 });
-      else if (y <= 7 && rnd() < .18) put("props2", P2.brazier, x, y, 34);
+      if (!edge && y <= 7 && rnd() < .18) put("props2", P2.brazier, x, y, 34);
     }
     for (let y = 2; y < h - 4; y++) for (let x = 2; x < w - 6; x++) { // paper lanterns strung under roofs
       let n = 0; while (x + n < w && tile(x + n, y) === 1 && tile(x + n, y + 1) === 0 && tile(x + n, y + 2) === 0 && tile(x + n, y + 3) === 0) n++;
@@ -374,7 +406,7 @@ function saveRun() { if (run && mode !== "tutorial") store.set("run", run); }
 function showInterlude() {
   state = "interlude";
   const md = MADANG[run.m], jd = Music.JANGDAN[md.jd];
-  $("iOrd").textContent = ORD[run.m] + " 마당"; $("iOrd").style.setProperty("--cal", `var(--cal-m${run.m})`);
+  $("iOrd").textContent = MNAME[run.m];
   $("iLine").textContent = md.line;
   $("iMeta").textContent = ORD[run.m] + " 마당 · " + jd.name + " · " + "●".repeat(run.breath) + "○".repeat(3 - run.breath) + (run.daily ? " · 오늘의 판" : "");
   $("interlude").classList.toggle("night", run.m === 4);
@@ -448,7 +480,7 @@ function endRun(won) {
   const reached = run.m + (won ? 1 : 0);
   const rate = run.slashes ? Math.round(run.strikes / run.slashes * 100) : 0;
   $("rSeal").textContent = won ? "登" : "終";
-  $("rTitle").textContent = won ? "다섯 마당을 넘었다" : "판이 끝났다"; $("rTitle").style.setProperty("--cal", won ? "var(--cal-clear)" : "var(--cal-end)");
+  $("rTitle").textContent = won ? "등천" : "종국";
   $("rSub").textContent = won ? "천고는 아직 위에서 울린다." : ORD[run.m] + " 마당에서 숨이 다했다.";
   $("rStats").innerHTML = "";
   for (const [k, v] of [["오른 마당", reached + " / 5"], ["시간", fmt(run.time)], ["일격", run.strikes + "회 · " + rate + "%"], ["벤 적", run.kills], ["베인 횟수", run.deaths]]) {
@@ -810,6 +842,16 @@ function render(rdt) {
   const y0 = Math.max(0, Math.floor((cam.y - vh / 2) / T) - 1), y1 = Math.min(LV.h - 1, Math.ceil((cam.y + vh / 2) / T) + 1);
   const visible = x => x > cam.x - vw / 2 - 60 && x < cam.x + vw / 2 + 60;
 
+  if (SPR.rocks && LV && !LV.scenery) buildScenery();
+  const SC = LV.scenery;
+  if (SC && SPR.pines) for (const p of SC.pines) { // far pines drift slower than the ground (parallax .75)
+    const f = SPR.pines.f[p.i], px = p.x + cam.x * .25, gy = (LV.h - 4) * T + 20 + cam.y * .12;
+    if (px < cam.x - vw / 2 - 300 || px > cam.x + vw / 2 + 300) continue;
+    ctx.save(); ctx.translate(px, gy); if (p.flip) ctx.scale(-1, 1); ctx.globalAlpha = pal.night ? p.a * .5 : p.a;
+    const k = p.h / f.h; ctx.drawImage(pal.night ? SPR.pines.inv : SPR.pines.img, f.x, f.y, f.w, f.h, -f.w * k / 2, -p.h, f.w * k, p.h); ctx.restore();
+  }
+  ctx.globalAlpha = 1;
+  if (SC) for (const c of SC.back) if (Math.abs(c.x - cam.x) < vw / 2 + c.w + 200) drawCliff(c, pal.night ? SPR.rocks.inv : SPR.rocks.img, pal.night ? .25 : .45);
   // hints
   ctx.font = `600 11px ${BODY_FONT}`; ctx.textBaseline = "top";
   for (const [hx, hy, text] of LV.hints) {
@@ -841,6 +883,8 @@ function render(rdt) {
   for (let ty = y0; ty <= y1; ty++) for (let tx = x0; tx <= x1; tx++) if (LV.grid[ty * LV.w + tx] === 1) rock.rect(tx * T - .3, ty * T - .3, T + .6, T + .6);
   ctx.fillStyle = pal.tile; ctx.fill(rock);
   if (stone) { ctx.globalAlpha = pal.rim ? .8 : 1; ctx.fillStyle = stone; ctx.fill(rock); ctx.globalAlpha = 1; }
+  if (SC && !pal.night) { ctx.fillStyle = "rgba(168,160,146,.42)"; ctx.fill(rock); }   // lift the base toward the granite of the painted cliffs
+  if (SC) for (const c of SC.skins) if (Math.abs(c.x - cam.x) < vw / 2 + c.w + 120) drawCliff(c, pal.night ? SPR.rocks.inv : SPR.rocks.img, pal.night ? .55 : 1);
   for (let ty = y0; ty <= y1; ty++) for (let tx = x0; tx <= x1; tx++) {
     const v = LV.grid[ty * LV.w + tx], px = tx * T, py = ty * T;
     if (v === 1) {
@@ -875,6 +919,7 @@ function render(rdt) {
       ctx.fill(); ctx.fillStyle = SEAL; for (let i = 0; i < 4; i++) ctx.fillRect(px + i * 8 + 2.5 + (i % 2), py + 11, 1.5, 3);
     }
   }
+  if (SC && SPR.pines) for (const p of SC.front) if (visible(p.x)) drawSprite("pines", p.i, p.x, p.y, p.h / SPR.pines.f[p.i].h, p.flip, .5, pal.night);
   if (LV.gate && SPR.props2 && visible(LV.gate.x)) drawSprite("props2", P2.gate, LV.gate.x, LV.gate.y, 78 / SPR.props2.f[P2.gate].h, false, .5, pal.night);
   for (const d of LV.dress) {
     if (!visible(d.x) || !SPR[d.sheet]) continue;
@@ -998,9 +1043,7 @@ function render(rdt) {
     ctx.fillStyle = `rgba(20,18,20,${0.55 * a})`; ctx.fillRect(0, 0, cv.width, cv.height);
     ctx.setTransform(DPR, 0, 0, DPR, 0, 0); ctx.globalAlpha = Math.min(1, a * 2);
     ctx.fillStyle = "#f1ede4"; ctx.textAlign = "center"; ctx.textBaseline = "middle";
-    const cf = SPR.calli && SPR.calli.f[CAL.death];
-    if (cf) { const hh = Math.min(120, H / 3.2), ww = cf.w * hh / cf.h; ctx.drawImage(SPR.calli.inv, cf.x, cf.y, cf.w, cf.h, W / 2 - ww / 2, H / 2 - 12 - hh / 2, ww, hh); }
-    else { ctx.font = `400 ${Math.min(64, W / 9)}px "Song Myung", serif`; ctx.fillText("절명", W / 2, H / 2 - 12); }
+    ctx.font = `400 ${Math.min(72, W / 8)}px "Song Myung", serif`; ctx.fillText("절명", W / 2, H / 2 - 12);
     if (mode !== "tutorial") { ctx.font = `600 13px ${BODY_FONT}`; ctx.fillText(run.breath > 0 ? `남은 숨 ${run.breath}` : "숨이 다했다", W / 2, H / 2 + Math.min(70, H / 5.5)); }
     ctx.textAlign = "left"; ctx.globalAlpha = 1;
   }
