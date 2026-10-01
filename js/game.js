@@ -9,7 +9,7 @@ function resize() {
   DPR = Math.min(2, window.devicePixelRatio || 1);
   W = window.innerWidth; H = window.innerHeight;
   cv.width = Math.round(W * DPR); cv.height = Math.round(H * DPR);
-  SCALE = Math.max(0.5, Math.min(W / (T * 14), H / (T * 12.5)));
+  SCALE = Math.max(0.5, Math.min(W / (T * 13), H / (T * 11)));
   vignette = null;
 }
 window.addEventListener("resize", resize);
@@ -77,12 +77,16 @@ const FOE = { g: [0, 1], s: [2, 3], d: [4, 5], h: [6, 7] };
 const FOE_AX = { 0: .5, 1: .3, 2: .45, 3: .3, 6: .45, 7: .45 };
 const FX = { slashA: 0, slashARed: 1, slashB: 2, slashBRed: 3, burst: 4, spray: 5, seal: 6, drops: 7, pool: 8 };
 const HUD = { bigDrum: 0, struck: 1, drum: 2, aimLine: 3, reticle: 4, rope: 5, spark: 6, smoke: 7, dust: 8 }; // hudsolid for 0-5, hud (soft) for 6-8
+// props sheet: geumjul rope, enemy aim stroke, dash reticle, then set dressing
+const H2 = { idle: [0, 1, 2], guard: 3, start: 4, skid: 5, takeoff: 6, apex: 7, land: 8, turn: 9, cling: 10, climb: 11 };
+const PROP = { rope: 0, aim: 1, reticle: 2, pine: 3, stoneLantern: 4, jars: 5, banner: 6, sotdae: 7, palisade: 8 };
+const DRESS = [[PROP.pine, 74, 3], [PROP.stoneLantern, 34, 2], [PROP.jars, 26, 1], [PROP.banner, 80, 3], [PROP.sotdae, 84, 3], [PROP.palisade, 28, 1]]; // [frame, world height, headroom tiles]
 const OBJ = { lanternOn: 0, lanternOff: 1, kite: 2, thorns: 3, seal: 4, emitter: 5, slash: 6, slashRed: 7, splat: 8 };
-for (const n of ["hero", "foes", "objects", "ui", "fx", "hud", "hudsolid"]) {
+for (const n of ["hero", "hero2", "foes", "objects", "ui", "fx", "hud", "hudsolid", "props"]) {
   Promise.all([
     fetch(`assets/sprites/${n}.json`).then(r => r.json()),
     new Promise((res, rej) => { const im = new Image(); im.onload = () => res(im); im.onerror = rej; im.src = `assets/sprites/${n}.webp`; })
-  ]).then(([f, img]) => { SPR[n] = { f, img, inv: ["hero", "foes", "objects", "fx"].includes(n) ? inkInverted(img) : null }; applyUiSprites(); }).catch(() => {});
+  ]).then(([f, img]) => { SPR[n] = { f, img, inv: ["hero", "hero2", "foes", "objects", "fx", "props"].includes(n) ? inkInverted(img) : null }; applyUiSprites(); }).catch(() => {});
 }
 function inkInverted(img) { // night palette: grey ink becomes bone white, coloured accents stay as they are
   const c = document.createElement("canvas"); c.width = img.width; c.height = img.height; const g = c.getContext("2d"); g.drawImage(img, 0, 0);
@@ -230,7 +234,7 @@ function buildMadangMap(seed, m) {
       if (ch === "?") {
         const r = rng();
         c[y][x] = m === 0 ? "g" : m === 1 ? (r < .75 ? "g" : "s") : m === 2 ? (r < .5 ? "g" : r < .75 ? "h" : "s") : (r < .4 ? "g" : r < .7 ? "h" : "s");
-      } else if (ch === "*") c[y][x] = rng() < .3 + .15 * m ? "d" : " ";
+      } else if (ch === "*") c[y][x] = rng() < .5 + .12 * m ? "d" : " ";
       else if ((ch === "L" || ch === "M") && rng() < .5) c[y][x] = ch === "L" ? "M" : "L";
     }
     for (let y = 0; y < 16; y++) rows[y] += c[y].join("");
@@ -258,6 +262,20 @@ function loadMap(map, pal, hints) {
   }
   for (const l of lv.lasers) { let yy = l.ty + 1; while (yy < h && grid[yy * w + l.tx] !== 1) yy++; l.x = l.tx * T + 16; l.y0 = l.ty * T + 22; l.y1 = yy * T; }
   lv.ridges = makeRidges(w * T, hashStr(map[11]));
+  // set dressing on open ground: pines, stone lanterns, jars, banners, sotdae, palisades (decor only)
+  lv.dress = [];
+  { const rnd = mulberry(hashStr(map.join("").slice(0, 400)) ^ w), busy = new Set();
+    for (const d of lv.defs) for (let k = -1; k <= 1; k++) busy.add(d.tx + k);
+    for (const c of lv.cps) for (let k = -1; k <= 1; k++) busy.add(Math.floor(c.x / T) + k);
+    for (const o of [lv.start, lv.exit]) if (o) for (let k = -2; k <= 2; k++) busy.add(Math.floor(o.x / T) + k);
+    let lastX = -9;
+    for (let x = 2; x < w - 2; x++) for (let y = 2; y < h; y++) {
+      if (grid[y * w + x] !== 1 || grid[(y - 1) * w + x] !== 0 || busy.has(x) || x - lastX < 3 || rnd() > .34) continue;
+      const pick = DRESS[(rnd() * DRESS.length) | 0]; let ok = true;
+      for (let k = 1; k <= pick[2]; k++) if (y - k < 0 || grid[(y - k) * w + x] !== 0) ok = false;
+      if (!ok) continue;
+      lv.dress.push({ i: pick[0], h: pick[1] * (.85 + rnd() * .3), x: x * T + 16 + (rnd() - .5) * 10, y: y * T + 2, flip: rnd() < .5 }); lastX = x;
+    } }
   LV = lv;
 }
 function tileAt(tx, ty) { if (tx < 0 || tx >= LV.w) return 1; if (ty < 0 || ty >= LV.h) return 0; return LV.grid[ty * LV.w + tx]; }
@@ -507,7 +525,7 @@ function stepPlayer(dt) {
   }
   const was = P.onGround;
   P.onGround = P.vy >= 0 && rectSolid(P.x, P.y + P.h, P.w, 2);
-  if (P.onGround) { P.coyote = 0.1; P.airDash = 1; P.climbT = CLIMB_T; if (!was) { addFx("hud", HUD.dust, P.x + P.w / 2, P.y + P.h + 2, 22, { life: .35, ay: 1, a: .8 }); P.landT = 0.1; } } else P.coyote = Math.max(0, P.coyote - dt);
+  if (P.onGround) { P.airT = 0; P.runT = Math.abs(P.vx) > 40 ? (P.runT || 0) + dt : 0; P.coyote = 0.1; P.airDash = 1; P.climbT = CLIMB_T; if (!was) { addFx("hud", HUD.dust, P.x + P.w / 2, P.y + P.h + 2, 22, { life: .35, ay: 1, a: .8 }); P.landT = 0.1; } } else { P.coyote = Math.max(0, P.coyote - dt); P.airT = (P.airT || 0) + dt; }
   const wl = rectSolid(P.x - 3, P.y + 4, 3, P.h - 8), wr = rectSolid(P.x + P.w, P.y + 4, 3, P.h - 8);
   P.wall = P.onGround ? 0 : wr ? 1 : wl ? -1 : 0;
   if (P.wall) P.airDash = 1;
@@ -763,12 +781,12 @@ function render(rdt) {
   for (const l of LV.lasers) {
     if (!visible(l.x)) continue;
     if (!drawSprite("objects", OBJ.emitter, l.x, l.ty * T + 26, kOf("objects", OBJ.emitter, 28), false, .5, pal.night)) { ctx.fillStyle = pal.tile; ctx.fillRect(l.x - 8, l.ty * T + 8, 16, 14); }
-    if (laserOn(l) && SPR.hudsolid) { // 금줄: glow underlay + twisted rope painted down the beam
-      ctx.fillStyle = "rgba(195,22,28,.10)"; ctx.fillRect(l.x - 14, l.y0, 28, l.y1 - l.y0);
-      const f = SPR.hudsolid.f[HUD.rope], sc = 20 / f.w, seg = f.h * sc * .82;
-      ctx.save(); ctx.beginPath(); ctx.rect(l.x - 20, l.y0, 40, l.y1 - l.y0); ctx.clip();
-      for (let yy = l.y0 - ((songPos * 40) % seg); yy < l.y1; yy += seg) drawSprite("hudsolid", HUD.rope, l.x, yy, sc, false, .5, false, 0);
-      ctx.restore();
+    if (SPR.props) { // 금줄: one straw rope hung the full height; charged (deadly) when it glows
+      const f = SPR.props.f[PROP.rope], on = laserOn(l), len = l.y1 - l.y0, sw = Math.sin(tt * 1.7 + l.x) * (on ? .8 : 2);
+      if (on) { const gl = ctx.createLinearGradient(l.x - 16, 0, l.x + 16, 0); gl.addColorStop(0, "rgba(195,22,28,0)"); gl.addColorStop(.5, `rgba(195,22,28,${.22 + .08 * Math.sin(tt * 9)})`); gl.addColorStop(1, "rgba(195,22,28,0)"); ctx.fillStyle = gl; ctx.fillRect(l.x - 16, l.y0, 32, len); }
+      ctx.save(); ctx.translate(l.x, l.y0); ctx.rotate(sw * .01); ctx.globalAlpha = on ? 1 : laserWarn(l) ? .65 : .3;
+      ctx.drawImage(SPR.props.img, f.x, f.y, f.w, f.h, -11, -4, 22, len + 4);
+      ctx.restore(); ctx.globalAlpha = 1;
     } else if (laserOn(l)) {
       ctx.fillStyle = "rgba(195,22,28,.08)"; ctx.fillRect(l.x - 12, l.y0, 24, l.y1 - l.y0);
       ctx.fillStyle = "rgba(195,22,28,.18)"; ctx.fillRect(l.x - 6, l.y0, 12, l.y1 - l.y0);
@@ -810,6 +828,7 @@ function render(rdt) {
       ctx.fill(); ctx.fillStyle = SEAL; for (let i = 0; i < 4; i++) ctx.fillRect(px + i * 8 + 2.5 + (i % 2), py + 11, 1.5, 3);
     }
   }
+  for (const d of LV.dress) if (visible(d.x)) drawSprite("props", d.i, d.x, d.y, SPR.props ? d.h / SPR.props.f[d.i].h : 0, d.flip, .5, pal.night);
   // ink stains
   for (const s of LV.stains) {
     if (!visible(s.x)) continue;
@@ -906,10 +925,11 @@ function render(rdt) {
 
   if (P && P.focus && state === "play") {
     const d = aimDir(), cx = P.x + P.w / 2, cy = P.y + P.h / 2;
-    ctx.strokeStyle = JJOK; ctx.lineWidth = 2; ctx.setLineDash([6, 6]);
-    ctx.beginPath(); ctx.moveTo(cx, cy); ctx.lineTo(cx + d.x * 136, cy + d.y * 136); ctx.stroke(); ctx.setLineDash([]);
+    ctx.fillStyle = JJOK;
+    for (let t = 18; t < 136; t += 14) { const r = 2.6 - t / 136 * 1.2; ctx.globalAlpha = .75 - t / 400; ctx.beginPath(); ctx.ellipse(cx + d.x * t, cy + d.y * t, r * 1.8, r, Math.atan2(d.y, d.x), 0, Math.PI * 2); ctx.fill(); }
+    ctx.globalAlpha = 1;
     const rs = 1 + Math.sin(performance.now() / 90) * .06;
-    if (!drawSprite("hudsolid", HUD.reticle, cx + d.x * 152, cy + d.y * 152, 34 * rs / (SPR.hudsolid ? SPR.hudsolid.f[HUD.reticle].h : 1), false, .5, false, .5)) { ctx.beginPath(); ctx.arc(cx + d.x * 152, cy + d.y * 152, 10, 0, 6.28); ctx.stroke(); }
+    if (!drawSprite("props", PROP.reticle, cx + d.x * 152, cy + d.y * 152, 38 * rs / (SPR.props ? SPR.props.f[PROP.reticle].h : 1), false, .5, false, .5)) { ctx.beginPath(); ctx.arc(cx + d.x * 152, cy + d.y * 152, 10, 0, 6.28); ctx.stroke(); }
   }
 
   // screen space overlays
@@ -925,7 +945,7 @@ function render(rdt) {
     ctx.fillStyle = `rgba(20,18,20,${0.55 * a})`; ctx.fillRect(0, 0, cv.width, cv.height);
     ctx.setTransform(DPR, 0, 0, DPR, 0, 0); ctx.globalAlpha = Math.min(1, a * 2);
     ctx.fillStyle = "#f1ede4"; ctx.textAlign = "center"; ctx.textBaseline = "middle";
-    ctx.font = `400 ${Math.min(80, W / 7)}px "Nanum Brush Script", serif`; ctx.fillText("베였다", W / 2, H / 2 - 12);
+    ctx.font = `400 ${Math.min(64, W / 9)}px "Song Myung", serif`; ctx.fillText("베였다", W / 2, H / 2 - 12);
     if (mode !== "tutorial") { ctx.font = `600 13px ${BODY_FONT}`; ctx.fillText(run.breath > 0 ? `남은 숨 ${run.breath}` : "숨이 다했다", W / 2, H / 2 + 30); }
     ctx.textAlign = "left"; ctx.globalAlpha = 1;
   }
@@ -1023,20 +1043,35 @@ function drawRunner(x, y, face, col, pl) {
   ctx.beginPath(); ctx.moveTo(cx, y + 20); ctx.lineTo(cx + Math.sin(a2) * 10, y + 20 + Math.cos(a2) * 10); ctx.stroke();
   ctx.lineCap = "butt";
 }
-function heroFrame() {
-  if (state === "dead") return HERO.dead;
-  if (P.slashT > 0) return P.slashDir.y < -0.5 ? HERO.up : (P.slashDir.y > 0.5 && !P.onGround ? HERO.fall : HERO.slash);
-  if (P.dashT > 0 || P.hook) return HERO.dash;
-  if (!P.onGround) return P.wall ? HERO.wall : P.vy < 0 ? HERO.rise : HERO.fall;
-  if (P.landT > 0) return HERO.land;
-  if (Math.abs(P.vx) > 40) return HERO.run[Math.floor(P.run / 1.05) % HERO.run.length];
-  return HERO.idle;
+function heroPose() { // [sheet, frame]
+  if (state === "dead") return ["hero", HERO.dead];
+  if (P.slashT > 0) return ["hero", P.slashDir.y < -0.5 ? HERO.up : (P.slashDir.y > 0.5 && !P.onGround ? HERO.fall : HERO.slash)];
+  if (P.dashT > 0 || P.hook) return ["hero", HERO.dash];
+  if (!P.onGround) {
+    if (P.wall) return ["hero2", P.climbing ? H2.climb : H2.cling];
+    if (P.airT < .12 && P.vy < 0) return ["hero2", H2.takeoff];
+    if (Math.abs(P.vy) < 150) return ["hero2", H2.apex];
+    return ["hero", P.vy < 0 ? HERO.rise : HERO.fall];
+  }
+  if (P.landT > 0) return ["hero2", H2.land];
+  const a = axis().x, ix = a > .3 ? 1 : a < -.3 ? -1 : 0;
+  if (Math.abs(P.vx) > 40) {
+    if (ix && Math.sign(P.vx) !== ix) return ["hero2", H2.turn];
+    if (!ix && Math.abs(P.vx) > 110) return ["hero2", H2.skid];
+    if ((P.runT || 0) < .12) return ["hero2", H2.start];
+    return ["hero", HERO.run[Math.floor(P.run / 1.05) % HERO.run.length]];
+  }
+  if (P.slashCd > 0) return ["hero2", H2.guard];
+  return ["hero2", H2.idle[Math.floor(performance.now() / 420) % 3]];
 }
 function drawPlayer(pal) {
   if (!SPR.hero) { if (state !== "dead") legacyPlayer(pal); return; }
-  const fr = heroFrame(), cx = P.x + P.w / 2, face = fr === HERO.wall ? P.wall : P.face;
+  let [sheet, fr] = heroPose(); if (sheet === "hero2" && !SPR.hero2) { sheet = "hero"; fr = HERO.idle; }
+  const cx = P.x + P.w / 2, wallPose = sheet === "hero2" && (fr === H2.cling || fr === H2.climb), face = wallPose ? P.wall : P.face;
+  // hero2 is scaled so its first running step matches the original running frames
+  const k = sheet === "hero" ? kOf("hero", 0, HERO_H) : kOf("hero", 0, HERO_H) * SPR.hero.f[1].h / SPR.hero2.f[H2.start].h;
   if (state === "dead") ctx.globalAlpha = Math.max(0, 1 - deathT / 0.75);
-  drawSprite("hero", fr, cx, P.y + P.h + 1, kOf("hero", 0, HERO_H), face < 0, HERO_AX[fr] ?? .55, pal.night);
+  drawSprite(sheet, fr, cx, P.y + P.h + 1, k, face < 0, sheet === "hero" ? (HERO_AX[fr] ?? .55) : (wallPose ? .62 : .5), pal.night);
   ctx.globalAlpha = 1;
   if (P.slashT > 0 && state !== "dead" && SPR.fx) { // two painted frames: the edge, then the full stroke breaking into ink
     const d = P.slashDir, prog = 1 - Math.min(1, P.slashT / 0.14), ang = Math.atan2(d.y, d.x);
@@ -1077,10 +1112,10 @@ function drawEnemy(e, pal) {
       const [mx, my] = muzzle(e), sniper = e.type === "s", locked = songPos >= e.fireAt - (sniper ? .3 : .15);
       let dx = e.tx - mx, dy = e.ty - my; const d = Math.hypot(dx, dy) || 1; dx /= d; dy /= d;
       const prog = Math.min(1, (songPos - e.aimFrom) / Math.max(.01, e.fireAt - e.aimFrom)), len = sniper ? 1000 : Math.min(d, 200);
-      if (SPR.hudsolid) {
-        const f = SPR.hudsolid.f[HUD.aimLine], segW = 90, th = locked ? 9 : 5;
-        ctx.save(); ctx.translate(mx, my); ctx.rotate(Math.atan2(dy, dx)); ctx.globalAlpha = locked ? 1 : .25 + prog * .55;
-        for (let x = 0; x < len; x += segW) { const w = Math.min(segW, len - x); ctx.drawImage(SPR.hudsolid.img, f.x, f.y, f.w * w / segW, f.h, x, -th / 2, w, th); }
+      if (SPR.props) { // one brush stroke from the muzzle, thickening as the shot locks
+        const f = SPR.props.f[PROP.aim], th = locked ? 10 : 4 + prog * 4;
+        ctx.save(); ctx.translate(mx, my); ctx.rotate(Math.atan2(dy, dx)); ctx.globalAlpha = locked ? 1 : .3 + prog * .5;
+        ctx.drawImage(SPR.props.img, f.x, f.y, f.w, f.h, 0, -th / 2, len * (locked ? 1 : .35 + prog * .65), th);
         ctx.restore(); ctx.globalAlpha = 1;
       } else {
         ctx.strokeStyle = SEAL; ctx.globalAlpha = locked ? .95 : .2 + prog * .5; ctx.lineWidth = locked ? 2.2 : 1;
