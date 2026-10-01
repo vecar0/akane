@@ -1017,7 +1017,8 @@ function render(rdt) {
     const cx0 = Math.floor((cam.x - vw / 2) / colW) - 1, cx1 = Math.ceil((cam.x + vw / 2) / colW) + 1;
     for (let c = cx0; c <= cx1; c++) {
       const hsh = (c * 2654435761) >>> 0, i = hsh % 3, f = pf[i], w = colW * 1.35, segH = w * f.h / f.w, off = (hsh >>> 8) % 97;
-      for (let y = Math.floor((cam.y - vh / 2 - off) / segH) * segH + off - segH; y < cam.y + vh / 2 + segH; y += segH - 10) {
+      const rowH = segH - 10; // one spacing for both the start row and the step, so rows stay put as the camera moves
+      for (let y = Math.floor((cam.y - vh / 2 - off) / rowH) * rowH + off - rowH; y < cam.y + vh / 2 + segH; y += rowH) {
         ctx.save(); ctx.translate(c * colW + colW / 2, y); if ((hsh >>> 3) & 1) ctx.scale(-1, 1); ctx.drawImage(img, f.x, f.y, f.w, f.h, -w / 2, 0, w, segH); ctx.restore();
       }
     }
