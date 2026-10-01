@@ -36,10 +36,10 @@ const MADANG = [
   { jd: "danmori",   line: "천고가 가깝다.",                     tiers: ["m2", 2, "w2", "m2", 2, "w1", 2] }
 ];
 const PAL = [
-  { bg: "#e6e2d7", tile: "#1c1b1f", fig: "#141317", foe: "#55525b", text: "#1c1b1f", wash: "23,22,26", farA: .5, midA: .78, rim: null },
-  { bg: "#dcd6c8", tile: "#1c1b1f", fig: "#141317", foe: "#55525b", text: "#1c1b1f", wash: "23,22,26", farA: .5, midA: .78, rim: null },
-  { bg: "#c9c1b1", tile: "#19181c", fig: "#121115", foe: "#4c4952", text: "#19181c", wash: "23,22,26", farA: .5, midA: .8, rim: null },
-  { bg: "#8e887e", tile: "#141316", fig: "#0f0e11", foe: "#3a3840", text: "#141316", wash: "18,17,20", farA: .45, midA: .75, rim: "rgba(236,230,216,.18)" },
+  { bg: "#e6e2d7", tile: "#1c1b1f", fig: "#141317", foe: "#55525b", text: "#1c1b1f", wash: "23,22,26", farA: .36, midA: .5, rim: null },
+  { bg: "#dcd6c8", tile: "#1c1b1f", fig: "#141317", foe: "#55525b", text: "#1c1b1f", wash: "23,22,26", farA: .36, midA: .5, rim: null },
+  { bg: "#c9c1b1", tile: "#19181c", fig: "#121115", foe: "#4c4952", text: "#19181c", wash: "23,22,26", farA: .36, midA: .52, rim: null },
+  { bg: "#8e887e", tile: "#141316", fig: "#0f0e11", foe: "#3a3840", text: "#141316", wash: "18,17,20", farA: .32, midA: .48, rim: "rgba(236,230,216,.18)" },
   { bg: "#252321", tile: "#0b0a0c", fig: "#ece6d8", foe: "#a49d92", text: "#ece6d8", wash: "236,230,216", farA: .22, midA: .35, rim: "rgba(236,230,216,.5)", night: true }
 ];
 const BODY_FONT = getComputedStyle(document.documentElement).getPropertyValue("--f-body");
@@ -55,8 +55,12 @@ function pattern(key, scale) { // world- or screen-anchored repeating pattern, b
   if (!PAT[key]) { PAT[key] = ctx.createPattern(IMG[key], "repeat"); PAT[key].setTransform(new DOMMatrix().scale(scale)); }
   return PAT[key];
 }
-for (const k of ["far", "mid"]) { const im = new Image(); im.onload = () => { IMG[k] = seamlessStrip(im); }; im.src = "assets/" + k + ".webp"; }
+for (const k of ["far", "mid"]) { const im = new Image(); im.onload = () => { IMG[k] = softened(seamlessStrip(im), k === "far" ? 3 : 2); }; im.src = "assets/" + k + ".webp"; }
 // Make a panorama wrap horizontally: the last 22% is cross-faded into the start, so tiling shows no cut or mirror.
+function softened(c, px) { // blur once at load, so the backdrop recedes behind the sharp pines and actors
+  const o = document.createElement("canvas"); o.width = c.width; o.height = c.height; const g = o.getContext("2d");
+  g.filter = `blur(${px}px)`; g.drawImage(c, 0, 0); return o;
+}
 function seamlessStrip(img) {
   const w = img.width, h = img.height, ov = Math.round(w * 0.22), P = w - ov;
   const out = document.createElement("canvas"); out.width = P; out.height = h; const g = out.getContext("2d");
@@ -87,11 +91,11 @@ const CAL = { title: 0, death: 1, madang: [2, 3, 4, 5, 6], end: 7, clear: 8 };  
 const PROP = { rope: 0, aim: 1, reticle: 2, pine: 3, stoneLantern: 4, jars: 5, banner: 6, sotdae: 7, palisade: 8 };
 const DRESS = [[PROP.pine, 74, 3], [PROP.stoneLantern, 34, 2], [PROP.jars, 26, 1], [PROP.banner, 80, 3], [PROP.sotdae, 84, 3], [PROP.palisade, 28, 1]]; // [frame, world height, headroom tiles]
 const OBJ = { lanternOn: 0, lanternOff: 1, kite: 2, thorns: 3, seal: 4, emitter: 5, slash: 6, slashRed: 7, splat: 8 };
-for (const n of ["hero", "hero2", "foes", "objects", "ui", "fx", "hud", "hudsolid", "props", "props2", "rocks", "pines", "slabs"]) {
+for (const n of ["hero", "hero2", "foes", "objects", "ui", "fx", "hud", "hudsolid", "props", "props2", "rocks", "pines", "slabs", "pillars"]) {
   Promise.all([
     fetch(`assets/sprites/${n}.json`).then(r => r.json()),
     new Promise((res, rej) => { const im = new Image(); im.onload = () => res(im); im.onerror = rej; im.src = `assets/sprites/${n}.webp`; })
-  ]).then(([f, img]) => { SPR[n] = { f, img, inv: ["hero", "hero2", "foes", "objects", "fx", "props", "props2", "rocks", "pines", "slabs"].includes(n) ? inkInverted(img) : null }; applyUiSprites(); }).catch(() => {});
+  ]).then(([f, img]) => { SPR[n] = { f, img, inv: ["hero", "hero2", "foes", "objects", "fx", "props", "props2", "rocks", "pines", "slabs", "pillars"].includes(n) ? inkInverted(img) : null }; applyUiSprites(); }).catch(() => {});
 }
 function inkInverted(img) { // night palette: grey ink becomes bone white, coloured accents stay as they are
   const c = document.createElement("canvas"); c.width = img.width; c.height = img.height; const g = c.getContext("2d"); g.drawImage(img, 0, 0);
@@ -161,11 +165,28 @@ function buildScenery() {
     }
     x += n - 1;
   }
+  const pillars = [];
+  if (SPR.pillars) {
+    const spans = new Map();
+    for (let y = 0; y < LV.h; y++) for (let x = 0; x < LV.w; x++) {
+      if (tileAt(x, y) !== 1 || tileAt(x - 1, y) === 1) continue;
+      let n = 0; while (tileAt(x + n, y) === 1 && x + n < LV.w) n++;
+      if (n <= 3 && x > 0 && tileAt(x - 1, y) === 0 && tileAt(x + n, y) === 0) { const k = x + "," + n; (spans.get(k) || spans.set(k, []).get(k)).push(y); }
+      x += n - 1;
+    }
+    for (const [k, ys] of spans) {
+      const [x, n] = k.split(",").map(Number);
+      for (let a = 0; a < ys.length;) { let b = a; while (b + 1 < ys.length && ys[b + 1] === ys[b] + 1) b++;
+        if (b - a + 1 >= 3) { for (let y = ys[a]; y <= ys[b]; y++) for (let xx = x; xx < x + n; xx++) LV.slabTiles.add(y * LV.w + xx);
+          pillars.push({ i: (rnd() * 3) | 0, x: x * T + n * T / 2, y0: ys[a] * T - 2, y1: (ys[b] + 1) * T, w: n * T + 22, flip: rnd() < .5 }); }
+        a = b + 1; }
+    }
+  }
   const pines = [], P = SPR.pines;
   if (P) for (let wx = 200 + rnd() * 200; wx < LV.w * T + 600; wx += 700 + rnd() * 600) pines.push({ i: (rnd() * Math.min(PINE_N, P.f.length)) | 0, x: wx, h: 260 + rnd() * 120, flip: rnd() < .5, a: .35 + rnd() * .2 });
   const front = []; // big pines rooted on cliff edges (behind the actors), like the reference art
   if (P) for (const c of skins) if (c.w >= 3 * T && rnd() < .2) { const right = rnd() < .5; front.push({ i: (rnd() * Math.min(PINE_N, P.f.length)) | 0, x: c.x + (right ? 1 : -1) * (c.w / 2 - 14), y: c.y - 2, h: 150 + rnd() * 70, flip: right }); }
-  LV.scenery = { skins, back, pines, front, slabs };
+  LV.scenery = { skins, back, pines, front, slabs, pillars };
 }
 function drawCliff(c, img, alpha) {
   const f = SPR.rocks.f[c.i], w = f.w * c.h / f.h;   // height fixed, width follows the art
@@ -346,7 +367,7 @@ function loadMap(map, pal, hints) {
     }
     for (let y = 2; y < h - 4; y++) for (let x = 2; x < w - 6; x++) { // paper lanterns strung under roofs
       let n = 0; while (x + n < w && tile(x + n, y) === 1 && tile(x + n, y + 1) === 0 && tile(x + n, y + 2) === 0 && tile(x + n, y + 3) === 0) n++;
-      if (n >= 4 && rnd() < .5) { lv.dress.push({ sheet: "props2", i: P2.lanterns, x: (x + n / 2) * T, y: (y + 1) * T - 2, h: 40, w: Math.min(n, 6) * T, flip: false, ay: 0 }); }
+      if (false) { lv.dress.push({ sheet: "props2", i: P2.lanterns, x: (x + n / 2) * T, y: (y + 1) * T - 2, h: 40, w: Math.min(n, 6) * T, flip: false, ay: 0 }); }
       x += Math.max(0, n);
     } }
   LV = lv;
@@ -863,12 +884,20 @@ function render(rdt) {
     const f = SPR.pines.f[p.i], px = p.x + cam.x * .25, gy = (LV.h - 4) * T + 20 + cam.y * .12;
     if (px < cam.x - vw / 2 - 300 || px > cam.x + vw / 2 + 300) continue;
     ctx.save(); ctx.translate(px, gy); if (p.flip) ctx.scale(-1, 1); ctx.globalAlpha = pal.night ? p.a * .6 : p.a * 1.6;
-    const k = p.h / f.h; ctx.drawImage(pal.night ? SPR.pines.inv : SPR.pines.img, f.x, f.y, f.w, f.h, -f.w * k / 2, -p.h, f.w * k, p.h); ctx.restore();
+    const k = p.h / f.h, im = pal.night ? SPR.pines.inv : SPR.pines.img; ctx.globalAlpha = pal.night ? .5 : .95;
+    for (let r = pal.night ? 1 : 3; r > 0; r--) ctx.drawImage(im, f.x, f.y, f.w, f.h, -f.w * k / 2, -p.h, f.w * k, p.h); // stacked passes deepen the pale ink
+    ctx.restore();
   }
   ctx.globalAlpha = 1;
   if (SC && SPR.slabs) for (const c of SC.slabs) if (Math.abs(c.x - cam.x) < vw / 2 + c.w) { // drawn before tiles so the walkable top stays crisp
     const f = SPR.slabs.f[c.i], h = Math.max(c.minH + 18, c.w * f.h / f.w), w = h * f.w / f.h;
     drawSprite("slabs", c.i, c.x, c.y, h / f.h, c.flip, .5, pal.night, 0);
+  }
+  if (SC && SPR.pillars) for (const c of SC.pillars) if (Math.abs(c.x - cam.x) < vw / 2 + c.w) { // stacked pillar segments, art width kept
+    const f = SPR.pillars.f[c.i], segH = c.w * f.h / f.w, img = pal.night ? SPR.pillars.inv : SPR.pillars.img;
+    ctx.save(); ctx.beginPath(); ctx.rect(c.x - c.w, c.y0, c.w * 2, c.y1 - c.y0 + 4); ctx.clip();
+    for (let y = c.y0, k = 0; y < c.y1; y += segH - 2, k++) { ctx.save(); ctx.translate(c.x, y); if ((k + (c.flip ? 1 : 0)) % 2) ctx.scale(-1, 1); ctx.globalAlpha = pal.night ? .45 : 1; ctx.drawImage(img, f.x, f.y, f.w, f.h, -c.w / 2, 0, c.w, segH); ctx.restore(); }
+    ctx.restore(); ctx.globalAlpha = 1;
   }
   if (SC) for (const c of SC.back) if (Math.abs(c.x - cam.x) < vw / 2 + c.h * 2 + 200) drawCliff(c, pal.night ? SPR.rocks.inv : SPR.rocks.img, pal.night ? .25 : .45);
   // hints
@@ -945,7 +974,7 @@ function render(rdt) {
       ctx.fill(); ctx.fillStyle = SEAL; for (let i = 0; i < 4; i++) ctx.fillRect(px + i * 8 + 2.5 + (i % 2), py + 11, 1.5, 3);
     }
   }
-  if (SC && SPR.pines) { ctx.globalAlpha = .9; for (const p of SC.front) if (visible(p.x)) drawSprite("pines", p.i, p.x, p.y + 6, p.h / SPR.pines.f[p.i].h, p.flip, .5, pal.night); ctx.globalAlpha = 1; }
+  if (SC && SPR.pines) { ctx.globalAlpha = .95; for (const p of SC.front) if (visible(p.x)) for (let r = 3; r > 0; r--) drawSprite("pines", p.i, p.x, p.y + 6, p.h / SPR.pines.f[p.i].h, p.flip, .5, pal.night); ctx.globalAlpha = 1; }
   if (LV.gate && SPR.props2 && visible(LV.gate.x)) drawSprite("props2", P2.gate, LV.gate.x, LV.gate.y, 78 / SPR.props2.f[P2.gate].h, false, .5, pal.night);
   for (const d of LV.dress) {
     if (!visible(d.x) || !SPR[d.sheet]) continue;
@@ -1069,12 +1098,12 @@ function render(rdt) {
     ctx.fillStyle = `rgba(20,18,20,${0.55 * a})`; ctx.fillRect(0, 0, cv.width, cv.height);
     ctx.setTransform(DPR, 0, 0, DPR, 0, 0); ctx.globalAlpha = Math.min(1, a * 2);
     ctx.fillStyle = "#f1ede4"; ctx.textAlign = "center"; ctx.textBaseline = "middle";
-    const sf = SPR.pines && SPR.pines.f[DEATH_SEAL];
-    if (sf) { // 絶命 seal slams down: oversized at first, settles with a slight tilt
-      const k = Math.min(1, deathT / .12), sh = Math.min(140, H / 2.8) * (1.5 - .5 * k), sw = sh * sf.w / sf.h;
-      ctx.save(); ctx.translate(W / 2, H / 2 - 14); ctx.rotate(-.06); ctx.drawImage(SPR.pines.img, sf.x, sf.y, sf.w, sf.h, -sw / 2, -sh / 2, sw, sh); ctx.restore();
+    const sf = SPR.pillars && SPR.pillars.f[3];
+    if (sf) { // 絶命 in red brush, written down the screen; lands large and settles
+      const k = Math.min(1, deathT / .12), sh = Math.min(260, H * .66) * (1.25 - .25 * k), sw = sh * sf.w / sf.h;
+      ctx.drawImage(SPR.pillars.img, sf.x, sf.y, sf.w, sf.h, W / 2 - sw / 2, H / 2 - sh / 2 - 6, sw, sh);
     } else { ctx.font = `400 ${Math.min(72, W / 8)}px "Song Myung", serif`; ctx.fillText("절명", W / 2, H / 2 - 12); }
-    if (mode !== "tutorial") { ctx.font = `600 13px ${BODY_FONT}`; ctx.fillText(run.breath > 0 ? `남은 숨 ${run.breath}` : "숨이 다했다", W / 2, H / 2 + Math.min(70, H / 5.5)); }
+    if (mode !== "tutorial") { ctx.font = `600 13px ${BODY_FONT}`; ctx.fillText(run.breath > 0 ? `남은 숨 ${run.breath}` : "숨이 다했다", W / 2, H - 92); }
     ctx.textAlign = "left"; ctx.globalAlpha = 1;
   }
 }
