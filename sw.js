@@ -1,9 +1,9 @@
 // 천고 service worker: network-first for the game files (so updates land on the next launch),
 // cache fallback for offline play, cache-first for Google Fonts.
-const CACHE = "chungo-v2";
+const CACHE = "chungo-v3";
 const CORE = ["./", "index.html", "style.css", "js/data.js", "js/music.js", "js/game.js", "manifest.webmanifest",
   "icons/icon-192.png", "icons/icon-512.png", "icons/apple-touch-icon.png"];
-const OPTIONAL = ["assets/far.webp", "assets/mid.webp", "assets/title.webp", "assets/tex-paper.webp", "assets/tex-stone.webp", "assets/tex-giwa.webp"];
+const OPTIONAL = ["assets/far.webp", "assets/mid.webp", "assets/title.webp", "assets/tex-paper.webp", "assets/tex-stone.webp", "assets/tex-giwa.webp", "assets/sprites/hero.webp", "assets/sprites/hero.json", "assets/sprites/foes.webp", "assets/sprites/foes.json", "assets/sprites/objects.webp", "assets/sprites/objects.json", "assets/sprites/ui.webp", "assets/sprites/ui.json"];
 
 self.addEventListener("install", e => {
   e.waitUntil(caches.open(CACHE).then(async c => {

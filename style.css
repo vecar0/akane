@@ -104,3 +104,30 @@ h2 { font-family: var(--f-head); font-weight: 400; font-size: 28px; margin: 0; }
 #toast { position: absolute; left: 50%; top: calc(env(safe-area-inset-top, 0px) + 56px); transform: translateX(-50%); padding: 6px 12px; border-radius: 6px; background: var(--ink); color: var(--paper); font-size: 12.5px; opacity: 0; transition: opacity .25s; pointer-events: none; white-space: nowrap; }
 #toast.on { opacity: 1; }
 @media (prefers-reduced-motion: reduce) { #toast, #stickBase { transition: none; } }
+
+/* painted UI (Higgsfield brush kit, applied once the sheet has loaded) */
+.ui-ready .tb { background: none; box-shadow: none; }
+.tb i { position: absolute; inset: 27%; background: center / contain no-repeat; pointer-events: none; }
+.tb span { position: relative; }
+.ui-ready .tb::before { content: ""; position: absolute; inset: -6%; background: var(--ui-ring) center / 100% 100% no-repeat; opacity: .8; pointer-events: none; }
+.ui-ready .tb.down::before { background-image: var(--ui-disc); opacity: .35; }
+.ui-ready .tb span { position: absolute; bottom: -2px; left: 0; right: 0; font-size: 11px; text-align: center; opacity: .75; }
+.ui-ready #bJump i { background-image: var(--ui-up); inset: 24% 26% 34%; }
+.ui-ready #bDash i { background-image: var(--ui-arrow); inset: 30% 18% 38%; filter: sepia(1) hue-rotate(180deg) saturate(3) brightness(.7); }
+.ui-ready #bHook i { background-image: var(--ui-kite); inset: 16% 30% 26%; }
+.ui-ready #bHook { opacity: .4; }
+.ui-ready #bHook.ready { opacity: 1; background: none; }
+.ui-ready #bHook.ready::before { background-image: var(--ui-disc); opacity: .18; }
+.ui-ready #hud > .hl, .ui-ready #hud .t, .ui-ready #hBreath { background: var(--ui-wash) center / 100% 100% no-repeat; border-radius: 0; padding-inline: 16px; }
+.ui-ready #hBreath i { width: 12px; height: 16px; border-radius: 0; background: var(--ui-drop) center / contain no-repeat; box-shadow: none; }
+.ui-ready #hBreath i.lost { background-image: var(--ui-drop-o); }
+.ui-ready #bPause { background: none; }
+.ui-ready #bPause i { border: 0; width: 18px; height: 22px; background: var(--ui-pause) center / contain no-repeat; }
+.ui-ready .btn { background: var(--ui-wash) center / 100% 100% no-repeat; box-shadow: none; border-radius: 0; padding-inline: 22px; }
+.ui-ready .btn.pri { background-image: var(--ui-bar); color: #f1ece2; }
+.ui-ready .btn.ghost { background: none; text-decoration: underline; text-decoration-color: rgba(23, 22, 26, .3); text-underline-offset: 4px; }
+.ui-ready .btn small { color: inherit; opacity: .7; }
+.night #hud { color: #ece6d8; }
+.night #hJang { color: #b9b2a6; }
+.night #hud i, .night .tb i, .night .tb::before { filter: invert(.9); }
+.night .tb { color: #ece6d8; }
