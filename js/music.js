@@ -22,18 +22,20 @@ const Music = (() => {
   let fallbackStart = 0, fallbackPausedAt = 0;
   let volume = 1, offsetMs = 0;
   // background music: 「국악 효과음 #572」 © 주식회사 아이티앤, CC BY (공유마당). Loaded once, looped with a crossfaded seam.
-  const LOOP_A = 0.10, LOOP_B = 3.97;
+  const LOOP_A = 0.094, LOOP_B = 0.094 + 9 * 0.4288;
   let bgmBuf = null, bgmSrc = null, bgmGain = null, bgmLoading = false;
   function loadBgm() {
     if (bgmBuf || bgmLoading || !ac) return; bgmLoading = true;
     fetch("assets/audio/bgm.mp3?v=572").then(r => r.arrayBuffer()).then(b => new Promise((res, rej) => ac.decodeAudioData(b, res, rej))).then(raw => {
       // drop the trailing silence and blend the tail into the head so the loop has no gap or click
-      // 「국악 효과음 #572」: strokes fall every 0.43 s from 0.10 s; nine of them (0.10-3.97 s) are looped,
-      // skipping the lead-in silence and the ring-out. A 20 ms blend at the seam avoids a click.
-      const sr = raw.sampleRate, st = Math.round(LOOP_A * sr), len = Math.min(raw.length - st, Math.round((LOOP_B - LOOP_A) * sr)), xf = Math.round(.02 * sr), buf = ac.createBuffer(raw.numberOfChannels, len, sr);
+      // 「국악 효과음 #572」: strokes fall every 0.4288 s from 0.106 s. Nine of them are looped (a 12 ms pre-roll keeps
+      // each attack whole), so the loop length is exactly nine beats. The ring-out past the cut is laid over the
+      // start of the loop with a cosine fade, so the last stroke decays naturally under the first one instead of stopping.
+      const sr = raw.sampleRate, st = Math.round(LOOP_A * sr), len = Math.min(raw.length - st, Math.round((LOOP_B - LOOP_A) * sr)), tail = Math.round(.35 * sr), buf = ac.createBuffer(raw.numberOfChannels, len, sr);
       for (let c = 0; c < raw.numberOfChannels; c++) {
         const a = raw.getChannelData(c), o = buf.getChannelData(c);
-        for (let i = 0; i < len; i++) o[i] = i < xf ? a[st + i] * (i / xf) + (a[st + len + i] || 0) * (1 - i / xf) : a[st + i];
+        for (let i = 0; i < len; i++) o[i] = a[st + i];
+        for (let i = 0; i < tail && i < len; i++) o[i] += (a[st + len + i] || 0) * .5 * (1 + Math.cos(Math.PI * i / tail));
       }
       bgmBuf = buf; if (running || wantBgm) playBgm();
     }).catch(() => { useTag = true; if (running || wantBgm) playBgm(); }).finally(() => { bgmLoading = false; });
