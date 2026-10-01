@@ -12,8 +12,9 @@ const JANGDAN = {
   hwimori:   { name: "휘모리",   bpm: 108, beats: 4,  sub: 2, pat: "D0TTK0T0" },
   danmori:   { name: "단모리",   bpm: 120, beats: 4,  sub: 2, pat: "DTKTDGKT" }
 };
-// 계면조-ish pentatonic (Hz): mi la si re' mi' la'
-const SCALE = [164.8, 220.0, 246.9, 293.7, 329.6, 440.0];
+// 계면조 on A: 라 도 레 미 솔 라' 도' 레' (Hz). 미 is shaken (떠는 음), 도 is bent down from 레 (꺾는 음),
+// phrases end on 라 with a falling tail (퇴성).
+const GYE = [220.0, 261.6, 293.7, 329.6, 392.0, 440.0, 523.3, 587.3];
 
 const Music = (() => {
   let ac = null, out = null, master = null, filt = null, noiseBuf = null;
@@ -51,8 +52,8 @@ const Music = (() => {
     o.type = type; o.frequency.setValueAtTime(f0, t); o.frequency.exponentialRampToValueAtTime(f1, t + dur);
     env(g, t, 0.003, peak, dur); o.connect(g).connect(dest || master); o.start(t); o.stop(t + dur + 0.05);
   }
-  const kung = (t, v) => { osc(t, "sine", 120, 52, 0.42, 0.55 * v); noise(t, 0.08, 180, "lowpass", 0.25 * v); };
-  const deok = (t, v) => { noise(t, 0.05, 2600, "bandpass", 0.32 * v, 1.2); osc(t, "triangle", 760, 520, 0.04, 0.08 * v); };
+  const kung = (t, v) => { osc(t, "sine", 96, 58, 0.5, 0.6 * v); osc(t, "sine", 190, 120, 0.12, 0.12 * v); noise(t, 0.05, 240, "lowpass", 0.22 * v); };   // 북편: leather, palm
+  const deok = (t, v) => { osc(t, "triangle", 430, 300, 0.09, 0.2 * v); osc(t, "sine", 860, 640, 0.05, 0.06 * v); noise(t, 0.025, 1800, "bandpass", 0.25 * v, 1.4); };   // 채편: bamboo stick on tight skin
   function stroke(ch, t, strong) {
     const v = strong ? 1 : 0.8;
     if (ch === "D") { kung(t, v); deok(t, v); }
@@ -60,21 +61,29 @@ const Music = (() => {
     else if (ch === "T") deok(t, v);
     else if (ch === "G") { deok(t - 0.045, 0.45); deok(t, v); }
   }
-  function flute(t, freq, dur) {
-    const o = ac.createOscillator(), lfo = ac.createOscillator(), lg = ac.createGain(), g = ac.createGain(), f = ac.createBiquadFilter();
-    o.type = "triangle"; o.frequency.setValueAtTime(freq * 0.985, t); o.frequency.linearRampToValueAtTime(freq, t + 0.08);
-    o.frequency.setValueAtTime(freq, t + dur * 0.7); o.frequency.linearRampToValueAtTime(freq * 0.94, t + dur); // 꺾는 끝음
-    lfo.frequency.value = 5.2; lg.gain.setValueAtTime(0, t); lg.gain.linearRampToValueAtTime(freq * 0.018, t + dur * 0.6); // 농음
-    lfo.connect(lg).connect(o.frequency);
-    f.type = "lowpass"; f.frequency.value = 1800;
-    g.gain.setValueAtTime(0.0001, t); g.gain.exponentialRampToValueAtTime(0.07, t + 0.06); g.gain.setValueAtTime(0.07, t + dur * 0.75); g.gain.exponentialRampToValueAtTime(0.0001, t + dur);
-    o.connect(f).connect(g).connect(master); o.start(t); lfo.start(t); o.stop(t + dur + 0.05); lfo.stop(t + dur + 0.05);
-    noise(t, 0.12, 1400, "bandpass", 0.02, 0.5); // breath
+  function voice(kind, t, f, dur, orn) { // 대금 (breathy flute) or 해금 (nasal bowed string), with 시김새
+    const o = ac.createOscillator(), lfo = ac.createOscillator(), lg = ac.createGain(), g = ac.createGain(), bp = ac.createBiquadFilter(), lp = ac.createBiquadFilter();
+    const hae = kind === "haegeum";
+    o.type = hae ? "sawtooth" : "triangle";
+    bp.type = "bandpass"; bp.frequency.value = hae ? 1100 : f * 2; bp.Q.value = hae ? 1.1 : .5;
+    lp.type = "lowpass"; lp.frequency.value = hae ? 3200 : 2400;
+    const F = o.frequency;
+    if (orn === "bend") { F.setValueAtTime(f * 1.12, t); F.exponentialRampToValueAtTime(f, t + Math.min(.16, dur * .3)); }   // 꺾는 음
+    else { F.setValueAtTime(f * .985, t); F.linearRampToValueAtTime(f, t + .06); }
+    if (orn === "fall") { F.setValueAtTime(f, t + dur * .6); F.exponentialRampToValueAtTime(f * .89, t + dur); }             // 퇴성
+    lfo.frequency.value = orn === "shake" ? 5.8 : 5;
+    lg.gain.setValueAtTime(0, t); lg.gain.linearRampToValueAtTime(f * (orn === "shake" ? .035 : .01), t + dur * .5);          // 농현 / 농음
+    lfo.connect(lg).connect(F);
+    const peak = hae ? .05 : .075, a = hae ? .09 : .05;
+    g.gain.setValueAtTime(.0001, t); g.gain.exponentialRampToValueAtTime(peak, t + a); g.gain.setValueAtTime(peak * .85, t + dur * .8); g.gain.exponentialRampToValueAtTime(.0001, t + dur);
+    o.connect(hae ? bp : lp).connect(hae ? lp : g); if (hae) lp.connect(g); g.connect(master);
+    o.start(t); lfo.start(t); o.stop(t + dur + .05); lfo.stop(t + dur + .05);
+    if (!hae) noise(t, .1, f * 3, "bandpass", .03, .6); else noise(t, dur * .5, 2400, "bandpass", .008, .8); // breath / bow hair
   }
   function drone(t, freq, dur) {
     const o = ac.createOscillator(), g = ac.createGain(), f = ac.createBiquadFilter();
-    o.type = "sawtooth"; o.frequency.value = freq / 2; f.type = "lowpass"; f.frequency.value = 260;
-    g.gain.setValueAtTime(0.0001, t); g.gain.exponentialRampToValueAtTime(0.05, t + 0.3); g.gain.setValueAtTime(0.05, t + dur - 0.3); g.gain.exponentialRampToValueAtTime(0.0001, t + dur);
+    o.type = "sawtooth"; o.frequency.value = freq / 2; f.type = "lowpass"; f.frequency.value = 340; // 아쟁-like low bow
+    g.gain.setValueAtTime(0.0001, t); g.gain.exponentialRampToValueAtTime(0.03, t + 0.5); g.gain.setValueAtTime(0.03, t + dur - 0.3); g.gain.exponentialRampToValueAtTime(0.0001, t + dur);
     o.connect(f).connect(g).connect(master); o.start(t); o.stop(t + dur + 0.05);
   }
   function jing(t) { // 징: a few inharmonic partials with a slow swell
@@ -103,6 +112,23 @@ const Music = (() => {
   }
   function bak(t) { noise(t, 0.04, 3400, "bandpass", 0.6, 2); noise(t + 0.012, 0.05, 1900, "bandpass", 0.4, 2); } // 박: wooden clapper
 
+  // ---- phrases: one per 장단 cycle, a stepwise walk in 계면조 that settles on 라 ----
+  let plan = [], voiceKind = "daegeum", lastI = 3;
+  function phrase(beats) {
+    const notes = []; let at = 0, i = lastI;
+    while (at < beats) {
+      const left = beats - at;
+      if (at > 0 && rng() < .15 && left > 2) { at++; continue; }            // breath
+      let d = Math.min(left, [1, 1, 2, 2, 3][(rng() * 5) | 0]);
+      const last = at + d >= beats;
+      if (last) { i = rng() < .7 ? 5 : 0; d = left; }
+      else { i = Math.max(1, Math.min(7, i + [-2, -1, -1, 1, 1, 2][(rng() * 6) | 0])); }
+      const orn = last ? "fall" : GYE[i] === 329.6 ? "shake" : (GYE[i] === 261.6 || GYE[i] === 523.3) && rng() < .7 ? "bend" : "plain";
+      notes.push({ at, d, i, orn }); at += d;
+    }
+    lastI = 3 + ((rng() * 3) | 0);
+    return notes;
+  }
   // ---- scheduler ----
   const subLen = () => 60 / def.bpm / def.sub;
   // song position (s) <-> audio clock; rate < 1 slows the whole 장단 during slow-mo aim
@@ -115,10 +141,12 @@ const Music = (() => {
       const t = audioAt(nextIdx * sl), i = nextIdx % len, ch = def.pat[i];
       if (ch !== "0") stroke(ch, t, i === 0);
       if (i % def.sub === 0) {
-        const beat = (nextIdx / def.sub) | 0, bl = sl * def.sub;
+        const beat = (nextIdx / def.sub) | 0, bl = sl * def.sub, inCycle = beat % def.beats, cyc = (beat / def.beats) | 0;
         const pf = rate < 1 ? .84 : 1; // slowed: everything sinks a little in pitch
-        if (beat % def.beats === 0) drone(t, SCALE[[0, 1, 0, 3][(beat / def.beats | 0) % 4]] * pf, bl * def.beats / rate);
-        if (rng() < 0.42) flute(t, SCALE[1 + ((rng() * 5) | 0)] * pf, bl * (rng() < 0.5 ? 1 : 2) * 0.95 / rate);
+        if (inCycle === 0) { plan = phrase(def.beats); voiceKind = cyc % 4 === 3 ? "haegeum" : cyc % 2 ? "haegeum" : "daegeum"; drone(t, 220 * pf, bl * def.beats / rate); gayageum(t, 110 * pf, 1.4, .1); }
+        if (inCycle === (def.beats >> 1)) gayageum(t, 164.8 * pf, 1.1, .07);
+        for (const n of plan) if (n.at === inCycle) voice(voiceKind, t, GYE[n.i] * pf, n.d * bl / rate * .96, n.orn);
+        if (inCycle === def.beats - 1 && rng() < .5) [329.6, 293.7, 261.6].forEach((f, k) => gayageum(t + k * bl / rate / 3, f * pf, .5, .05)); // 가야금 고리
       }
       nextIdx++;
     }
@@ -131,7 +159,7 @@ const Music = (() => {
       ensure(); this.stop();
       const base = JANGDAN[key] || JANGDAN.jungmori; def = Object.assign({}, base, { bpm: Math.round(base.bpm * speed) });
       let s = (seed >>> 0) || 1; rng = () => ((s = (s * 1664525 + 1013904223) >>> 0) / 4294967296);
-      nextIdx = 0; running = true; rate = 1;
+      nextIdx = 0; running = true; rate = 1; plan = [];
       if (ac) { t0 = ac.currentTime + 0.25; baseTime = t0; basePos = 0; timer = setInterval(tick, 25); tick(); }
       else { fallbackStart = performance.now() / 1000 + 0.25; }
     },
@@ -170,7 +198,7 @@ const Music = (() => {
         case "kill": kung(t, 1.1); gayageum(t + .02, 98, .5, .14); break;                           // 북 + low 가야금 string
         case "clang": kkwaeng(t, .6, 1); kkwaeng(t + .04, .35, 1); break;
         case "dash": daegeum(t, 520, 300, .22); noise(t, 0.14, 2600, "bandpass", 0.12, 0.6); break;  // breathy 대금 swoop
-        case "jump": deok(t, .55); break;                                                          // 장구 덕
+        case "jump": { const s2 = ac.createBufferSource(), f = ac.createBiquadFilter(), g = ac.createGain(); s2.buffer = noiseBuf; f.type = "bandpass"; f.Q.value = 1.2; f.frequency.setValueAtTime(700, t); f.frequency.exponentialRampToValueAtTime(2600, t + .14); env(g, t, .02, .16, .14); s2.connect(f).connect(g).connect(master); s2.start(t, Math.random() * .5); s2.stop(t + .2); break; }   // coat swish, nothing drum-like
         case "hook": gayageum(t, 440, .35, .08); gayageum(t + .07, 659, .35, .07); break;
         case "shoot": noise(t, 0.12, 900, "lowpass", 0.35); noise(t, 0.05, 3000, "bandpass", 0.2); break;   // 화승총 crack
         case "snipe": noise(t, 0.2, 700, "lowpass", 0.45); noise(t, 0.06, 4000, "bandpass", 0.25); break;
