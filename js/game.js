@@ -203,9 +203,19 @@ function buildScenery() {
     }
   }
   const pines = [], P = SPR.pines;
-  if (P) for (let wx = 200 + rnd() * 200; wx < LV.w * T + 600; wx += 700 + rnd() * 600) pines.push({ i: (rnd() * Math.min(PINE_N, P.f.length)) | 0, x: wx, h: 260 + rnd() * 120, flip: rnd() < .5, a: .35 + rnd() * .2 });
+  // pines grow from the ground in world space (no parallax, so they never slide), only where the air above is clear
+  if (P) for (let x = 4, last = -99; x < LV.w - 4; x++) {
+    if (x - last < 14 || rnd() > .35) continue;
+    let y = 1; while (y < LV.h && tileAt(x, y) === 0) y++;
+    if (y >= LV.h || tileAt(x, y) !== 1 || y < 8) continue;
+    const h = 220 + rnd() * 110, rows = Math.ceil(h / T * .85);
+    let clear = true;
+    for (let dx = -3; dx <= 3 && clear; dx++) for (let dy = 1; dy <= rows; dy++) if (tileAt(x + dx, y - dy) !== 0) { clear = false; break; }
+    if (!clear) continue;
+    pines.push({ i: (rnd() * Math.min(PINE_N, P.f.length)) | 0, x: x * T + 16, gy: y * T + 14, h, flip: rnd() < .5, a: .55 }); last = x;
+  }
   const front = []; // big pines rooted on cliff edges (behind the actors), like the reference art
-  if (P) for (const c of skins) if (c.w >= 3 * T && rnd() < .2) { const right = rnd() < .5; front.push({ i: (rnd() * Math.min(PINE_N, P.f.length)) | 0, x: c.x + (right ? 1 : -1) * (c.w / 2 - 14), y: c.y - 2, h: 150 + rnd() * 70, flip: right }); }
+  if (P) for (const c of skins) if (c.w >= 3 * T && rnd() < .2 && !pillars.some(q => Math.abs(q.x - c.x) < c.w / 2 + 160)) { const right = rnd() < .5; front.push({ i: (rnd() * Math.min(PINE_N, P.f.length)) | 0, x: c.x + (right ? 1 : -1) * (c.w / 2 - 14), y: c.y - 2, h: 150 + rnd() * 70, flip: right }); }
   LV.scenery = { skins, back, pines, front, slabs, pillars };
 }
 function drawPillar(c, pal) { // stacked rock segments; a grounded pillar fades into the ground over its last 56px
@@ -971,7 +981,7 @@ function render(rdt) {
   if (SPR.rocks && LV && !LV.scenery) buildScenery();
   const SC = LV.scenery;
   if (SC && SPR.pines) for (const p of SC.pines) { // far pines drift slower than the ground (parallax .75)
-    const f = SPR.pines.f[p.i], px = p.x + cam.x * .25, gy = cam.y + (H * .36 + (LV.h * T - cam.y) * .11 * SCALE) / SCALE + 40;   // moves with the backdrop, base stays below the ground line
+    const f = SPR.pines.f[p.i], px = p.x, gy = p.gy;   // fixed in the world, rooted behind the ground edge
     if (px < cam.x - vw / 2 - 300 || px > cam.x + vw / 2 + 300) continue;
     ctx.save(); ctx.translate(px, gy); if (p.flip) ctx.scale(-1, 1); ctx.globalAlpha = pal.night ? p.a * .6 : p.a * 1.6;
     const k = p.h / f.h, im = pal.night ? SPR.pines.inv : SPR.pines.img; ctx.globalAlpha = pal.night ? .5 : .95;
@@ -1036,6 +1046,7 @@ function render(rdt) {
     const sh = ctx.createLinearGradient(0, cam.y - vh / 2, 0, cam.y + vh / 2); sh.addColorStop(0, "rgba(20,18,16,0)"); sh.addColorStop(1, "rgba(20,18,16,.35)");
     ctx.fillStyle = sh; ctx.fill(rock);
   } else if (stone) { ctx.globalAlpha = pal.rim ? .8 : 1; ctx.fillStyle = stone; ctx.fill(rock); ctx.globalAlpha = 1; }
+  if (SC && SPR.pillars) for (const c of SC.pillars) if (c.g && Math.abs(c.x - cam.x) < vw / 2 + c.w) drawPillar(c, pal);   // grounded pillars over the rock but under every giwa band
   for (let ty = y0; ty <= y1; ty++) for (let tx = x0; tx <= x1; tx++) {
     const v = LV.grid[ty * LV.w + tx], px = tx * T, py = ty * T;
     if (v === 1) {
@@ -1088,7 +1099,6 @@ function render(rdt) {
     if (d.w) { ctx.drawImage(pal.night ? SPR[d.sheet].inv : SPR[d.sheet].img, f.x, f.y, f.w, f.h, d.x - d.w / 2, d.y, d.w, d.h); continue; }
     drawSprite(d.sheet, d.i, d.x, d.y, d.h / f.h, d.flip, .5, pal.night, d.ay);
   }
-  if (SC && SPR.pillars) for (const c of SC.pillars) if (c.g && Math.abs(c.x - cam.x) < vw / 2 + c.w) drawPillar(c, pal);   // grounded ones over the rock, fading into it
   // ink stains
   for (const s of LV.stains) {
     if (!visible(s.x)) continue;
