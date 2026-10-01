@@ -196,8 +196,9 @@ function buildScenery() {
     for (const [k, ys] of spans) {
       const [x, n] = k.split(",").map(Number);
       for (let a = 0; a < ys.length;) { let b = a; while (b + 1 < ys.length && ys[b + 1] === ys[b] + 1) b++;
-        if (b - a + 1 >= 3) { for (let y = ys[a]; y <= ys[b]; y++) for (let xx = x; xx < x + n; xx++) LV.slabTiles.add(y * LV.w + xx);
-          pillars.push({ i: (rnd() * 3) | 0, x: x * T + n * T / 2, y0: ys[a] * T - 2, y1: ys[b] + 1 >= LV.h ? LV.h * T + 200 : (ys[b] + 1) * T, w: n * T + 10, flip: rnd() < .5 }); }
+        const grounded = ys[b] + 1 >= LV.h || [...Array(n).keys()].some(k => tileAt(x + k, ys[b] + 1) === 1) || tileAt(x - 1, ys[b] + 1) === 1 || tileAt(x + n, ys[b] + 1) === 1;
+        if (b - a + 1 >= 3 && !grounded) { for (let y = ys[a]; y <= ys[b]; y++) for (let xx = x; xx < x + n; xx++) LV.slabTiles.add(y * LV.w + xx);
+          pillars.push({ i: (rnd() * 3) | 0, x: x * T + n * T / 2, y0: ys[a] * T - 2, y1: (ys[b] + 1) * T, w: n * T + 10, flip: rnd() < .5 }); }
         a = b + 1; }
     }
   }
@@ -1198,7 +1199,7 @@ function render(rdt) {
     ctx.fillStyle = "#f1ede4"; ctx.textAlign = "center"; ctx.textBaseline = "middle";
     const sf = SPR.roguea && SPR.roguea.f[0];
     if (sf) { // 絶命 in red brush, written down the screen; lands large and settles
-      const k = Math.min(1, deathT / .12), sw = Math.min(W * .32, 260) * (1.2 - .2 * k), sh = sw * sf.h / sf.w;
+      const k = Math.min(1, deathT / .12), sw = Math.min(W * .22, 180) * (1.2 - .2 * k), sh = sw * sf.h / sf.w;
       ctx.drawImage(SPR.roguea.img, sf.x, sf.y, sf.w, sf.h, W / 2 - sw / 2, H / 2 - sh / 2 - 6, sw, sh);
     } else { ctx.font = `400 ${Math.min(72, W / 8)}px "Song Myung", serif`; ctx.fillText("절명", W / 2, H / 2 - 12); }
     if (mode !== "tutorial") { ctx.font = `600 13px ${BODY_FONT}`; ctx.fillText(run.breath > 0 ? `남은 숨 ${run.breath}` : "숨이 다했다", W / 2, H - 92); }
@@ -1305,7 +1306,7 @@ function heroPose() { // [sheet, frame]
   if (P.slashT > 0) return ["hero", P.slashDir.y < -0.5 ? HERO.up : (P.slashDir.y > 0.5 && !P.onGround ? HERO.fall : HERO.slash)];
   if (P.dashT > 0 || P.hook) return ["hero", HERO.dash];
   if (!P.onGround) {
-    if (P.wall) return ["hero2", P.climbing ? H2.climb : H2.cling];
+    if (P.wall) return ["hero", HERO.wall];
     if (P.airT < .12 && P.vy < 0) return ["hero2", H2.takeoff];
     if (Math.abs(P.vy) < 150) return ["hero2", H2.apex];
     return ["hero", P.vy < 0 ? HERO.rise : HERO.fall];
@@ -1324,7 +1325,7 @@ function heroPose() { // [sheet, frame]
 function drawPlayer(pal) {
   if (!SPR.hero) { if (state !== "dead") legacyPlayer(pal); return; }
   let [sheet, fr] = heroPose(); if (sheet === "hero2" && !SPR.hero2) { sheet = "hero"; fr = HERO.idle; }
-  const cx = P.x + P.w / 2, wallPose = sheet === "hero2" && (fr === H2.cling || fr === H2.climb), face = wallPose ? P.wall : P.face;
+  const cx = P.x + P.w / 2, wallPose = sheet === "hero" && fr === HERO.wall, face = wallPose ? P.wall : P.face;
   // hero2 is scaled so its first running step matches the original running frames
   const k = sheet === "hero" ? kOf("hero", 0, HERO_H) : kOf("hero", 0, HERO_H) * SPR.hero.f[1].h / SPR.hero2.f[H2.start].h;
   if (state === "dead") ctx.globalAlpha = Math.max(0, 1 - deathT / 0.75);
