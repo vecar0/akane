@@ -569,6 +569,7 @@ function showInterlude() {
   setTimeout(() => $("bEnter").focus({ preventScroll: true }), 30);
 }
 function enterMadang() {
+  Music.menuBgm(false);
   // map already loaded by showInterlude
   deadIds = new Set(run.dead || []); cpSave = null;
   if (run.cp >= 0 && LV.cps[run.cp]) {
@@ -586,6 +587,7 @@ function enterMadang() {
   try { navigator.wakeLock && navigator.wakeLock.request("screen").catch(() => {}); } catch (e) {}
 }
 function startTutorial() {
+  Music.menuBgm(false);
   mode = "tutorial";
   run = { m: 0, breath: Infinity, time: 0, deaths: 0, kills: 0, strikes: 0, slashes: 0, cp: -1, dead: [] };
   loadMap(TUTORIAL.map, PAL[0], TUTORIAL.hints);
@@ -1516,6 +1518,7 @@ function buildMenu() {
   $("dailyInfo").textContent = `${dt.getMonth() + 1}월 ${dt.getDate()}일` + (d ? ` · ${d.reached}마당 ${fmt(d.time)}` : "");
 }
 function toMenu() {
+  Music.menuBgm(true);
   document.body.classList.remove("night");
   Music.stop(); state = "menu"; buildMenu(); showScreen("menu");
   if (!LV) loadMap(START_PIECE.map((r, y) => r + r + r + r), PAL[0]);
@@ -1566,6 +1569,7 @@ const standalone = matchMedia("(display-mode: standalone)").matches || matchMedi
 
 
 if (location.hash === "#debug") window.__dbg = { tp(tx, ty) { P.x = tx * T + 7; P.y = (ty + 1) * T - 30; P.vx = P.vy = 0; }, get state() { return state; }, get P() { return P; }, get LV() { return LV; }, get state2() { return state; }, get SC() { return LV.scenery; } };
+window.addEventListener("pointerdown", () => Music.unlock(), { once: true, capture: true });   // first tap anywhere starts the sound
 resize();
 toMenu();
 P = null; cam.x = 600; cam.y = 300;

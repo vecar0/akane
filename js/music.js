@@ -34,16 +34,18 @@ const Music = (() => {
         const a = raw.getChannelData(c), o = buf.getChannelData(c);
         for (let i = 0; i < len; i++) o[i] = i < xf ? a[i] * (i / xf) + a[len + i] * (1 - i / xf) : a[i];
       }
-      bgmBuf = buf; if (running) playBgm();
-    }).catch(() => {}).finally(() => { bgmLoading = false; });
+      bgmBuf = buf; if (running || wantBgm) playBgm();
+    }).catch(() => { useTag = true; if (running || wantBgm) playBgm(); }).finally(() => { bgmLoading = false; });
   }
+  let useTag = false, tag = null, wantBgm = false;   // <audio> fallback when Web Audio can't decode the file
   function playBgm() {
+    if (useTag) { if (!tag) { tag = new Audio("assets/audio/bgm.mp3"); tag.loop = true; tag.volume = .6 * volume; tag.preservesPitch = false; tag.webkitPreservesPitch = false; } tag.playbackRate = rate; tag.play().catch(() => {}); return; }
     if (!ac || !bgmBuf || bgmSrc) return;
     bgmGain = ac.createGain(); bgmGain.gain.value = .6; bgmGain.connect(master);
     bgmSrc = ac.createBufferSource(); bgmSrc.buffer = bgmBuf; bgmSrc.loop = true; bgmSrc.playbackRate.value = rate;
     bgmSrc.connect(bgmGain); bgmSrc.start(ac.currentTime + .05);
   }
-  function stopBgm() { if (bgmSrc) { try { bgmSrc.stop(); } catch (e) {} bgmSrc.disconnect(); bgmSrc = null; } }
+  function stopBgm() { if (tag) tag.pause(); if (bgmSrc) { try { bgmSrc.stop(); } catch (e) {} bgmSrc.disconnect(); bgmSrc = null; } }
 
   function ensure() {
     if (!ac) {
@@ -133,19 +135,22 @@ const Music = (() => {
 
   return {
     JANGDAN,
-    unlock() { return ensure(); },
+    unlock() { const a = ensure(); loadBgm(); return a; },
+    menuBgm(on) { wantBgm = on; if (on) { ensure(); loadBgm(); playBgm(); } else if (!running) stopBgm(); },
     start(key, seed, speed = 1) {
       ensure(); this.stop();
       const base = JANGDAN[key] || JANGDAN.jungmori; def = Object.assign({}, base, { bpm: Math.round(base.bpm * speed) });
       let s = (seed >>> 0) || 1; rng = () => ((s = (s * 1664525 + 1013904223) >>> 0) / 4294967296);
       nextIdx = 0; running = true; rate = 1; loadBgm(); playBgm();
+      if (bgmSrc) bgmSrc.playbackRate.value = 1; if (tag) tag.playbackRate = 1;
       if (ac) { t0 = ac.currentTime + 0.25; baseTime = t0; basePos = 0; timer = setInterval(tick, 25); tick(); }
       else { fallbackStart = performance.now() / 1000 + 0.25; }
     },
-    stop() { running = false; if (timer) clearInterval(timer); timer = null; stopBgm(); },
+    stop() { running = false; if (timer) clearInterval(timer); timer = null; if (!wantBgm) stopBgm(); },
     pause() { if (ac) ac.suspend().catch(() => {}); else fallbackPausedAt = performance.now() / 1000; },
     resume() { if (ac) ac.resume().catch(() => {}); else if (fallbackPausedAt) { fallbackStart += performance.now() / 1000 - fallbackPausedAt; fallbackPausedAt = 0; } },
     get def() { return def; },
+    get bgmState() { return { loaded: !!bgmBuf, playing: !!bgmSrc, ctx: ac && ac.state }; },
     get beatLen() { return def ? 60 / def.bpm : 0.6; },
     // song position as the player hears it (seconds since the first beat)
     pos() {
@@ -161,11 +166,11 @@ const Music = (() => {
     setRate(r) { // rebase so the song position stays continuous
       if (!ac || !def || r === rate) return;
       const now = ac.currentTime; basePos = songAt(now); baseTime = now; rate = r;
-      if (bgmSrc) bgmSrc.playbackRate.setTargetAtTime(r, now, .05);   // the recording slows (and drops in pitch) with the 장단
+      if (bgmSrc) bgmSrc.playbackRate.setTargetAtTime(r, now, .05); if (tag) tag.playbackRate = r;   // the recording slows (and drops in pitch) with the 장단
       const sl = subLen(); nextIdx = Math.max(nextIdx, Math.ceil(basePos / sl)); // drop nothing already scheduled
     },
     muffle(on) { if (filt) filt.frequency.setTargetAtTime(on ? 700 : 18000, ac.currentTime, 0.05); },
-    setVolume(v) { volume = v; if (out) out.gain.setTargetAtTime(v, ac.currentTime, 0.02); },
+    setVolume(v) { volume = v; if (tag) tag.volume = .6 * v; if (out) out.gain.setTargetAtTime(v, ac.currentTime, 0.02); },
     setOffset(ms) { offsetMs = ms; },
     jing() { if (ensure()) jing(ac.currentTime + 0.02); },
     bak() { if (ensure()) bak(ac.currentTime + 0.01); },
