@@ -1,0 +1,17 @@
+{
+  "name": "천고",
+  "short_name": "천고",
+  "description": "장단에 맞춰 베고 달리는 수묵화 로그라이크 파쿠르",
+  "lang": "ko",
+  "start_url": "./",
+  "scope": "./",
+  "display": "fullscreen",
+  "orientation": "landscape",
+  "background_color": "#e6e2d7",
+  "theme_color": "#16151a",
+  "icons": [
+    { "src": "icons/icon-192.png", "sizes": "192x192", "type": "image/png" },
+    { "src": "icons/icon-512.png", "sizes": "512x512", "type": "image/png" },
+    { "src": "icons/icon-maskable-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
+  ]
+}
