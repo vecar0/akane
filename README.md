@@ -28,3 +28,8 @@
 - `js/game.js`: 게임 본체
 - `sw.js`, `manifest.webmanifest`: 설치형 웹앱
 - `.github/workflows/pages.yml`: master에 푸시하면 GitHub Pages로 배포
+
+## 출처
+- 배경음악: 「국악 효과음 #151」, 저작자 주식회사 아이티앤, 출처 공유마당(https://gongu.copyright.or.kr), CC BY 라이선스.
+  변경 사항: 반복 재생을 위해 끝의 무음을 잘라내고 처음과 끝을 겹쳐 이었으며, 게임 중 슬로모션에서 재생 속도를 낮춥니다.
+- 그림: Higgsfield로 생성.

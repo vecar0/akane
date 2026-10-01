@@ -21,6 +21,29 @@ const Music = (() => {
   let def = null, t0 = 0, nextIdx = 0, rate = 1, basePos = 0, baseTime = 0, timer = null, running = false, rng = Math.random;
   let fallbackStart = 0, fallbackPausedAt = 0;
   let volume = 1, offsetMs = 0;
+  // background music: 「국악 효과음 #151」 © 주식회사 아이티앤, CC BY (공유마당). Loaded once, looped with a crossfaded seam.
+  let bgmBuf = null, bgmSrc = null, bgmGain = null, bgmLoading = false;
+  function loadBgm() {
+    if (bgmBuf || bgmLoading || !ac) return; bgmLoading = true;
+    fetch("assets/audio/bgm.mp3").then(r => r.arrayBuffer()).then(b => new Promise((res, rej) => ac.decodeAudioData(b, res, rej))).then(raw => {
+      // drop the trailing silence and blend the tail into the head so the loop has no gap or click
+      const sr = raw.sampleRate, ch0 = raw.getChannelData(0); let end = ch0.length;
+      while (end > sr && Math.abs(ch0[end - 1]) < 0.003 && (raw.numberOfChannels < 2 || Math.abs(raw.getChannelData(1)[end - 1]) < 0.003)) end--;
+      const xf = Math.min(Math.floor(sr * .25), end >> 2), len = end - xf, buf = ac.createBuffer(raw.numberOfChannels, len, sr);
+      for (let c = 0; c < raw.numberOfChannels; c++) {
+        const a = raw.getChannelData(c), o = buf.getChannelData(c);
+        for (let i = 0; i < len; i++) o[i] = i < xf ? a[i] * (i / xf) + a[len + i] * (1 - i / xf) : a[i];
+      }
+      bgmBuf = buf; if (running) playBgm();
+    }).catch(() => {}).finally(() => { bgmLoading = false; });
+  }
+  function playBgm() {
+    if (!ac || !bgmBuf || bgmSrc) return;
+    bgmGain = ac.createGain(); bgmGain.gain.value = .6; bgmGain.connect(master);
+    bgmSrc = ac.createBufferSource(); bgmSrc.buffer = bgmBuf; bgmSrc.loop = true; bgmSrc.playbackRate.value = rate;
+    bgmSrc.connect(bgmGain); bgmSrc.start(ac.currentTime + .05);
+  }
+  function stopBgm() { if (bgmSrc) { try { bgmSrc.stop(); } catch (e) {} bgmSrc.disconnect(); bgmSrc = null; } }
 
   function ensure() {
     if (!ac) {
@@ -54,31 +77,12 @@ const Music = (() => {
   }
   const kung = (t, v) => { osc(t, "sine", 96, 58, 0.5, 0.6 * v); osc(t, "sine", 190, 120, 0.12, 0.12 * v); noise(t, 0.05, 240, "lowpass", 0.22 * v); };   // 북편: leather, palm
   const deok = (t, v) => { osc(t, "triangle", 430, 300, 0.09, 0.2 * v); osc(t, "sine", 860, 640, 0.05, 0.06 * v); noise(t, 0.025, 1800, "bandpass", 0.25 * v, 1.4); };   // 채편: bamboo stick on tight skin
-  function stroke(ch, t, strong) {
-    const v = strong ? 1 : 0.8;
+  function stroke(ch, t, strong, gain = 1) {
+    const v = (strong ? 1 : 0.8) * gain;
     if (ch === "D") { kung(t, v); deok(t, v); }
     else if (ch === "K") kung(t, v);
     else if (ch === "T") deok(t, v);
     else if (ch === "G") { deok(t - 0.045, 0.45); deok(t, v); }
-  }
-  function voice(kind, t, f, dur, orn) { // 대금 (breathy flute) or 해금 (nasal bowed string), with 시김새
-    const o = ac.createOscillator(), lfo = ac.createOscillator(), lg = ac.createGain(), g = ac.createGain(), bp = ac.createBiquadFilter(), lp = ac.createBiquadFilter();
-    const hae = kind === "haegeum";
-    o.type = hae ? "sawtooth" : "triangle";
-    bp.type = "bandpass"; bp.frequency.value = hae ? 1100 : f * 2; bp.Q.value = hae ? 1.1 : .5;
-    lp.type = "lowpass"; lp.frequency.value = hae ? 3200 : 2400;
-    const F = o.frequency;
-    if (orn === "bend") { F.setValueAtTime(f * 1.12, t); F.exponentialRampToValueAtTime(f, t + Math.min(.16, dur * .3)); }   // 꺾는 음
-    else { F.setValueAtTime(f * .985, t); F.linearRampToValueAtTime(f, t + .06); }
-    if (orn === "fall") { F.setValueAtTime(f, t + dur * .6); F.exponentialRampToValueAtTime(f * .89, t + dur); }             // 퇴성
-    lfo.frequency.value = orn === "shake" ? 5.8 : 5;
-    lg.gain.setValueAtTime(0, t); lg.gain.linearRampToValueAtTime(f * (orn === "shake" ? .035 : .01), t + dur * .5);          // 농현 / 농음
-    lfo.connect(lg).connect(F);
-    const peak = hae ? .05 : .075, a = hae ? .09 : .05;
-    g.gain.setValueAtTime(.0001, t); g.gain.exponentialRampToValueAtTime(peak, t + a); g.gain.setValueAtTime(peak * .85, t + dur * .8); g.gain.exponentialRampToValueAtTime(.0001, t + dur);
-    o.connect(hae ? bp : lp).connect(hae ? lp : g); if (hae) lp.connect(g); g.connect(master);
-    o.start(t); lfo.start(t); o.stop(t + dur + .05); lfo.stop(t + dur + .05);
-    if (!hae) noise(t, .1, f * 3, "bandpass", .03, .6); else noise(t, dur * .5, 2400, "bandpass", .008, .8); // breath / bow hair
   }
   function drone(t, freq, dur) {
     const o = ac.createOscillator(), g = ac.createGain(), f = ac.createBiquadFilter();
@@ -112,23 +116,6 @@ const Music = (() => {
   }
   function bak(t) { noise(t, 0.04, 3400, "bandpass", 0.6, 2); noise(t + 0.012, 0.05, 1900, "bandpass", 0.4, 2); } // 박: wooden clapper
 
-  // ---- phrases: one per 장단 cycle, a stepwise walk in 계면조 that settles on 라 ----
-  let plan = [], voiceKind = "daegeum", lastI = 3;
-  function phrase(beats) {
-    const notes = []; let at = 0, i = lastI;
-    while (at < beats) {
-      const left = beats - at;
-      if (at > 0 && rng() < .15 && left > 2) { at++; continue; }            // breath
-      let d = Math.min(left, [1, 1, 2, 2, 3][(rng() * 5) | 0]);
-      const last = at + d >= beats;
-      if (last) { i = rng() < .7 ? 5 : 0; d = left; }
-      else { i = Math.max(1, Math.min(7, i + [-2, -1, -1, 1, 1, 2][(rng() * 6) | 0])); }
-      const orn = last ? "fall" : GYE[i] === 329.6 ? "shake" : (GYE[i] === 261.6 || GYE[i] === 523.3) && rng() < .7 ? "bend" : "plain";
-      notes.push({ at, d, i, orn }); at += d;
-    }
-    lastI = 3 + ((rng() * 3) | 0);
-    return notes;
-  }
   // ---- scheduler ----
   const subLen = () => 60 / def.bpm / def.sub;
   // song position (s) <-> audio clock; rate < 1 slows the whole 장단 during slow-mo aim
@@ -139,15 +126,7 @@ const Music = (() => {
     const horizon = ac.currentTime + 0.12, sl = subLen(), len = def.pat.length;
     while (audioAt(nextIdx * sl) < horizon) {
       const t = audioAt(nextIdx * sl), i = nextIdx % len, ch = def.pat[i];
-      if (ch !== "0") stroke(ch, t, i === 0);
-      if (i % def.sub === 0) {
-        const beat = (nextIdx / def.sub) | 0, bl = sl * def.sub, inCycle = beat % def.beats, cyc = (beat / def.beats) | 0;
-        const pf = rate < 1 ? .84 : 1; // slowed: everything sinks a little in pitch
-        if (inCycle === 0) { plan = phrase(def.beats); voiceKind = cyc % 4 === 3 ? "haegeum" : cyc % 2 ? "haegeum" : "daegeum"; drone(t, 220 * pf, bl * def.beats / rate); gayageum(t, 110 * pf, 1.4, .1); }
-        if (inCycle === (def.beats >> 1)) gayageum(t, 164.8 * pf, 1.1, .07);
-        for (const n of plan) if (n.at === inCycle) voice(voiceKind, t, GYE[n.i] * pf, n.d * bl / rate * .96, n.orn);
-        if (inCycle === def.beats - 1 && rng() < .5) [329.6, 293.7, 261.6].forEach((f, k) => gayageum(t + k * bl / rate / 3, f * pf, .5, .05)); // 가야금 고리
-      }
+      if (ch !== "0") stroke(ch, t, i === 0, .7);   // 장구 keeps the beat the game is judged on; the recording carries the music
       nextIdx++;
     }
   }
@@ -159,11 +138,11 @@ const Music = (() => {
       ensure(); this.stop();
       const base = JANGDAN[key] || JANGDAN.jungmori; def = Object.assign({}, base, { bpm: Math.round(base.bpm * speed) });
       let s = (seed >>> 0) || 1; rng = () => ((s = (s * 1664525 + 1013904223) >>> 0) / 4294967296);
-      nextIdx = 0; running = true; rate = 1; plan = [];
+      nextIdx = 0; running = true; rate = 1; loadBgm(); playBgm();
       if (ac) { t0 = ac.currentTime + 0.25; baseTime = t0; basePos = 0; timer = setInterval(tick, 25); tick(); }
       else { fallbackStart = performance.now() / 1000 + 0.25; }
     },
-    stop() { running = false; if (timer) clearInterval(timer); timer = null; },
+    stop() { running = false; if (timer) clearInterval(timer); timer = null; stopBgm(); },
     pause() { if (ac) ac.suspend().catch(() => {}); else fallbackPausedAt = performance.now() / 1000; },
     resume() { if (ac) ac.resume().catch(() => {}); else if (fallbackPausedAt) { fallbackStart += performance.now() / 1000 - fallbackPausedAt; fallbackPausedAt = 0; } },
     get def() { return def; },
@@ -182,6 +161,7 @@ const Music = (() => {
     setRate(r) { // rebase so the song position stays continuous
       if (!ac || !def || r === rate) return;
       const now = ac.currentTime; basePos = songAt(now); baseTime = now; rate = r;
+      if (bgmSrc) bgmSrc.playbackRate.setTargetAtTime(r, now, .05);   // the recording slows (and drops in pitch) with the 장단
       const sl = subLen(); nextIdx = Math.max(nextIdx, Math.ceil(basePos / sl)); // drop nothing already scheduled
     },
     muffle(on) { if (filt) filt.frequency.setTargetAtTime(on ? 700 : 18000, ac.currentTime, 0.05); },
