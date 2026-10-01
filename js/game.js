@@ -40,7 +40,7 @@ const PAL = [
   { bg: "#dcd6c8", tile: "#1c1b1f", fig: "#141317", foe: "#55525b", text: "#1c1b1f", wash: "23,22,26", farA: .36, midA: .5, rim: null },
   { bg: "#c9c1b1", tile: "#19181c", fig: "#121115", foe: "#4c4952", text: "#19181c", wash: "23,22,26", farA: .36, midA: .52, rim: null },
   { bg: "#8e887e", tile: "#141316", fig: "#0f0e11", foe: "#3a3840", text: "#141316", wash: "18,17,20", farA: .32, midA: .48, rim: "rgba(236,230,216,.18)" },
-  { bg: "#252321", tile: "#0b0a0c", fig: "#ece6d8", foe: "#a49d92", text: "#ece6d8", wash: "236,230,216", farA: .22, midA: .35, rim: "rgba(236,230,216,.5)", night: true }
+  { bg: "#b9b1a4", tile: "#141316", fig: "#0f0e11", foe: "#3a3840", text: "#141316", wash: "18,17,20", farA: .3, midA: .46, rim: null }
 ];
 const BODY_FONT = getComputedStyle(document.documentElement).getPropertyValue("--f-body");
 const HAT_WEAVE = { "#ece6d8": "rgba(60,56,50,.6)" }; // weave lines on the inverted (night) figure
@@ -445,7 +445,7 @@ function showInterlude() {
   $("iOrd").textContent = MNAME[run.m];
   $("iLine").textContent = md.line;
   $("iMeta").textContent = ORD[run.m] + " 마당 · " + jd.name + " · " + "●".repeat(run.breath) + "○".repeat(3 - run.breath) + (run.daily ? " · 오늘의 판" : "");
-  $("interlude").classList.toggle("night", run.m === 4);
+  $("interlude").classList.remove("night");
   loadMap(buildMadangMap(run.seed, run.m), PAL[run.m]); LV.ledgeStone = run.m >= 3;
   showScreen("interlude");
   Music.unlock(); Music.stop(); Music.jing();
@@ -781,7 +781,7 @@ function stepBullets(dt) {
 }
 
 // ---------- loop ----------
-let last = performance.now();
+let last = performance.now(), cvInverted = false;
 function frame(now) {
   const rdt = Math.min(0.05, (now - last) / 1000); last = now;
   if (state === "play" || state === "dead") {
@@ -808,6 +808,8 @@ function frame(now) {
   for (const v of vfx) v.t += rdt; vfx = vfx.filter(v => v.t < v.life);
   shake = Math.max(0, shake - rdt * 40); flash = Math.max(0, flash - rdt);
   if (toastT > 0) { toastT -= rdt; if (toastT <= 0) $("toast").classList.remove("on"); }
+  const inv = !!(P && P.focus && state === "play");
+  if (inv !== cvInverted) { cvInverted = inv; cv.classList.toggle("inverted", inv); }
   render(rdt);
   requestAnimationFrame(frame);
 }
