@@ -27,11 +27,12 @@ Music.setVolume(settings.sound ? 1 : 0); Music.setOffset(settings.offset);
 const ORD = ["첫째", "둘째", "셋째", "넷째", "다섯째"];
 const MADANG = [
   // "w" entries draw from wall chunks (climb / wall-jump), so every 마당 has walls to run
-  { jd: "jinyang",   line: "북은 아직 멀리서 울린다.",          tiers: [0, "w0", 1, 0, "w1", 1] },
-  { jd: "jungmori",  line: "연줄 위로, 바람을 타라.",            tiers: [0, "w1", 1, "w0", 1, "w1"] },
-  { jd: "jajinmori", line: "포수의 눈은 장단을 놓치지 않는다.",  tiers: [1, "w1", 2, "w2", 1, 2] },
-  { jd: "hwimori",   line: "오를수록 장단은 빨라진다.",          tiers: ["w1", 2, 1, "w2", 1, "w2"] },
-  { jd: "danmori",   line: "천고가 가깝다.",                     tiers: [2, "w2", 2, "w1", 2, "w2"] }
+  // "w" entries draw from wall chunks, "m" from multi-floor chunks with ledges
+  { jd: "jinyang",   line: "북은 아직 멀리서 울린다.",          tiers: [0, "m1", "w0", 1, "m1", "w1", 1] },
+  { jd: "jungmori",  line: "연줄 위로, 바람을 타라.",            tiers: ["m1", "w1", 1, "m1", "w0", 1, "m2"] },
+  { jd: "jajinmori", line: "포수의 눈은 장단을 놓치지 않는다.",  tiers: [1, "m2", "w1", 2, "m1", "w2", 2] },
+  { jd: "hwimori",   line: "오를수록 장단은 빨라진다.",          tiers: ["w1", "m2", 2, "w2", "m1", 1, "w2"] },
+  { jd: "danmori",   line: "천고가 가깝다.",                     tiers: ["m2", 2, "w2", "m2", 2, "w1", 2] }
 ];
 const PAL = [
   { bg: "#e6e2d7", tile: "#1c1b1f", fig: "#141317", foe: "#55525b", text: "#1c1b1f", wash: "23,22,26", farA: .5, midA: .78, rim: null },
@@ -79,14 +80,16 @@ const FX = { slashA: 0, slashARed: 1, slashB: 2, slashBRed: 3, burst: 4, spray: 
 const HUD = { bigDrum: 0, struck: 1, drum: 2, aimLine: 3, reticle: 4, rope: 5, spark: 6, smoke: 7, dust: 8 }; // hudsolid for 0-5, hud (soft) for 6-8
 // props sheet: geumjul rope, enemy aim stroke, dash reticle, then set dressing
 const H2 = { idle: [0, 1, 2], guard: 3, start: 4, skid: 5, takeoff: 6, apex: 7, land: 8, turn: 9, cling: 10, climb: 11 };
+const P2 = { plank: 0, ledge: 1, board: 2, rack: 3, haetae: 4, gate: 5, brazier: 6, lanterns: 7, sacks: 8 };
+const CAL = { title: 0, death: 1, madang: [2, 3, 4, 5, 6], end: 7, clear: 8 };   // 천고 절명 초입 연비 망루 승천 결전 종국 등천
 const PROP = { rope: 0, aim: 1, reticle: 2, pine: 3, stoneLantern: 4, jars: 5, banner: 6, sotdae: 7, palisade: 8 };
 const DRESS = [[PROP.pine, 74, 3], [PROP.stoneLantern, 34, 2], [PROP.jars, 26, 1], [PROP.banner, 80, 3], [PROP.sotdae, 84, 3], [PROP.palisade, 28, 1]]; // [frame, world height, headroom tiles]
 const OBJ = { lanternOn: 0, lanternOff: 1, kite: 2, thorns: 3, seal: 4, emitter: 5, slash: 6, slashRed: 7, splat: 8 };
-for (const n of ["hero", "hero2", "foes", "objects", "ui", "fx", "hud", "hudsolid", "props"]) {
+for (const n of ["hero", "hero2", "foes", "objects", "ui", "fx", "hud", "hudsolid", "props", "props2", "calli"]) {
   Promise.all([
     fetch(`assets/sprites/${n}.json`).then(r => r.json()),
     new Promise((res, rej) => { const im = new Image(); im.onload = () => res(im); im.onerror = rej; im.src = `assets/sprites/${n}.webp`; })
-  ]).then(([f, img]) => { SPR[n] = { f, img, inv: ["hero", "hero2", "foes", "objects", "fx", "props"].includes(n) ? inkInverted(img) : null }; applyUiSprites(); }).catch(() => {});
+  ]).then(([f, img]) => { SPR[n] = { f, img, inv: ["hero", "hero2", "foes", "objects", "fx", "props", "props2", "calli"].includes(n) ? inkInverted(img) : null }; applyUiSprites(); }).catch(() => {});
 }
 function inkInverted(img) { // night palette: grey ink becomes bone white, coloured accents stay as they are
   const c = document.createElement("canvas"); c.width = img.width; c.height = img.height; const g = c.getContext("2d"); g.drawImage(img, 0, 0);
@@ -116,6 +119,11 @@ function applyUiSprites() { // brush-painted UI pieces become CSS images
     document.body.classList.add("ui-ready");
   }
   if (SPR.objects && !root.getPropertyValue("--ui-kite")) root.setProperty("--ui-kite", url("objects", OBJ.kite));
+  if (SPR.calli && !document.body.classList.contains("ui-cal")) {
+    root.setProperty("--cal-title", url("calli", CAL.title)); root.setProperty("--cal-end", url("calli", CAL.end)); root.setProperty("--cal-clear", url("calli", CAL.clear));
+    CAL.madang.forEach((i, m) => root.setProperty("--cal-m" + m, url("calli", i)));
+    document.body.classList.add("ui-cal");
+  }
 }
 
 // ---------- rng ----------
@@ -215,15 +223,15 @@ function axis() {
 }
 
 // ---------- level building ----------
-const START_PIECE = (() => { const r = []; for (let y = 0; y < 16; y++) r.push(y >= 12 ? "##########" : y === 11 ? "   P      " : "          "); return r; })();
-const END_PIECE = (() => { const r = []; for (let y = 0; y < 16; y++) r.push(y >= 12 ? "##########" : y === 11 ? "      E   " : "          "); return r; })();
+const START_PIECE = (() => { const r = []; for (let y = 0; y < 16; y++) r.push(y >= 12 ? "########" : y === 11 ? "  P     " : "        "); return r; })();
+const END_PIECE = (() => { const r = []; for (let y = 0; y < 16; y++) r.push(y >= 12 ? "########" : y === 11 ? "     E  " : "        "); return r; })();
 function buildMadangMap(seed, m) {
   const rng = mulberry(seed ^ Math.imul(m + 1, 0x9E3779B1));
   const rows = START_PIECE.slice();
   const used = new Set();
   for (const tier of MADANG[m].tiers) {
-    const wall = typeof tier === "string", t = wall ? +tier.slice(1) : tier;
-    const fits = i => wall ? CHUNKS[i].wall && CHUNKS[i].tier <= t : CHUNKS[i].tier === t;
+    const kind = typeof tier === "string" ? tier[0] : "", t = kind ? +tier.slice(1) : tier;
+    const fits = i => kind === "w" ? CHUNKS[i].wall && CHUNKS[i].tier <= t : kind === "m" ? CHUNKS[i].multi && CHUNKS[i].tier <= t : CHUNKS[i].tier === t && !CHUNKS[i].multi;
     let pool = CHUNKS.map((c, i) => i).filter(i => fits(i) && !used.has(i));
     if (!pool.length) pool = CHUNKS.map((c, i) => i).filter(fits);
     const ci = pool[(rng() * pool.length) | 0]; used.add(ci);
@@ -253,6 +261,7 @@ function loadMap(map, pal, hints) {
     const ch = map[y][x] || " ";
     if (ch === "#") grid[y * w + x] = 1;
     else if (ch === "^") grid[y * w + x] = 2;
+    else if (ch === "=") grid[y * w + x] = 3;   // ledge: stand on it, jump up through it
     else if (ch === "P") lv.start = { x: x * T + 7, y: (y + 1) * T - 30 };
     else if (ch === "E") lv.exit = { x: x * T + 1, y: (y - 1) * T + 6, w: T - 2, h: 2 * T - 6 };
     else if ("gsdh".includes(ch)) lv.defs.push({ type: ch, tx: x, ty: y, id: id++ });
@@ -262,19 +271,36 @@ function loadMap(map, pal, hints) {
   }
   for (const l of lv.lasers) { let yy = l.ty + 1; while (yy < h && grid[yy * w + l.tx] !== 1) yy++; l.x = l.tx * T + 16; l.y0 = l.ty * T + 22; l.y1 = yy * T; }
   lv.ridges = makeRidges(w * T, hashStr(map[11]));
-  // set dressing on open ground: pines, stone lanterns, jars, banners, sotdae, palisades (decor only)
-  lv.dress = [];
-  { const rnd = mulberry(hashStr(map.join("").slice(0, 400)) ^ w), busy = new Set();
-    for (const d of lv.defs) for (let k = -1; k <= 1; k++) busy.add(d.tx + k);
-    for (const c of lv.cps) for (let k = -1; k <= 1; k++) busy.add(Math.floor(c.x / T) + k);
-    for (const o of [lv.start, lv.exit]) if (o) for (let k = -2; k <= 2; k++) busy.add(Math.floor(o.x / T) + k);
-    let lastX = -9;
-    for (let x = 2; x < w - 2; x++) for (let y = 2; y < h; y++) {
-      if (grid[y * w + x] !== 1 || grid[(y - 1) * w + x] !== 0 || busy.has(x) || x - lastX < 3 || rnd() > .34) continue;
-      const pick = DRESS[(rnd() * DRESS.length) | 0]; let ok = true;
-      for (let k = 1; k <= pick[2]; k++) if (y - k < 0 || grid[(y - k) * w + x] !== 0) ok = false;
-      if (!ok) continue;
-      lv.dress.push({ i: pick[0], h: pick[1] * (.85 + rnd() * .3), x: x * T + 16 + (rnd() - .5) * 10, y: y * T + 2, flip: rnd() < .5 }); lastX = x;
+  // set dressing placed where it means something (decor only, never collides)
+  lv.dress = []; lv.ledgeStone = false;
+  { const rnd = mulberry(hashStr(map.join("").slice(0, 400)) ^ w), used = new Set();
+    const tile = (x, y) => x < 0 || x >= w || y < 0 || y >= h ? 0 : grid[y * w + x];
+    const surf = (x, y0) => { for (let y = Math.max(1, y0 - 3); y < h; y++) if (tile(x, y) === 1 && tile(x, y - 1) === 0) return y; return -1; }; // top surface at or below y0-3
+    const clear = (x, y, n) => { for (let k = 1; k <= n; k++) if (tile(x, y - k) !== 0) return false; return true; };
+    const put = (sheet, i, tx, ty, hh, o = {}) => {
+      const key = tx + "," + ty; if (tx < 1 || tx >= w - 1 || used.has(key) || ty < 1) return false;
+      if (!o.hang && (tile(tx, ty) !== 1 || !clear(tx, ty, Math.ceil(hh / T)))) return false;
+      used.add(key); lv.dress.push({ sheet, i, x: tx * T + 16 + (o.dx || 0), y: ty * T + (o.hang ? 0 : 2), h: hh, flip: !!o.flip, ay: o.hang ? 0 : 1 }); return true;
+    };
+    if (lv.start) { const sx = Math.floor(lv.start.x / T), sy = Math.floor((lv.start.y + 31) / T); put("props", PROP.sotdae, sx - 1, sy, 84); put("props2", P2.haetae, sx + 3, sy, 34); }
+    if (lv.exit) { const ex = Math.floor(lv.exit.x / T), ey = Math.floor((lv.exit.y + lv.exit.h) / T); lv.gate = { x: ex * T + 16, y: ey * T + 2 }; put("props", PROP.stoneLantern, ex - 2, ey, 36); put("props", PROP.stoneLantern, ex + 2, ey, 36, { flip: true }); }
+    for (const d of lv.defs) {
+      const y = d.ty + 1; if (tile(d.tx, y) !== 1) continue;
+      if (d.type === "h") { rnd() < .6 && put("props2", P2.rack, d.tx - 2, y, 46); rnd() < .5 && put("props", PROP.banner, d.tx + 1, y, 82); }
+      else if (d.type === "g") { rnd() < .55 && put("props", PROP.banner, d.tx + 1, y, 82); rnd() < .45 && put("props", PROP.palisade, d.tx - 2, y, 28); }
+      else if (d.type === "s") { rnd() < .5 && put("props2", P2.brazier, d.tx + 1, y, 34); }
+    }
+    for (const c of lv.cps) { const cx = Math.floor(c.x / T), cy = Math.floor(c.y / T); rnd() < .7 && put(rnd() < .5 ? "props2" : "props", rnd() < .5 ? P2.sacks : PROP.jars, cx + 1, cy, rnd() < .5 ? 30 : 26); }
+    for (let x = 2; x < w - 2; x++) {
+      const y = surf(x, 3); if (y < 0) continue;
+      const edge = (tile(x + 1, y) === 0 && tile(x + 1, y + 1) === 0) || (tile(x - 1, y) === 0 && tile(x - 1, y + 1) === 0);
+      if (edge && rnd() < .3) put("props", PROP.pine, x, y, 74, { flip: tile(x + 1, y) === 0, dx: tile(x + 1, y) === 0 ? 6 : -6 });
+      else if (y <= 7 && rnd() < .18) put("props2", P2.brazier, x, y, 34);
+    }
+    for (let y = 2; y < h - 4; y++) for (let x = 2; x < w - 6; x++) { // paper lanterns strung under roofs
+      let n = 0; while (x + n < w && tile(x + n, y) === 1 && tile(x + n, y + 1) === 0 && tile(x + n, y + 2) === 0 && tile(x + n, y + 3) === 0) n++;
+      if (n >= 4 && rnd() < .5) { lv.dress.push({ sheet: "props2", i: P2.lanterns, x: (x + n / 2) * T, y: (y + 1) * T - 2, h: 40, w: Math.min(n, 6) * T, flip: false, ay: 0 }); }
+      x += Math.max(0, n);
     } }
   LV = lv;
 }
@@ -288,6 +314,17 @@ function solidPt(x, y) { return tileAt(Math.floor(x / T), Math.floor(y / T)) ===
 function los(x0, y0, x1, y1) { const n = Math.ceil(Math.hypot(x1 - x0, y1 - y0) / 10); for (let i = 1; i < n; i++) { const t = i / n; if (solidPt(x0 + (x1 - x0) * t, y0 + (y1 - y0) * t)) return false; } return true; }
 function moveX(o, dx) { o.x += dx; if (!rectSolid(o.x, o.y, o.w, o.h)) return false; o.x = dx > 0 ? Math.floor((o.x + o.w) / T) * T - o.w - 0.001 : (Math.floor(o.x / T) + 1) * T + 0.001; return true; }
 function moveY(o, dy) { o.y += dy; if (!rectSolid(o.x, o.y, o.w, o.h)) return false; o.y = dy > 0 ? Math.floor((o.y + o.h) / T) * T - o.h - 0.001 : (Math.floor(o.y / T) + 1) * T + 0.001; return true; }
+// ledges (tile 3): only the top edge is solid, and only while falling onto it from above
+function ledgeBelow(o, prevBottom) {
+  const bottom = o.y + o.h, x0 = Math.floor(o.x / T), x1 = Math.floor((o.x + o.w - .01) / T);
+  for (let r = Math.floor(prevBottom / T); r <= Math.floor(bottom / T); r++) {
+    const top = r * T; if (top < prevBottom - .5 || top > bottom) continue;
+    for (let tx = x0; tx <= x1; tx++) if (tileAt(tx, r) === 3) return top;
+  }
+  return null;
+}
+function onLedge(o) { const b = o.y + o.h, r = Math.round(b / T); if (Math.abs(b - r * T) > 1.5) return false; for (let tx = Math.floor(o.x / T); tx <= Math.floor((o.x + o.w - .01) / T); tx++) if (tileAt(tx, r) === 3) return true; return false; }
+const groundPt = (x, y) => { const v = tileAt(Math.floor(x / T), Math.floor(y / T)); return v === 1 || v === 3; };
 function overlap(a, b) { return a.x < b.x + b.w && a.x + a.w > b.x && a.y < b.y + b.h && a.y + a.h > b.y; }
 function makeRidges(worldW, seed) {
   const rnd = mulberry(seed), layers = [];
@@ -337,11 +374,11 @@ function saveRun() { if (run && mode !== "tutorial") store.set("run", run); }
 function showInterlude() {
   state = "interlude";
   const md = MADANG[run.m], jd = Music.JANGDAN[md.jd];
-  $("iOrd").textContent = ORD[run.m] + " 마당";
+  $("iOrd").textContent = ORD[run.m] + " 마당"; $("iOrd").style.setProperty("--cal", `var(--cal-m${run.m})`);
   $("iLine").textContent = md.line;
-  $("iMeta").textContent = jd.name + " · " + "●".repeat(run.breath) + "○".repeat(3 - run.breath) + (run.daily ? " · 오늘의 판" : "");
+  $("iMeta").textContent = ORD[run.m] + " 마당 · " + jd.name + " · " + "●".repeat(run.breath) + "○".repeat(3 - run.breath) + (run.daily ? " · 오늘의 판" : "");
   $("interlude").classList.toggle("night", run.m === 4);
-  loadMap(buildMadangMap(run.seed, run.m), PAL[run.m]);
+  loadMap(buildMadangMap(run.seed, run.m), PAL[run.m]); LV.ledgeStone = run.m >= 3;
   showScreen("interlude");
   Music.unlock(); Music.stop(); Music.jing();
   setTimeout(() => $("bEnter").focus({ preventScroll: true }), 30);
@@ -411,7 +448,7 @@ function endRun(won) {
   const reached = run.m + (won ? 1 : 0);
   const rate = run.slashes ? Math.round(run.strikes / run.slashes * 100) : 0;
   $("rSeal").textContent = won ? "登" : "終";
-  $("rTitle").textContent = won ? "다섯 마당을 넘었다" : "판이 끝났다";
+  $("rTitle").textContent = won ? "다섯 마당을 넘었다" : "판이 끝났다"; $("rTitle").style.setProperty("--cal", won ? "var(--cal-clear)" : "var(--cal-end)");
   $("rSub").textContent = won ? "천고는 아직 위에서 울린다." : ORD[run.m] + " 마당에서 숨이 다했다.";
   $("rStats").innerHTML = "";
   for (const [k, v] of [["오른 마당", reached + " / 5"], ["시간", fmt(run.time)], ["일격", run.strikes + "회 · " + rate + "%"], ["벤 적", run.kills], ["베인 횟수", run.deaths]]) {
@@ -475,6 +512,7 @@ function findHook() {
   return best;
 }
 function frameInput(rdt) {
+  if (press.jump && P.onGround && axis().y > .5 && onLedge(P)) { P.dropT = .25; P.y += 3; P.onGround = false; press.jump = 0; } // down + jump: drop through a ledge
   if (press.jump) P.jumpBuf = 0.13;
   if (slashReq) { doSlash(slashReq); slashReq = null; }
   if (press.hook && hookCand && P.hookCd <= 0) { P.hook = hookCand; P.dashT = 0; P.focus = false; Music.muffle(false); Music.sfx("hook"); }
@@ -489,7 +527,7 @@ function frameInput(rdt) {
 const approach = (v, t, a) => v < t ? Math.min(t, v + a) : Math.max(t, v - a);
 function stepPlayer(dt) {
   const a = axis(), ix = a.x > 0.3 ? 1 : a.x < -0.3 ? -1 : 0;
-  P.landT = Math.max(0, (P.landT || 0) - dt); P.dashCd = Math.max(0, P.dashCd - dt); P.slashCd = Math.max(0, P.slashCd - dt); P.hookCd = Math.max(0, P.hookCd - dt); P.wallLock = Math.max(0, P.wallLock - dt);
+  P.landT = Math.max(0, (P.landT || 0) - dt); P.dropT = Math.max(0, (P.dropT || 0) - dt); P.dashCd = Math.max(0, P.dashCd - dt); P.slashCd = Math.max(0, P.slashCd - dt); P.hookCd = Math.max(0, P.hookCd - dt); P.wallLock = Math.max(0, P.wallLock - dt);
   if (P.hook) {
     const cx = P.x + P.w / 2, cy = P.y + P.h / 2, dx = P.hook.x - cx, dy = P.hook.y - cy, d = Math.hypot(dx, dy);
     if (d < 30) { P.vx = dx / d * 700; P.vy = dy / d * 700 - 260; P.hook = null; P.hookCd = 0.25; P.airDash = 1; if (Math.abs(P.vx) > 40) P.face = Math.sign(P.vx); }
@@ -501,7 +539,8 @@ function stepPlayer(dt) {
   }
   if (P.dashT > 0) {
     P.dashT -= dt; P.vx = P.dashDir.x * DASHV; P.vy = P.dashDir.y * DASHV;
-    const hx = moveX(P, P.vx * dt), hy = moveY(P, P.vy * dt); ghost(0.012);
+    const pb = P.y + P.h, hx = moveX(P, P.vx * dt); let hy = moveY(P, P.vy * dt); ghost(0.012);
+    if (!hy && P.vy > 0 && !(P.dropT > 0)) { const top = ledgeBelow(P, pb); if (top != null) { P.y = top - P.h - .001; hy = true; } }
     if (P.dashT <= 0 || hx || hy) { P.dashT = 0; P.vx = P.dashDir.x * MAXV * 1.35; P.vy = P.dashDir.y * 380; }
   } else {
     if (P.wallLock <= 0) {
@@ -521,10 +560,12 @@ function stepPlayer(dt) {
     P.climbing = !!(P.wall && ix === P.wall && P.climbT > 0 && !P.wallLock);
     if (P.climbing) { P.vy = Math.min(P.vy, -CLIMBV); P.climbT -= dt; if (Math.random() < .3) puff(P.wall > 0 ? P.x + P.w : P.x, P.y + P.h - 4, 1); }
     moveX(P, P.vx * dt);
+    const pb = P.y + P.h;
     if (moveY(P, P.vy * dt)) P.vy = 0;
+    else if (P.vy > 0 && !(P.dropT > 0)) { const top = ledgeBelow(P, pb); if (top != null) { P.y = top - P.h - .001; P.vy = 0; } }
   }
   const was = P.onGround;
-  P.onGround = P.vy >= 0 && rectSolid(P.x, P.y + P.h, P.w, 2);
+  P.onGround = P.vy >= 0 && (rectSolid(P.x, P.y + P.h, P.w, 2) || (!(P.dropT > 0) && onLedge(P)));
   if (P.onGround) { P.airT = 0; P.runT = Math.abs(P.vx) > 40 ? (P.runT || 0) + dt : 0; P.coyote = 0.1; P.airDash = 1; P.climbT = CLIMB_T; if (!was) { addFx("hud", HUD.dust, P.x + P.w / 2, P.y + P.h + 2, 22, { life: .35, ay: 1, a: .8 }); P.landT = 0.1; } } else { P.coyote = Math.max(0, P.coyote - dt); P.airT = (P.airT || 0) + dt; }
   const wl = rectSolid(P.x - 3, P.y + 4, 3, P.h - 8), wr = rectSolid(P.x + P.w, P.y + 4, 3, P.h - 8);
   P.wall = P.onGround ? 0 : wr ? 1 : wl ? -1 : 0;
@@ -602,7 +643,7 @@ function stepEnemies(dt) {
       const sees = live && dist < 380 && Math.abs(pcy - ecy) < 80 && los(ecx, e.y + 8, pcx, pcy);
       if (sees) e.face = Math.sign(pcx - ecx) || e.face;
       const ahead = e.x + e.w / 2 + e.face * 16;
-      const ground = solidPt(ahead, e.y + e.h + 4) && !solidPt(ahead, e.y + 10);
+      const ground = groundPt(ahead, e.y + e.h + 4) && !solidPt(ahead, e.y + 10);
       e.vx = sees && ground && dist > 24 ? e.face * 55 : 0;
       moveX(e, e.vx * dt);
       if (live && overlap(e, P)) { if (P.dashT > 0) clang(e); else die(); }
@@ -819,6 +860,12 @@ function render(rdt) {
         ctx.fillStyle = pal.rim; const sx = tileAt(tx - 1, ty) !== 1 ? px : px + T - 1.5;
         for (let i = 0; i < 4; i++) ctx.fillRect(sx, py + ((tx * 13 + ty * 7 + i * 9) % T), 1.5, 2 + (i % 2) * 2);
       }
+    } else if (v === 3 && tileAt(tx - 1, ty) !== 3) { // one painted ledge per run of '=' tiles
+      let n = 1; while (tileAt(tx + n, ty) === 3) n++;
+      const i = LV.ledgeStone ? P2.ledge : P2.plank, f = SPR.props2 && SPR.props2.f[i];
+      if (f) { const segN = Math.max(1, Math.round(n / 4)), segW = n * T / segN, hh = segW * f.h / f.w;
+        for (let k = 0; k < segN; k++) ctx.drawImage(LV.pal.night ? SPR.props2.inv : SPR.props2.img, f.x, f.y, f.w, f.h, px + k * segW - 2, py - 3, segW + 4, Math.min(hh, LV.ledgeStone ? 30 : 26)); }
+      else { ctx.fillStyle = pal.tile; ctx.fillRect(px, py, n * T, 6); }
     } else if (v === 2 && SPR.objects) {
       const f = SPR.objects.f[OBJ.thorns];
       drawSprite("objects", OBJ.thorns, px + T / 2 + ((tx * 7) % 5) - 2, py + T + 3, (T + 10) / f.w, tx % 2 === 1, .5, pal.night);
@@ -828,7 +875,13 @@ function render(rdt) {
       ctx.fill(); ctx.fillStyle = SEAL; for (let i = 0; i < 4; i++) ctx.fillRect(px + i * 8 + 2.5 + (i % 2), py + 11, 1.5, 3);
     }
   }
-  for (const d of LV.dress) if (visible(d.x)) drawSprite("props", d.i, d.x, d.y, SPR.props ? d.h / SPR.props.f[d.i].h : 0, d.flip, .5, pal.night);
+  if (LV.gate && SPR.props2 && visible(LV.gate.x)) drawSprite("props2", P2.gate, LV.gate.x, LV.gate.y, 78 / SPR.props2.f[P2.gate].h, false, .5, pal.night);
+  for (const d of LV.dress) {
+    if (!visible(d.x) || !SPR[d.sheet]) continue;
+    const f = SPR[d.sheet].f[d.i];
+    if (d.w) { ctx.drawImage(pal.night ? SPR[d.sheet].inv : SPR[d.sheet].img, f.x, f.y, f.w, f.h, d.x - d.w / 2, d.y, d.w, d.h); continue; }
+    drawSprite(d.sheet, d.i, d.x, d.y, d.h / f.h, d.flip, .5, pal.night, d.ay);
+  }
   // ink stains
   for (const s of LV.stains) {
     if (!visible(s.x)) continue;
@@ -945,8 +998,10 @@ function render(rdt) {
     ctx.fillStyle = `rgba(20,18,20,${0.55 * a})`; ctx.fillRect(0, 0, cv.width, cv.height);
     ctx.setTransform(DPR, 0, 0, DPR, 0, 0); ctx.globalAlpha = Math.min(1, a * 2);
     ctx.fillStyle = "#f1ede4"; ctx.textAlign = "center"; ctx.textBaseline = "middle";
-    ctx.font = `400 ${Math.min(64, W / 9)}px "Song Myung", serif`; ctx.fillText("베였다", W / 2, H / 2 - 12);
-    if (mode !== "tutorial") { ctx.font = `600 13px ${BODY_FONT}`; ctx.fillText(run.breath > 0 ? `남은 숨 ${run.breath}` : "숨이 다했다", W / 2, H / 2 + 30); }
+    const cf = SPR.calli && SPR.calli.f[CAL.death];
+    if (cf) { const hh = Math.min(120, H / 3.2), ww = cf.w * hh / cf.h; ctx.drawImage(SPR.calli.inv, cf.x, cf.y, cf.w, cf.h, W / 2 - ww / 2, H / 2 - 12 - hh / 2, ww, hh); }
+    else { ctx.font = `400 ${Math.min(64, W / 9)}px "Song Myung", serif`; ctx.fillText("절명", W / 2, H / 2 - 12); }
+    if (mode !== "tutorial") { ctx.font = `600 13px ${BODY_FONT}`; ctx.fillText(run.breath > 0 ? `남은 숨 ${run.breath}` : "숨이 다했다", W / 2, H / 2 + Math.min(70, H / 5.5)); }
     ctx.textAlign = "left"; ctx.globalAlpha = 1;
   }
 }
@@ -1004,7 +1059,9 @@ function drawBeatBar(pal) {
   const def = Music.def; if (!def) return;
   const bl = Music.beatLen, pos = Music.pos(), gap = 64, mx = W / 2 - 96, y = H - 30, ahead = 4;
   ctx.setTransform(DPR, 0, 0, DPR, 0, 0);
-  uiPatch(5, mx - 46, y - 30, gap * ahead + 92, 60, pal.night ? .5 : .9);
+  const bf = SPR.props2 && SPR.props2.f[P2.board];
+  if (bf) ctx.drawImage(SPR.props2.img, bf.x, bf.y, bf.w, bf.h, mx - 52, y - 30, gap * ahead + 104, 62);   // lacquered board the drums sit on
+  else uiPatch(5, mx - 46, y - 30, gap * ahead + 92, 60, pal.night ? .5 : .9);
   const near = Math.abs(Music.offBeat(pos)) < STRIKE_WIN;
   uiPatch(0, mx - 25, y - 25, 50, 50, near ? 1 : .55);                      // judgement ring
   const k0 = Math.floor(pos / bl) - 1;

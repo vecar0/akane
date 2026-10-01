@@ -135,3 +135,9 @@ h2 { font-family: var(--f-head); font-weight: 400; font-size: 28px; margin: 0; }
 body, .btn, .set > span, #hud .t { font-weight: 400; }
 #hud .t { font-family: var(--f-head); letter-spacing: .02em; }
 #hud .t { min-width: 4.6em; text-align: right; font-variant-numeric: tabular-nums; }
+.tb span { display: none !important; }
+/* brush calligraphy titles (Higgsfield sheet); text stays for screen readers and as fallback */
+.ui-cal h1 { color: transparent; background: var(--cal-title) left center / contain no-repeat; width: 2.6em; height: 1em; margin-bottom: 18px; }
+.ui-cal .inter .ord { color: transparent; background: var(--cal) center / contain no-repeat; width: min(70vw, 360px); height: min(28vw, 130px); }
+.ui-cal #rTitle { color: transparent; background: var(--cal) left center / contain no-repeat; height: 64px; }
+.ui-cal #interlude.night .ord { filter: invert(.9); }
