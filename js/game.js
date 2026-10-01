@@ -87,13 +87,25 @@ const FX = { slashA: 0, slashARed: 1, slashB: 2, slashBRed: 3, burst: 4, spray: 
 const HUD = { bigDrum: 0, struck: 1, drum: 2, aimLine: 3, reticle: 4, rope: 5, spark: 6, smoke: 7, dust: 8 }; // hudsolid for 0-5, hud (soft) for 6-8
 // props sheet: geumjul rope, enemy aim stroke, dash reticle, then set dressing
 const H2 = { idle: [0, 1, 2], guard: 3, start: 4, skid: 5, takeoff: 6, apex: 7, land: 8, turn: 9, cling: 10, climb: 11 };
+// 초식: picked after each 마당; icons are frames of the rogue sheet (0 is 絶命, 1 the card paper)
+const CHOSIK = [
+  { id: "ssang", name: "쌍검", han: "雙劍", desc: "베는 범위가 넓어진다", icon: 2 },
+  { id: "eot", name: "엇박", han: "엇拍", desc: "일격 판정이 너그러워진다", icon: 3 },
+  { id: "yeon", name: "연환", han: "連環", desc: "적을 베면 공중 대시 2회", icon: 4 },
+  { id: "hosin", name: "호신부", han: "護身符", desc: "마당마다 한 번, 치명상을 막는다", icon: 5 },
+  { id: "baram", name: "바람길", han: "風路", desc: "연을 더 멀리서 잡고 더 높이 난다", icon: 6 },
+  { id: "janyeong", name: "잔영", han: "殘影", desc: "대시가 길어지고 닿은 적을 벤다", icon: 7 },
+  { id: "sum", name: "숨", han: "息", desc: "숨 하나를 되찾는다 (최대 5)", icon: 8, repeat: true }
+];
+const has = id => !!(run && run.perks && run.perks.includes(id));
+const strikeWin = () => STRIKE_WIN * (has("eot") ? 1.6 : 1);
 const PINE_N = 5, DEATH_SEAL = 5;   // pines sheet: five misty pines, then the 絶命 seal
 const P2 = { plank: 0, ledge: 1, board: 2, rack: 3, haetae: 4, gate: 5, brazier: 6, lanterns: 7, sacks: 8 };
 const CAL = { title: 0, death: 1, madang: [2, 3, 4, 5, 6], end: 7, clear: 8 };   // 천고 절명 초입 연비 망루 승천 결전 종국 등천
 const PROP = { rope: 0, aim: 1, reticle: 2, pine: 3, stoneLantern: 4, jars: 5, banner: 6, sotdae: 7, palisade: 8 };
 const DRESS = [[PROP.pine, 74, 3], [PROP.stoneLantern, 34, 2], [PROP.jars, 26, 1], [PROP.banner, 80, 3], [PROP.sotdae, 84, 3], [PROP.palisade, 28, 1]]; // [frame, world height, headroom tiles]
 const OBJ = { lanternOn: 0, lanternOff: 1, kite: 2, thorns: 3, seal: 4, emitter: 5, slash: 6, slashRed: 7, splat: 8 };
-for (const n of ["hero", "hero2", "foes", "objects", "ui", "fx", "hud", "hudsolid", "props", "props2", "rocks", "pines", "slabs", "pillars"]) {
+for (const n of ["hero", "hero2", "foes", "objects", "ui", "fx", "hud", "hudsolid", "props", "props2", "rocks", "pines", "slabs", "pillars", "rogue"]) {
   Promise.all([
     fetch(`assets/sprites/${n}.json`).then(r => r.json()),
     new Promise((res, rej) => { const im = new Image(); im.onload = () => res(im); im.onerror = rej; im.src = `assets/sprites/${n}.webp`; })
@@ -127,6 +139,11 @@ function applyUiSprites() { // brush-painted UI pieces become CSS images
     document.body.classList.add("ui-ready");
   }
   if (SPR.objects && !root.getPropertyValue("--ui-kite")) root.setProperty("--ui-kite", url("objects", OBJ.kite));
+  if (SPR.rogue && !root.getPropertyValue("--chosik-2")) {
+    for (let i = 2; i < 9; i++) root.setProperty("--chosik-" + i, url("rogue", i));
+    const s = SPR.rogue, f = s.f[1], cx = Math.round(f.w * .4), c = document.createElement("canvas"); c.width = f.w - cx; c.height = f.h;
+    c.getContext("2d").drawImage(s.img, f.x + cx, f.y, f.w - cx, f.h, 0, 0, f.w - cx, f.h); root.setProperty("--card", `url(${c.toDataURL()})`);
+  }
   if (SPR.calli && !document.body.classList.contains("ui-cal")) {
     root.setProperty("--cal-title", url("calli", CAL.title)); root.setProperty("--cal-end", url("calli", CAL.end)); root.setProperty("--cal-clear", url("calli", CAL.clear));
     CAL.madang.forEach((i, m) => root.setProperty("--cal-m" + m, url("calli", i)));
@@ -432,13 +449,13 @@ function spawnEnemies() {
 function newRun(daily) {
   const key = todayKey();
   run = { seed: daily ? hashStr("chungo-" + key) : (Math.random() * 2 ** 32) >>> 0, daily, dateKey: key, m: 0, cp: -1, dead: [],
-    breath: 3, time: 0, deaths: 0, kills: 0, strikes: 0, slashes: 0 };
+    breath: 3, time: 0, deaths: 0, kills: 0, strikes: 0, slashes: 0, perks: [] };
   mode = daily ? "daily" : "run";
   saveRun(); showInterlude();
 }
 function continueRun() {
   const s = store.get("run", null); if (!s) return;
-  run = s; mode = s.daily ? "daily" : "run"; showInterlude();
+  run = s; mode = s.daily ? "daily" : "run"; if (s.choosing) showChoice(); else showInterlude();
 }
 function saveRun() { if (run && mode !== "tutorial") store.set("run", run); }
 function showInterlude() {
@@ -461,7 +478,7 @@ function enterMadang() {
     cpSave = { x: c.x - 9, y: c.y - 30.01, dead: new Set(deadIds), idx: run.cp };
   }
   const s = cpSave || LV.start;
-  P = newPlayer(s.x, s.y);
+  P = newPlayer(s.x, s.y); run.hosinUsed = false;
   bullets = []; parts = []; ghosts = []; seals = []; vfx = [];
   Music.start(MADANG[run.m].jd, run.seed + run.m);
   songPos = Music.pos(); spawnEnemies();
@@ -490,7 +507,11 @@ function respawn() {
   spawnEnemies(); state = "play"; setHud();
 }
 function die() {
-  if (state !== "play") return;
+  if (state !== "play" || (P.invT || 0) > 0) return;
+  if (has("hosin") && !run.hosinUsed && P.y < LV.h * T) { // talisman burns instead of the swordsman
+    run.hosinUsed = true; P.invT = 1.2; flash = .3; shake = 8; Music.sfx("clang"); toast("호신부가 타올랐다");
+    addFx("fx", FX.burst, P.x + P.w / 2, P.y + P.h / 2, 70, { life: .5 }); return;
+  }
   state = "dead"; deathT = 0; run.deaths++;
   if (mode !== "tutorial") { run.breath--; saveRun(); }
   P.focus = false; Music.muffle(false);
@@ -507,10 +528,28 @@ function madangClear() {
   Music.sfx("seal");
   if (mode === "tutorial") { toast("수련을 마쳤다"); setTimeout(toMenu, 900); state = "result"; return; }
   if (run.m >= 4) { endRun(true); return; }
-  run.m++; run.cp = -1; run.dead = [];
+  run.m++; run.cp = -1; run.dead = []; run.choosing = true;
   saveRun();
-  state = "result";
-  setTimeout(showInterlude, 700);
+  state = "result"; Music.stop();
+  setTimeout(showChoice, 700);
+}
+function showChoice() {
+  const rnd = mulberry((run.seed ^ (run.m * 7919)) >>> 0), pool = CHOSIK.filter(c => c.repeat ? run.breath < 5 : !(run.perks || []).includes(c.id));
+  const picks = []; while (picks.length < 3 && pool.length) picks.push(pool.splice((rnd() * pool.length) | 0, 1)[0]);
+  const box = $("cards"); box.innerHTML = "";
+  for (const c of picks) {
+    const b = document.createElement("button"); b.className = "card";
+    b.innerHTML = `<i class="ic" style="--ic:var(--chosik-${c.icon})"></i><b class="nm"></b><span class="han"></span><span class="ds"></span>`;
+    b.querySelector(".nm").textContent = c.name; b.querySelector(".han").textContent = c.han; b.querySelector(".ds").textContent = c.desc;
+    b.addEventListener("click", () => {
+      run.perks = run.perks || [];
+      if (c.id === "sum") run.breath = Math.min(5, run.breath + 1); else run.perks.push(c.id);
+      run.choosing = false; saveRun(); Music.sfx("lantern"); showInterlude();
+    });
+    box.appendChild(b);
+  }
+  $("chMadang").textContent = ORD[run.m - 1] + " 마당을 넘었다";
+  state = "choice"; showScreen("choice");
 }
 function endRun(won) {
   state = "result"; Music.stop();
@@ -552,7 +591,7 @@ function startDash(dir) {
   if (!P.onGround) { if (P.airDash <= 0) return false; P.airDash--; }
   let d = dir || aimDir();
   if (P.onGround && d.y > 0.2) d = { x: d.x === 0 ? P.face : Math.sign(d.x), y: 0 };
-  P.dashDir = d; P.dashT = 0.15; P.dashCd = 0.32; P.hook = null;
+  P.dashDir = d; P.dashT = has("janyeong") ? 0.21 : 0.15; P.dashCd = 0.32; P.hook = null;
   if (Math.abs(d.x) > 0.2) P.face = Math.sign(d.x);
   Music.sfx("dash"); return true;
 }
@@ -562,7 +601,7 @@ function doSlash(req) {
   let d = req.dir;
   if (!d) { const a = axis(), m = Math.hypot(a.x, a.y); d = m > 0.5 ? { x: a.x / m, y: a.y / m } : { x: P.face, y: 0 }; }
   const off = Music.offBeat(Music.posAt(req.ts));
-  const strike = Math.abs(off) < STRIKE_WIN;
+  const strike = Math.abs(off) < strikeWin();
   run.slashes++; if (strike) run.strikes++;
   P.slashDir = d; P.slashT = req.dash ? 0.22 : 0.14; P.slashCd = 0.2; P.strike = strike; P.clanged = new Set();
   if (Math.abs(d.x) > 0.2) P.face = Math.sign(d.x);
@@ -575,7 +614,7 @@ function findHook() {
   const cx = P.x + P.w / 2, cy = P.y + P.h / 2; let best = null, bs = 1e9;
   for (const p of LV.points) {
     const dx = p.x - cx, dy = p.y - cy, d = Math.hypot(dx, dy);
-    if (d > HOOK_R || d < 24 || !los(cx, cy, p.x, p.y)) continue;
+    if (d > HOOK_R * (has("baram") ? 1.4 : 1) || d < 24 || !los(cx, cy, p.x, p.y)) continue;
     const s = d - (dx * P.face > 0 ? 70 : 0) - (dy < 0 ? 40 : 0);
     if (s < bs) { bs = s; best = p; }
   }
@@ -597,10 +636,10 @@ function frameInput(rdt) {
 const approach = (v, t, a) => v < t ? Math.min(t, v + a) : Math.max(t, v - a);
 function stepPlayer(dt) {
   const a = axis(), ix = a.x > 0.3 ? 1 : a.x < -0.3 ? -1 : 0;
-  P.landT = Math.max(0, (P.landT || 0) - dt); P.dropT = Math.max(0, (P.dropT || 0) - dt); P.dashCd = Math.max(0, P.dashCd - dt); P.slashCd = Math.max(0, P.slashCd - dt); P.hookCd = Math.max(0, P.hookCd - dt); P.wallLock = Math.max(0, P.wallLock - dt);
+  P.invT = Math.max(0, (P.invT || 0) - dt); P.landT = Math.max(0, (P.landT || 0) - dt); P.dropT = Math.max(0, (P.dropT || 0) - dt); P.dashCd = Math.max(0, P.dashCd - dt); P.slashCd = Math.max(0, P.slashCd - dt); P.hookCd = Math.max(0, P.hookCd - dt); P.wallLock = Math.max(0, P.wallLock - dt);
   if (P.hook) {
     const cx = P.x + P.w / 2, cy = P.y + P.h / 2, dx = P.hook.x - cx, dy = P.hook.y - cy, d = Math.hypot(dx, dy);
-    if (d < 30) { P.vx = dx / d * 700; P.vy = dy / d * 700 - 260; P.hook = null; P.hookCd = 0.25; P.airDash = 1; if (Math.abs(P.vx) > 40) P.face = Math.sign(P.vx); }
+    if (d < 30) { const lb = has("baram") ? 1.25 : 1; P.vx = dx / d * 700 * lb; P.vy = dy / d * 700 * lb - 260 * lb; P.hook = null; P.hookCd = 0.25; P.airDash = 1; if (Math.abs(P.vx) > 40) P.face = Math.sign(P.vx); }
     else {
       P.vx = dx / d * 1050; P.vy = dy / d * 1050;
       if (moveX(P, P.vx * dt) | moveY(P, P.vy * dt)) { P.hook = null; P.vx *= 0.3; P.vy *= 0.3; }
@@ -685,7 +724,7 @@ function killEnemy(e) {
   const cx = e.x + e.w / 2, cy = e.y + e.h / 2;
   for (let i = 0; i < 20; i++) { const a = Math.random() * Math.PI * 2, v = 60 + Math.random() * 320; parts.push({ x: cx, y: cy, vx: Math.cos(a) * v, vy: Math.sin(a) * v - 60, life: .6, max: .6, c: i % 5 ? LV.pal.tile : SEAL, s: 2 + Math.random() * 4 }); }
   bleed(cx, cy, P.slashT > 0 ? P.slashDir : { x: Math.sign(cx - P.x - P.w / 2) || 1, y: -.2 }, false);
-  hitstop = 0.07; shake = Math.max(shake, 6); P.airDash = 1; P.dashCd = 0;
+  hitstop = 0.07; shake = Math.max(shake, 6); P.airDash = has("yeon") ? 2 : 1; P.dashCd = 0;
   Music.sfx("kill"); buzz(18);
 }
 function clang(e) {
@@ -743,7 +782,7 @@ function stepEnemies(dt) {
 function muzzle(e) { return e.type === "s" ? [e.x + e.w / 2 + e.face * 34, e.y + 17] : [e.x + e.w / 2 + e.face * 32, e.y + 6]; }
 function slashHits() {
   if (P.slashT <= 0) return;
-  const R = P.strike ? 54 : 40, reach = P.strike ? 30 : 26;
+  const R = (P.strike ? 54 : 40) * (has("ssang") ? 1.35 : 1), reach = P.strike ? 30 : 26;
   const cx = P.x + P.w / 2 + P.slashDir.x * reach, cy = P.y + P.h / 2 + P.slashDir.y * reach;
   for (const e of enemies) {
     if (!e.alive) continue;
@@ -811,6 +850,7 @@ function frame(now) {
   shake = Math.max(0, shake - rdt * 40); flash = Math.max(0, flash - rdt);
   if (toastT > 0) { toastT -= rdt; if (toastT <= 0) $("toast").classList.remove("on"); }
   const inv = !!(P && P.focus && state === "play");
+  Music.setRate(inv ? .45 : 1);
   if (inv !== cvInverted) { cvInverted = inv; document.body.classList.toggle("night", inv); }
   render(rdt);
   requestAnimationFrame(frame);
@@ -1103,10 +1143,10 @@ function render(rdt) {
     ctx.fillStyle = `rgba(20,18,20,${0.55 * a})`; ctx.fillRect(0, 0, cv.width, cv.height);
     ctx.setTransform(DPR, 0, 0, DPR, 0, 0); ctx.globalAlpha = Math.min(1, a * 2);
     ctx.fillStyle = "#f1ede4"; ctx.textAlign = "center"; ctx.textBaseline = "middle";
-    const sf = SPR.pillars && SPR.pillars.f[3];
+    const sf = SPR.rogue && SPR.rogue.f[0];
     if (sf) { // 絶命 in red brush, written down the screen; lands large and settles
-      const k = Math.min(1, deathT / .12), sh = Math.min(260, H * .66) * (1.25 - .25 * k), sw = sh * sf.w / sf.h;
-      ctx.drawImage(SPR.pillars.img, sf.x, sf.y, sf.w, sf.h, W / 2 - sw / 2, H / 2 - sh / 2 - 6, sw, sh);
+      const k = Math.min(1, deathT / .12), sw = Math.min(W * .5, 400) * (1.2 - .2 * k), sh = sw * sf.h / sf.w;
+      ctx.drawImage(SPR.rogue.img, sf.x, sf.y, sf.w, sf.h, W / 2 - sw / 2, H / 2 - sh / 2 - 6, sw, sh);
     } else { ctx.font = `400 ${Math.min(72, W / 8)}px "Song Myung", serif`; ctx.fillText("절명", W / 2, H / 2 - 12); }
     if (mode !== "tutorial") { ctx.font = `600 13px ${BODY_FONT}`; ctx.fillText(run.breath > 0 ? `남은 숨 ${run.breath}` : "숨이 다했다", W / 2, H - 92); }
     ctx.textAlign = "left"; ctx.globalAlpha = 1;
@@ -1169,13 +1209,13 @@ function drawBeatBar(pal) {
   const bf = SPR.props2 && SPR.props2.f[P2.board];
   if (bf) ctx.drawImage(SPR.props2.img, bf.x, bf.y, bf.w, bf.h, mx - 52, y - 30, gap * ahead + 104, 62);   // lacquered board the drums sit on
   else uiPatch(5, mx - 46, y - 30, gap * ahead + 92, 60, pal.night ? .5 : .9);
-  const near = Math.abs(Music.offBeat(pos)) < STRIKE_WIN;
+  const near = Math.abs(Music.offBeat(pos)) < strikeWin();
   uiPatch(0, mx - 25, y - 25, 50, 50, near ? 1 : .55);                      // judgement ring
   const k0 = Math.floor(pos / bl) - 1;
   for (let k = k0 + ahead + 1; k >= k0; k--) {
     const dt = k * bl - pos, x = mx + dt / bl * gap;
     if (x < mx - 40 || x > mx + gap * ahead + 30) continue;
-    const strong = ((k % def.beats) + def.beats) % def.beats === 0, hit = Math.abs(dt) < STRIKE_WIN, past = dt < -STRIKE_WIN;
+    const strong = ((k % def.beats) + def.beats) % def.beats === 0, hit = Math.abs(dt) < strikeWin(), past = dt < -strikeWin();
     const size = (strong ? 38 : 28) * (hit ? 1.18 : 1), i = hit ? HUD.struck : strong ? HUD.bigDrum : HUD.drum;
     ctx.globalAlpha = past ? Math.max(0, 1 + dt / bl * 3) : Math.min(1, 1.15 - Math.max(0, dt / bl - 2.5));
     if (!SPR.hudsolid || !drawSprite("hudsolid", i, x, y, size / SPR.hudsolid.f[i].h, false, .5, false, .5)) {
@@ -1235,6 +1275,7 @@ function drawPlayer(pal) {
   // hero2 is scaled so its first running step matches the original running frames
   const k = sheet === "hero" ? kOf("hero", 0, HERO_H) : kOf("hero", 0, HERO_H) * SPR.hero.f[1].h / SPR.hero2.f[H2.start].h;
   if (state === "dead") ctx.globalAlpha = Math.max(0, 1 - deathT / 0.75);
+  else if (P.invT > 0) ctx.globalAlpha = Math.floor(P.invT * 14) % 2 ? .35 : 1;
   if (pal.night && !LV.pal.night) { // slow-mo: hero keeps his ink, lifted off the dark paper by a pale wash
     const g = ctx.createRadialGradient(cx, P.y + P.h / 2, 4, cx, P.y + P.h / 2, 46); g.addColorStop(0, "rgba(236,230,216,.55)"); g.addColorStop(1, "rgba(236,230,216,0)");
     ctx.fillStyle = g; ctx.fillRect(cx - 46, P.y + P.h / 2 - 46, 92, 92);
@@ -1328,7 +1369,7 @@ function drawEnemy(e, pal) {
 
 // ---------- screens ----------
 function showScreen(id) {
-  for (const s of ["menu", "settings", "interlude", "pause", "result"]) $(s).hidden = s !== id;
+  for (const s of ["menu", "settings", "interlude", "pause", "result", "choice"]) $(s).hidden = s !== id;
   const inGame = id === null;
   $("hud").hidden = !(inGame || id === "pause");
   $("pad").hidden = !inGame;
@@ -1356,6 +1397,7 @@ function pauseGame() {
   const st = $("pStats"); st.innerHTML = "";
   const rows = [["시간", fmt(run.time)], ["베인 횟수", run.deaths], ["일격", run.strikes + " / " + run.slashes]];
   if (mode !== "tutorial") rows.splice(1, 0, ["남은 숨", run.breath]);
+  if (run.perks && run.perks.length) rows.push(["초식", run.perks.map(id => CHOSIK.find(c => c.id === id).name).join(" · ")]);
   for (const [k, v] of rows) { const a = document.createElement("span"), b = document.createElement("b"); a.textContent = k; b.textContent = v; st.append(a, b); }
   $("bGiveUp").hidden = mode === "tutorial";
   showScreen("pause");

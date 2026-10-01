@@ -136,3 +136,15 @@ body, .btn, .set > span, #hud .t { font-weight: 400; }
 #hud .t { font-family: var(--f-head); letter-spacing: .02em; }
 #hud .t { min-width: 4.6em; text-align: right; font-variant-numeric: tabular-nums; }
 .tb span { display: none !important; }
+/* 초식 choice */
+.choose { width: 100%; max-width: 760px; margin: auto; text-align: center; display: grid; gap: 6px; }
+.ord-s { font-family: var(--f-head); color: var(--ink-2); font-size: 14px; }
+.cards { display: flex; gap: 14px; justify-content: center; margin-top: 10px; flex-wrap: wrap; }
+.card { width: 172px; min-height: 262px; border: 0; padding: 26px 22px 44px; display: grid; justify-items: center; align-content: start; gap: 6px;
+  background: #efe7d4 var(--card) center / 100% 100% no-repeat; box-shadow: 0 6px 18px rgba(23,22,26,.18); transition: transform .12s; }
+.card:hover, .card:focus-visible { transform: translateY(-4px) rotate(-.6deg); }
+.card .ic { width: 84px; height: 84px; background: var(--ic) center / contain no-repeat; }
+.card .nm { font-family: var(--f-head); font-weight: 400; font-size: 22px; }
+.card .han { font-family: var(--f-head); color: var(--seal); font-size: 13px; letter-spacing: .2em; }
+.card .ds { word-break: keep-all; font-size: 12.5px; color: var(--ink-2); line-height: 1.5; text-wrap: balance; }
+@media (max-height: 430px) { .card { width: 156px; min-height: 226px; padding: 18px 18px 36px; } .card .ic { width: 60px; height: 60px; } }
