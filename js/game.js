@@ -580,7 +580,7 @@ function endRun(won) {
   const reached = (run.cycle || 0) * 5 + run.m + (won ? 1 : 0);
   const rate = run.slashes ? Math.round(run.strikes / run.slashes * 100) : 0;
   $("rSeal").textContent = won ? "登" : "終";
-  $("rTitle").textContent = won ? "등천" : "종국";
+  $("rTitle").textContent = won ? "등천" : "절명";
   $("rSub").textContent = won ? "천고는 아직 위에서 울린다." : ORD[run.m] + " 마당에서 숨이 다했다.";
   $("rStats").innerHTML = "";
   for (const [k, v] of [["넘은 마당", reached + ((run.cycle || 0) ? ` · ${run.cycle}번 천고를 벰` : "")], ["시간", fmt(run.time)], ["일격", run.strikes + "회 · " + rate + "%"], ["벤 적", run.kills], ["베인 횟수", run.deaths]]) {
@@ -958,7 +958,7 @@ function render(rdt) {
   if (SPR.rocks && LV && !LV.scenery) buildScenery();
   const SC = LV.scenery;
   if (SC && SPR.pines) for (const p of SC.pines) { // far pines drift slower than the ground (parallax .75)
-    const f = SPR.pines.f[p.i], px = p.x + cam.x * .25, gy = (LV.h - 4) * T + 20 + cam.y * .12;
+    const f = SPR.pines.f[p.i], px = p.x + cam.x * .25, gy = cam.y + vh / 2 + 30;   // rooted below the screen edge, never floating
     if (px < cam.x - vw / 2 - 300 || px > cam.x + vw / 2 + 300) continue;
     ctx.save(); ctx.translate(px, gy); if (p.flip) ctx.scale(-1, 1); ctx.globalAlpha = pal.night ? p.a * .6 : p.a * 1.6;
     const k = p.h / f.h, im = pal.night ? SPR.pines.inv : SPR.pines.img; ctx.globalAlpha = pal.night ? .5 : .95;
@@ -1261,7 +1261,12 @@ function drawBeatBar(pal) {
   const bl = Music.beatLen, pos = Music.pos(), gap = 64, mx = W / 2 - 96, y = H - 30, ahead = 4;
   ctx.setTransform(DPR, 0, 0, DPR, 0, 0);
   const bf = SPR.props2 && SPR.props2.f[P2.board];
-  if (bf) ctx.drawImage(SPR.props2.img, bf.x, bf.y, bf.w, bf.h, mx - 52, y - 30, gap * ahead + 104, 62);   // lacquered board the drums sit on
+  if (bf) { // lacquered board: end caps keep their proportions, only the plain middle stretches
+    const bw = gap * ahead + 104, bh = 62, cap = bf.w * .16, capW = cap * bh / bf.h, bx = mx - 52, im = SPR.props2.img;
+    ctx.drawImage(im, bf.x, bf.y, cap, bf.h, bx, y - 30, capW, bh);
+    ctx.drawImage(im, bf.x + cap, bf.y, bf.w - cap * 2, bf.h, bx + capW - .5, y - 30, bw - capW * 2 + 1, bh);
+    ctx.drawImage(im, bf.x + bf.w - cap, bf.y, cap, bf.h, bx + bw - capW, y - 30, capW, bh);
+  }
   else uiPatch(5, mx - 46, y - 30, gap * ahead + 92, 60, pal.night ? .5 : .9);
   const near = Math.abs(Music.offBeat(pos)) < strikeWin();
   uiPatch(0, mx - 25, y - 25, 50, 50, near ? 1 : .55);                      // judgement ring
