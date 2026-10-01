@@ -1051,7 +1051,7 @@ function render(rdt) {
     ctx.fillStyle = b.friendly ? JJOK_L : "#ff6a3d"; ctx.beginPath(); ctx.arc(b.x, b.y, 1.2, 0, Math.PI * 2); ctx.fill();
   }
   ctx.lineCap = "butt";
-  for (const g of ghosts) { ctx.globalAlpha = .3 * (1 - g.age / g.life); if (!drawSprite("hero", HERO.dash, g.x + 9, g.y + 31, kOf("hero", 0, HERO_H), g.face < 0, .55, pal.night)) drawRunner(g.x, g.y, g.face, JJOK, null); }
+  for (const g of ghosts) { ctx.globalAlpha = .3 * (1 - g.age / g.life); if (!drawSprite("hero", HERO.dash, g.x + 9, g.y + 31, kOf("hero", 0, HERO_H), g.face < 0, .55, !!LV.pal.night)) drawRunner(g.x, g.y, g.face, JJOK, null); }
   ctx.globalAlpha = 1;
   if (P && (state === "play" || state === "pause" || state === "result" || state === "dead")) drawPlayer(pal);
   for (const p of parts) { ctx.globalAlpha = Math.max(0, p.life / p.max); ctx.fillStyle = p.c; ctx.fillRect(p.x - p.s / 2, p.y - p.s / 2, p.s, p.s); }
@@ -1234,7 +1234,11 @@ function drawPlayer(pal) {
   // hero2 is scaled so its first running step matches the original running frames
   const k = sheet === "hero" ? kOf("hero", 0, HERO_H) : kOf("hero", 0, HERO_H) * SPR.hero.f[1].h / SPR.hero2.f[H2.start].h;
   if (state === "dead") ctx.globalAlpha = Math.max(0, 1 - deathT / 0.75);
-  drawSprite(sheet, fr, cx, P.y + P.h + 1, k, face < 0, sheet === "hero" ? (HERO_AX[fr] ?? .55) : (wallPose ? .62 : .5), pal.night);
+  if (pal.night && !LV.pal.night) { // slow-mo: hero keeps his ink, lifted off the dark paper by a pale wash
+    const g = ctx.createRadialGradient(cx, P.y + P.h / 2, 4, cx, P.y + P.h / 2, 46); g.addColorStop(0, "rgba(236,230,216,.55)"); g.addColorStop(1, "rgba(236,230,216,0)");
+    ctx.fillStyle = g; ctx.fillRect(cx - 46, P.y + P.h / 2 - 46, 92, 92);
+  }
+  drawSprite(sheet, fr, cx, P.y + P.h + 1, k, face < 0, sheet === "hero" ? (HERO_AX[fr] ?? .55) : (wallPose ? .62 : .5), !!LV.pal.night);
   ctx.globalAlpha = 1;
   if (P.slashT > 0 && state !== "dead" && SPR.fx) { // two painted frames: the edge, then the full stroke breaking into ink
     const d = P.slashDir, prog = 1 - Math.min(1, P.slashT / 0.14), ang = Math.atan2(d.y, d.x);
