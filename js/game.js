@@ -81,6 +81,7 @@ const FX = { slashA: 0, slashARed: 1, slashB: 2, slashBRed: 3, burst: 4, spray: 
 const HUD = { bigDrum: 0, struck: 1, drum: 2, aimLine: 3, reticle: 4, rope: 5, spark: 6, smoke: 7, dust: 8 }; // hudsolid for 0-5, hud (soft) for 6-8
 // props sheet: geumjul rope, enemy aim stroke, dash reticle, then set dressing
 const H2 = { idle: [0, 1, 2], guard: 3, start: 4, skid: 5, takeoff: 6, apex: 7, land: 8, turn: 9, cling: 10, climb: 11 };
+const PINE_N = 5, DEATH_SEAL = 5;   // pines sheet: five misty pines, then the 絶命 seal
 const P2 = { plank: 0, ledge: 1, board: 2, rack: 3, haetae: 4, gate: 5, brazier: 6, lanterns: 7, sacks: 8 };
 const CAL = { title: 0, death: 1, madang: [2, 3, 4, 5, 6], end: 7, clear: 8 };   // 천고 절명 초입 연비 망루 승천 결전 종국 등천
 const PROP = { rope: 0, aim: 1, reticle: 2, pine: 3, stoneLantern: 4, jars: 5, banner: 6, sotdae: 7, palisade: 8 };
@@ -148,9 +149,9 @@ function buildScenery() {
     x += n - 1;
   }
   const pines = [], P = SPR.pines;
-  if (P) for (let wx = 200 + rnd() * 200; wx < LV.w * T + 600; wx += 700 + rnd() * 600) pines.push({ i: (rnd() * P.f.length) | 0, x: wx, h: 260 + rnd() * 120, flip: rnd() < .5, a: .35 + rnd() * .2 });
+  if (P) for (let wx = 200 + rnd() * 200; wx < LV.w * T + 600; wx += 700 + rnd() * 600) pines.push({ i: (rnd() * Math.min(PINE_N, P.f.length)) | 0, x: wx, h: 260 + rnd() * 120, flip: rnd() < .5, a: .35 + rnd() * .2 });
   const front = []; // big pines rooted on cliff edges (behind the actors), like the reference art
-  if (P) for (const c of skins) if (c.w >= 3 * T && rnd() < .2) { const right = rnd() < .5; front.push({ i: (rnd() * P.f.length) | 0, x: c.x + (right ? 1 : -1) * (c.w / 2 - 14), y: c.y - 2, h: 150 + rnd() * 70, flip: right }); }
+  if (P) for (const c of skins) if (c.w >= 3 * T && rnd() < .2) { const right = rnd() < .5; front.push({ i: (rnd() * Math.min(PINE_N, P.f.length)) | 0, x: c.x + (right ? 1 : -1) * (c.w / 2 - 14), y: c.y - 2, h: 150 + rnd() * 70, flip: right }); }
   LV.scenery = { skins, back, pines, front };
 }
 function drawCliff(c, img, alpha) {
@@ -848,7 +849,7 @@ function render(rdt) {
   if (SC && SPR.pines) for (const p of SC.pines) { // far pines drift slower than the ground (parallax .75)
     const f = SPR.pines.f[p.i], px = p.x + cam.x * .25, gy = (LV.h - 4) * T + 20 + cam.y * .12;
     if (px < cam.x - vw / 2 - 300 || px > cam.x + vw / 2 + 300) continue;
-    ctx.save(); ctx.translate(px, gy); if (p.flip) ctx.scale(-1, 1); ctx.globalAlpha = pal.night ? p.a * .5 : p.a;
+    ctx.save(); ctx.translate(px, gy); if (p.flip) ctx.scale(-1, 1); ctx.globalAlpha = pal.night ? p.a * .6 : p.a * 1.6;
     const k = p.h / f.h; ctx.drawImage(pal.night ? SPR.pines.inv : SPR.pines.img, f.x, f.y, f.w, f.h, -f.w * k / 2, -p.h, f.w * k, p.h); ctx.restore();
   }
   ctx.globalAlpha = 1;
@@ -927,7 +928,7 @@ function render(rdt) {
       ctx.fill(); ctx.fillStyle = SEAL; for (let i = 0; i < 4; i++) ctx.fillRect(px + i * 8 + 2.5 + (i % 2), py + 11, 1.5, 3);
     }
   }
-  if (SC && SPR.pines) for (const p of SC.front) if (visible(p.x)) drawSprite("pines", p.i, p.x, p.y, p.h / SPR.pines.f[p.i].h, p.flip, .5, pal.night);
+  if (SC && SPR.pines) { ctx.globalAlpha = .9; for (const p of SC.front) if (visible(p.x)) drawSprite("pines", p.i, p.x, p.y + 6, p.h / SPR.pines.f[p.i].h, p.flip, .5, pal.night); ctx.globalAlpha = 1; }
   if (LV.gate && SPR.props2 && visible(LV.gate.x)) drawSprite("props2", P2.gate, LV.gate.x, LV.gate.y, 78 / SPR.props2.f[P2.gate].h, false, .5, pal.night);
   for (const d of LV.dress) {
     if (!visible(d.x) || !SPR[d.sheet]) continue;
@@ -1051,7 +1052,11 @@ function render(rdt) {
     ctx.fillStyle = `rgba(20,18,20,${0.55 * a})`; ctx.fillRect(0, 0, cv.width, cv.height);
     ctx.setTransform(DPR, 0, 0, DPR, 0, 0); ctx.globalAlpha = Math.min(1, a * 2);
     ctx.fillStyle = "#f1ede4"; ctx.textAlign = "center"; ctx.textBaseline = "middle";
-    ctx.font = `400 ${Math.min(72, W / 8)}px "Song Myung", serif`; ctx.fillText("절명", W / 2, H / 2 - 12);
+    const sf = SPR.pines && SPR.pines.f[DEATH_SEAL];
+    if (sf) { // 絶命 seal slams down: oversized at first, settles with a slight tilt
+      const k = Math.min(1, deathT / .12), sz = Math.min(130, H / 3) * (1.5 - .5 * k);
+      ctx.save(); ctx.translate(W / 2, H / 2 - 14); ctx.rotate(-.06); ctx.drawImage(SPR.pines.img, sf.x, sf.y, sf.w, sf.h, -sz / 2, -sz / 2, sz, sz); ctx.restore();
+    } else { ctx.font = `400 ${Math.min(72, W / 8)}px "Song Myung", serif`; ctx.fillText("절명", W / 2, H / 2 - 12); }
     if (mode !== "tutorial") { ctx.font = `600 13px ${BODY_FONT}`; ctx.fillText(run.breath > 0 ? `남은 숨 ${run.breath}` : "숨이 다했다", W / 2, H / 2 + Math.min(70, H / 5.5)); }
     ctx.textAlign = "left"; ctx.globalAlpha = 1;
   }
