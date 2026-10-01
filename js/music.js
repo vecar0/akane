@@ -21,25 +21,26 @@ const Music = (() => {
   let def = null, t0 = 0, nextIdx = 0, rate = 1, basePos = 0, baseTime = 0, timer = null, running = false, rng = Math.random;
   let fallbackStart = 0, fallbackPausedAt = 0;
   let volume = 1, offsetMs = 0;
-  // background music: 「국악 효과음 #151」 © 주식회사 아이티앤, CC BY (공유마당). Loaded once, looped with a crossfaded seam.
+  // background music: 「국악 효과음 #572」 © 주식회사 아이티앤, CC BY (공유마당). Loaded once, looped with a crossfaded seam.
+  const LOOP_A = 0.10, LOOP_B = 3.97;
   let bgmBuf = null, bgmSrc = null, bgmGain = null, bgmLoading = false;
   function loadBgm() {
     if (bgmBuf || bgmLoading || !ac) return; bgmLoading = true;
-    fetch("assets/audio/bgm.mp3").then(r => r.arrayBuffer()).then(b => new Promise((res, rej) => ac.decodeAudioData(b, res, rej))).then(raw => {
+    fetch("assets/audio/bgm.mp3?v=572").then(r => r.arrayBuffer()).then(b => new Promise((res, rej) => ac.decodeAudioData(b, res, rej))).then(raw => {
       // drop the trailing silence and blend the tail into the head so the loop has no gap or click
-      // only the first phrase (1.445 s; the phrase repeats every ~1.445 s) is looped.
-      // A 20 ms blend at the seam avoids a click.
-      const sr = raw.sampleRate, len = Math.min(raw.length, Math.round(1.445 * sr)), xf = Math.round(.02 * sr), buf = ac.createBuffer(raw.numberOfChannels, len, sr);
+      // 「국악 효과음 #572」: strokes fall every 0.43 s from 0.10 s; nine of them (0.10-3.97 s) are looped,
+      // skipping the lead-in silence and the ring-out. A 20 ms blend at the seam avoids a click.
+      const sr = raw.sampleRate, st = Math.round(LOOP_A * sr), len = Math.min(raw.length - st, Math.round((LOOP_B - LOOP_A) * sr)), xf = Math.round(.02 * sr), buf = ac.createBuffer(raw.numberOfChannels, len, sr);
       for (let c = 0; c < raw.numberOfChannels; c++) {
         const a = raw.getChannelData(c), o = buf.getChannelData(c);
-        for (let i = 0; i < len; i++) o[i] = i < xf ? a[i] * (i / xf) + (a[len + i] || 0) * (1 - i / xf) : a[i];   // last phrase's ring blends into the restart
+        for (let i = 0; i < len; i++) o[i] = i < xf ? a[st + i] * (i / xf) + (a[st + len + i] || 0) * (1 - i / xf) : a[st + i];
       }
       bgmBuf = buf; if (running || wantBgm) playBgm();
     }).catch(() => { useTag = true; if (running || wantBgm) playBgm(); }).finally(() => { bgmLoading = false; });
   }
   let useTag = false, tag = null, wantBgm = false;   // <audio> fallback when Web Audio can't decode the file
   function playBgm() {
-    if (useTag) { if (!tag) { tag = new Audio("assets/audio/bgm.mp3"); tag.loop = true; tag.addEventListener("timeupdate", () => { if (tag.currentTime > 1.445) tag.currentTime -= 1.445; }); tag.volume = .6 * volume; tag.preservesPitch = false; tag.webkitPreservesPitch = false; } tag.playbackRate = rate; tag.play().catch(() => {}); return; }
+    if (useTag) { if (!tag) { tag = new Audio("assets/audio/bgm.mp3?v=572"); tag.loop = true; tag.addEventListener("timeupdate", () => { if (tag.currentTime > LOOP_B || tag.currentTime < LOOP_A) tag.currentTime = LOOP_A; }); tag.volume = .6 * volume; tag.preservesPitch = false; tag.webkitPreservesPitch = false; } tag.playbackRate = rate; tag.play().catch(() => {}); return; }
     if (!ac || !bgmBuf || bgmSrc) return;
     bgmGain = ac.createGain(); bgmGain.gain.value = .6; bgmGain.connect(master);
     bgmSrc = ac.createBufferSource(); bgmSrc.buffer = bgmBuf; bgmSrc.loop = true; bgmSrc.playbackRate.value = rate;
