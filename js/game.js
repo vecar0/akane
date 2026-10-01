@@ -51,7 +51,7 @@ const SEAL = "#c3161c", JJOK = "#27466a", JJOK_L = "#5f86b5";
 // ---------- images (optional; drawn procedurally when missing) ----------
 // far/mid: Higgsfield ink-wash panoramas with alpha. tex-*: seamless tiles (seam ratio checked <= 1.3).
 const IMG = {}, PAT = {};
-for (const k of ["tex-paper", "tex-stone", "tex-giwa", "tex-granite"]) { const im = new Image(); im.onload = () => { IMG[k] = im; PAT[k] = null; }; im.src = "assets/" + k + ".webp"; }
+for (const k of ["tex-paper", "tex-stone", "tex-giwa", "tex-granite", "tex-slab"]) { const im = new Image(); im.onload = () => { IMG[k] = im; PAT[k] = null; }; im.src = "assets/" + k + ".webp"; }
 function pattern(key, scale) { // world- or screen-anchored repeating pattern, built once per image
   if (!IMG[key]) return null;
   if (!PAT[key]) { PAT[key] = ctx.createPattern(IMG[key], "repeat"); PAT[key].setTransform(new DOMMatrix().scale(scale)); }
@@ -150,7 +150,7 @@ function buildScenery() {
       const w = W0 / segs, pool = h > w * 1.2 && tall.length ? tall : wide.length ? wide : tall;
       const piece = (bias) => ({ i: pool[(rnd() * pool.length) | 0], flip: rnd() < .5, x: x * T + w * (k + .5) + bias, y: y * T - 4, w, h: h + 8 });
       skins.push(piece(0));
-      if (d > 2 && y >= 8 && rnd() < .6) { const b = piece((rnd() - .5) * w * .7); b.y -= 18 + rnd() * 40; b.w *= .8 + rnd() * .5; b.h += 40; back.push(b); }
+      if (false) { const b = piece((rnd() - .5) * w * .7); b.y -= 18 + rnd() * 40; b.w *= .8 + rnd() * .5; b.h += 40; back.push(b); }
     }
     x += n - 1;
   }
@@ -162,8 +162,8 @@ function buildScenery() {
     const mid = x + (n >> 1); let d = 0; while (y + d < LV.h && tileAt(mid, y + d) === 1) d++;
     if (y + d < LV.h && d <= 3) { // floating: air below within a few tiles
       for (let yy = y; yy < y + d; yy++) for (let xx = x; xx < x + n; xx++) LV.slabTiles.add(yy * LV.w + xx);
-      const segs = Math.max(1, Math.round(n / 7)), w = n * T / segs;
-      for (let k = 0; k < segs; k++) slabs.push({ i: (rnd() * SPR.slabs.f.length) | 0, x: x * T + w * (k + .5), y: y * T - 2, w: w + 14, minH: d * T + 6, flip: rnd() < .5 });
+      const segs = Math.max(1, Math.round(n / 6)), w = n * T / segs;
+      for (let k = 0; k < segs; k++) slabs.push({ i: (rnd() * SPR.slabs.f.length) | 0, x: x * T + w * (k + .5), y: y * T - 2, w: w + (segs > 1 ? 6 : 0), minH: d * T + 10, flip: rnd() < .5 });
     }
     x += n - 1;
   }
@@ -180,7 +180,7 @@ function buildScenery() {
       const [x, n] = k.split(",").map(Number);
       for (let a = 0; a < ys.length;) { let b = a; while (b + 1 < ys.length && ys[b + 1] === ys[b] + 1) b++;
         if (b - a + 1 >= 3) { for (let y = ys[a]; y <= ys[b]; y++) for (let xx = x; xx < x + n; xx++) LV.slabTiles.add(y * LV.w + xx);
-          pillars.push({ i: (rnd() * 3) | 0, x: x * T + n * T / 2, y0: ys[a] * T - 2, y1: (ys[b] + 1) * T, w: n * T + 22, flip: rnd() < .5 }); }
+          pillars.push({ i: (rnd() * 3) | 0, x: x * T + n * T / 2, y0: ys[a] * T - 2, y1: (ys[b] + 1) * T, w: n * T + 10, flip: rnd() < .5 }); }
         a = b + 1; }
     }
   }
@@ -894,13 +894,14 @@ function render(rdt) {
   }
   ctx.globalAlpha = 1;
   if (SC && SPR.slabs) for (const c of SC.slabs) if (Math.abs(c.x - cam.x) < vw / 2 + c.w) { // drawn before tiles so the walkable top stays crisp
-    const f = SPR.slabs.f[c.i], h = Math.max(c.minH + 18, c.w * f.h / f.w), w = h * f.w / f.h;
-    drawSprite("slabs", c.i, c.x, c.y, h / f.h, c.flip, .5, pal.night, 0);
+    const f = SPR.slabs.f[c.i], h = Math.max(c.minH + 14, Math.min(c.w * f.h / f.w, c.minH * 2.2)); // width = the run; height covers the block
+    ctx.save(); ctx.translate(c.x, c.y); if (c.flip) ctx.scale(-1, 1);
+    ctx.drawImage(pal.night ? SPR.slabs.inv : SPR.slabs.img, f.x, f.y, f.w, f.h, -c.w / 2, 0, c.w, h); ctx.restore();
   }
   if (SC && SPR.pillars) for (const c of SC.pillars) if (Math.abs(c.x - cam.x) < vw / 2 + c.w) { // stacked pillar segments, art width kept
     const f = SPR.pillars.f[c.i], segH = c.w * f.h / f.w, img = pal.night ? SPR.pillars.inv : SPR.pillars.img;
     ctx.save(); ctx.beginPath(); ctx.rect(c.x - c.w, c.y0, c.w * 2, c.y1 - c.y0 + 4); ctx.clip();
-    for (let y = c.y0, k = 0; y < c.y1; y += segH - 2, k++) { ctx.save(); ctx.translate(c.x, y); if ((k + (c.flip ? 1 : 0)) % 2) ctx.scale(-1, 1); ctx.globalAlpha = pal.night ? .45 : 1; ctx.drawImage(img, f.x, f.y, f.w, f.h, -c.w / 2, 0, c.w, segH); ctx.restore(); }
+    for (let y = c.y0, k = 0; y < c.y1; y += segH - 2, k++) { ctx.save(); ctx.translate(c.x, y); if ((k + (c.flip ? 1 : 0)) % 2) ctx.scale(-1, 1); ctx.drawImage(img, f.x, f.y, f.w, f.h, -c.w / 2, 0, c.w, segH); ctx.restore(); }
     ctx.restore(); ctx.globalAlpha = 1;
   }
   if (SC) for (const c of SC.back) if (Math.abs(c.x - cam.x) < vw / 2 + c.h * 2 + 200) drawCliff(c, pal.night ? SPR.rocks.inv : SPR.rocks.img, pal.night ? .25 : .45);
@@ -933,7 +934,7 @@ function render(rdt) {
   // tiles: all visible rock in one path, filled once with the stone texture
   const stone = pattern("tex-stone", 0.5), giwa = pattern("tex-giwa", 0.094), rock = new Path2D();
   for (let ty = y0; ty <= y1; ty++) for (let tx = x0; tx <= x1; tx++) if (LV.grid[ty * LV.w + tx] === 1 && !(LV.slabTiles && LV.slabTiles.has(ty * LV.w + tx))) rock.rect(tx * T - .3, ty * T - .3, T + .6, T + .6);
-  const granite = pattern("tex-granite", 0.32);
+  const granite = pattern("tex-slab", 0.45);
   ctx.fillStyle = pal.tile; ctx.fill(rock);
   if (granite) { // painted granite face, darkening with depth; night keeps it dim
     ctx.globalAlpha = pal.night ? .35 : 1; ctx.fillStyle = granite; ctx.fill(rock); ctx.globalAlpha = 1;
