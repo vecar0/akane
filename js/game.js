@@ -349,7 +349,7 @@ function genPiece(rng, m) {
     if (r < .24 && room >= 5) {                                   // gap over thorns, kite above the wide ones
       const gw = Math.min(room - 2, 2 + ((rng() * (m >= 2 ? 4 : 3)) | 0));
       for (let k = 0; k < gw; k++) { for (let y = 12; y < 16; y++) put(x + k, y, " "); put(x + k, 15, "^"); }
-      if (gw >= 3 && rng() < .85) put(x + (gw >> 1), 5 + ((rng() * 2) | 0), "o");
+      if (gw >= 4 && rng() < .55) put(x + (gw >> 1), 5 + ((rng() * 2) | 0), "o");
       x += gw + 2;
     } else if (r < .44 && room >= 4) {                            // raised step with a guard on it
       const sw = Math.min(room - 1, 3 + ((rng() * 4) | 0)), sh = 1 + ((rng() * 2) | 0);
@@ -412,7 +412,7 @@ function buildMadangMap(seed, m) {
   // scatter extra kites through open sky so the 연 line can carry you across most of the 마당
   const W = rows[0].length, grid = rows.map(r => r.split(""));
   for (let x = 10, last = -99; x < W - 10; x++) {
-    if (x - last < 7 || rng() > .4) continue;
+    if (x - last < 18 || rng() > .12) continue;
     const y = 4 + ((rng() * 3) | 0);
     let ok = true;
     for (let dy = -2; dy <= 3 && ok; dy++) for (let dx = -2; dx <= 2; dx++) if (grid[y + dy] && grid[y + dy][x + dx] !== " ") { ok = false; break; }

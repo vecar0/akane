@@ -11,12 +11,12 @@
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="apple-mobile-web-app-title" content="천고">
 <link rel="manifest" href="manifest.webmanifest">
-<link rel="icon" href="icons/icon-192.png?v=10011326">
-<link rel="apple-touch-icon" href="icons/apple-touch-icon.png?v=10011326">
+<link rel="icon" href="icons/icon-192.png?v=10011327">
+<link rel="apple-touch-icon" href="icons/apple-touch-icon.png?v=10011327">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Song+Myung&display=swap">
-<link rel="stylesheet" href="style.css?v=10011326">
+<link rel="stylesheet" href="style.css?v=10011327">
 </head>
 <body>
 <div id="app">
@@ -55,7 +55,7 @@
           <button class="btn ghost" id="bSettings">설정</button>
           <button class="btn ghost" id="bInstall" hidden>앱으로 설치</button>
         </div>
-        <p class="note">장단이 곧 규칙이에요. 소리를 켜고, 무음 모드를 끄고 하세요.<br><small class="credit">배경음악: 「국악 효과음 #151」 주식회사 아이티앤 · 공유마당 · CC BY</small><br><small class="build">판본 10011326</small></p>
+        <p class="note">장단이 곧 규칙이에요. 소리를 켜고, 무음 모드를 끄고 하세요.<br><small class="credit">배경음악: 「국악 효과음 #151」 주식회사 아이티앤 · 공유마당 · CC BY</small><br><small class="build">판본 10011327</small></p>
       </div>
     </div>
   </section>
@@ -67,7 +67,7 @@
       <div class="set"><span>박자 보정<small>일격이 늦게 판정되면 −, 빠르면 +</small></span>
         <div class="step"><button class="btn" id="bOffDn" aria-label="박자 보정 줄이기">−</button><b id="offVal">0ms</b><button class="btn" id="bOffUp" aria-label="박자 보정 늘리기">+</button></div></div>
       <div class="set"><span>조작</span><small class="keys">터치: 왼쪽 끌기 이동 · 오른쪽 긋기 베기 · 길게 빠르게 그으면 돌진베기<br>키보드: ←→ 이동 · Space 점프 · J 베기 · K 대시 · L 연</small></div>
-      <div class="set"><span>배경음악<small>「국악 효과음 #151」 © 주식회사 아이티앤, 공유마당(gongu.copyright.or.kr), CC BY 라이선스. 반복 재생을 위해 끝의 무음을 잘라 이어 붙였습니다.</small></span></div>
+      <div class="set"><span>배경음악<small>「국악 효과음 #151」 © 주식회사 아이티앤, 공유마당(gongu.copyright.or.kr), CC BY 라이선스. 반복 재생을 위해 끝의 여운을 잘라 이어 붙였습니다.</small></span></div>
       <button class="btn pri" id="bSetClose">닫기</button>
     </div>
   </section>
@@ -119,9 +119,9 @@
 
   <div id="toast"></div>
 </div>
-<script src="js/data.js?v=10011326"></script>
-<script src="js/music.js?v=10011326"></script>
-<script src="js/game.js?v=10011326"></script>
+<script src="js/data.js?v=10011327"></script>
+<script src="js/music.js?v=10011327"></script>
+<script src="js/game.js?v=10011327"></script>
 <script>
 if ("serviceWorker" in navigator && (location.protocol === "https:" || location.hostname === "localhost")) {
   window.addEventListener("load", () => navigator.serviceWorker.register("sw.js", { updateViaCache: "none" }).then(r => r.update()).catch(() => {}));
