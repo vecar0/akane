@@ -170,7 +170,7 @@ const Music = (() => {
         case "kill": kung(t, 1.1); gayageum(t + .02, 98, .5, .14); break;                           // 북 + low 가야금 string
         case "clang": kkwaeng(t, .6, 1); kkwaeng(t + .04, .35, 1); break;
         case "dash": daegeum(t, 520, 300, .22); noise(t, 0.14, 2600, "bandpass", 0.12, 0.6); break;  // breathy 대금 swoop
-        case "jump": deok(t, .55); gayageum(t, 330, .25, .07); break;                               // 덕 + plucked 가야금
+        case "jump": deok(t, .55); break;                                                          // 장구 덕
         case "hook": gayageum(t, 440, .35, .08); gayageum(t + .07, 659, .35, .07); break;
         case "shoot": noise(t, 0.12, 900, "lowpass", 0.35); noise(t, 0.05, 3000, "bandpass", 0.2); break;   // 화승총 crack
         case "snipe": noise(t, 0.2, 700, "lowpass", 0.45); noise(t, 0.06, 4000, "bandpass", 0.25); break;
