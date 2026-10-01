@@ -197,8 +197,8 @@ function buildScenery() {
       const [x, n] = k.split(",").map(Number);
       for (let a = 0; a < ys.length;) { let b = a; while (b + 1 < ys.length && ys[b + 1] === ys[b] + 1) b++;
         const grounded = ys[b] + 1 >= LV.h || [...Array(n).keys()].some(k => tileAt(x + k, ys[b] + 1) === 1) || tileAt(x - 1, ys[b] + 1) === 1 || tileAt(x + n, ys[b] + 1) === 1;
-        if (b - a + 1 >= 3 && !grounded) { for (let y = ys[a]; y <= ys[b]; y++) for (let xx = x; xx < x + n; xx++) LV.slabTiles.add(y * LV.w + xx);
-          pillars.push({ i: (rnd() * 3) | 0, x: x * T + n * T / 2, y0: ys[a] * T - 2, y1: (ys[b] + 1) * T, w: n * T + 10, flip: rnd() < .5 }); }
+        if (b - a + 1 >= 3) { for (let y = ys[a]; y <= ys[b]; y++) for (let xx = x; xx < x + n; xx++) LV.slabTiles.add(y * LV.w + xx);
+          pillars.push({ i: (rnd() * 3) | 0, x: x * T + n * T / 2, y0: ys[a] * T - 2, y1: ys[b] + 1 >= LV.h ? LV.h * T + 200 : (ys[b] + 1) * T + (grounded ? 22 : 0), w: n * T + 10, flip: rnd() < .5 }); }
         a = b + 1; }
     }
   }
@@ -958,7 +958,7 @@ function render(rdt) {
   if (SPR.rocks && LV && !LV.scenery) buildScenery();
   const SC = LV.scenery;
   if (SC && SPR.pines) for (const p of SC.pines) { // far pines drift slower than the ground (parallax .75)
-    const f = SPR.pines.f[p.i], px = p.x + cam.x * .25, gy = cam.y + vh / 2 + 30;   // rooted below the screen edge, never floating
+    const f = SPR.pines.f[p.i], px = p.x + cam.x * .25, gy = cam.y + (H * .36 + (LV.h * T - cam.y) * .11 * SCALE) / SCALE + 40;   // moves with the backdrop, base stays below the ground line
     if (px < cam.x - vw / 2 - 300 || px > cam.x + vw / 2 + 300) continue;
     ctx.save(); ctx.translate(px, gy); if (p.flip) ctx.scale(-1, 1); ctx.globalAlpha = pal.night ? p.a * .6 : p.a * 1.6;
     const k = p.h / f.h, im = pal.night ? SPR.pines.inv : SPR.pines.img; ctx.globalAlpha = pal.night ? .5 : .95;
