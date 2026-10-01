@@ -40,11 +40,32 @@ const PAL = [
   { bg: "#252321", tile: "#0b0a0c", fig: "#ece6d8", foe: "#a49d92", text: "#ece6d8", wash: "236,230,216", farA: .22, midA: .35, rim: "rgba(236,230,216,.5)" }
 ];
 const BODY_FONT = getComputedStyle(document.documentElement).getPropertyValue("--f-body");
+const HAT_WEAVE = { "#ece6d8": "rgba(60,56,50,.6)" }; // weave lines on the inverted (night) figure
 const SEAL = "#c3161c", JJOK = "#27466a", JJOK_L = "#5f86b5";
 
 // ---------- images (optional; drawn procedurally when missing) ----------
-const IMG = {};
-for (const k of ["far", "mid"]) { const im = new Image(); im.onload = () => { IMG[k] = im; }; im.src = "assets/" + k + ".webp"; }
+// far/mid: Higgsfield ink-wash panoramas with alpha. tex-*: seamless tiles (seam ratio checked <= 1.3).
+const IMG = {}, PAT = {};
+for (const k of ["tex-paper", "tex-stone", "tex-giwa"]) { const im = new Image(); im.onload = () => { IMG[k] = im; PAT[k] = null; }; im.src = "assets/" + k + ".webp"; }
+function pattern(key, scale) { // world- or screen-anchored repeating pattern, built once per image
+  if (!IMG[key]) return null;
+  if (!PAT[key]) { PAT[key] = ctx.createPattern(IMG[key], "repeat"); PAT[key].setTransform(new DOMMatrix().scale(scale)); }
+  return PAT[key];
+}
+for (const k of ["far", "mid"]) { const im = new Image(); im.onload = () => { IMG[k] = seamlessStrip(im); }; im.src = "assets/" + k + ".webp"; }
+// Make a panorama wrap horizontally: the last 22% is cross-faded into the start, so tiling shows no cut or mirror.
+function seamlessStrip(img) {
+  const w = img.width, h = img.height, ov = Math.round(w * 0.22), P = w - ov;
+  const out = document.createElement("canvas"); out.width = P; out.height = h; const g = out.getContext("2d");
+  g.drawImage(img, 0, 0, P, h, 0, 0, P, h);
+  const t = document.createElement("canvas"); t.width = ov; t.height = h; const tg = t.getContext("2d");
+  tg.drawImage(img, P, 0, ov, h, 0, 0, ov, h);
+  const m = tg.createLinearGradient(0, 0, ov, 0); m.addColorStop(0, "rgba(0,0,0,1)"); m.addColorStop(1, "rgba(0,0,0,0)");
+  tg.globalCompositeOperation = "destination-in"; tg.fillStyle = m; tg.fillRect(0, 0, ov, h);
+  g.globalCompositeOperation = "destination-out"; const m2 = g.createLinearGradient(0, 0, ov, 0); m2.addColorStop(0, "rgba(0,0,0,1)"); m2.addColorStop(1, "rgba(0,0,0,0)"); g.fillStyle = m2; g.fillRect(0, 0, ov, h);
+  g.globalCompositeOperation = "source-over"; g.drawImage(t, 0, 0);
+  return out;
+}
 { const im = new Image(); im.onload = () => $("menu").classList.add("art"); im.src = "assets/title.webp"; }
 
 // ---------- rng ----------
@@ -645,7 +666,10 @@ function render(rdt) {
   ctx.setTransform(1, 0, 0, 1, 0, 0);
   ctx.fillStyle = pal.bg; ctx.fillRect(0, 0, cv.width, cv.height);
   drawBackdrop(pal);
-  ctx.setTransform(1, 0, 0, 1, 0, 0); ctx.fillStyle = paperPat; ctx.fillRect(0, 0, cv.width, cv.height);
+  ctx.setTransform(1, 0, 0, 1, 0, 0);
+  const paperTex = pattern("tex-paper", DPR * 0.9);
+  if (paperTex) { ctx.globalCompositeOperation = "multiply"; ctx.globalAlpha = pal.rim ? .35 : .9; ctx.fillStyle = paperTex; ctx.fillRect(0, 0, cv.width, cv.height); ctx.globalCompositeOperation = "source-over"; ctx.globalAlpha = 1; }
+  else { ctx.fillStyle = paperPat; ctx.fillRect(0, 0, cv.width, cv.height); }
   if (!LV || state === "menu") return;
 
   // rain
@@ -674,24 +698,38 @@ function render(rdt) {
     if (!visible(l.x)) continue;
     ctx.fillStyle = pal.tile; ctx.fillRect(l.x - 8, l.ty * T + 8, 16, 14);
     if (laserOn(l)) {
-      ctx.fillStyle = "rgba(195,22,28,.18)"; ctx.fillRect(l.x - 7, l.y0, 14, l.y1 - l.y0);
+      ctx.fillStyle = "rgba(195,22,28,.08)"; ctx.fillRect(l.x - 12, l.y0, 24, l.y1 - l.y0);
+      ctx.fillStyle = "rgba(195,22,28,.18)"; ctx.fillRect(l.x - 6, l.y0, 12, l.y1 - l.y0);
       ctx.fillStyle = SEAL; ctx.fillRect(l.x - 1.8, l.y0, 3.6, l.y1 - l.y0);
       // twisted straw-rope marks
       ctx.fillStyle = pal.tile; for (let yy = l.y0 + 10; yy < l.y1; yy += 24) { ctx.beginPath(); ctx.moveTo(l.x - 5, yy); ctx.lineTo(l.x + 5, yy + 5); ctx.lineTo(l.x - 5, yy + 9); ctx.lineTo(l.x - 3, yy + 5); ctx.fill(); }
     } else if (laserWarn(l) && Math.floor(performance.now() / 60) % 2) { ctx.fillStyle = "rgba(195,22,28,.55)"; ctx.fillRect(l.x - .6, l.y0, 1.2, l.y1 - l.y0); }
     ctx.fillStyle = laserOn(l) ? SEAL : pal.foe; ctx.fillRect(l.x - 4, l.ty * T + 18, 8, 4);
   }
-  // tiles
+  // tiles: all visible rock in one path, filled once with the stone texture
+  const stone = pattern("tex-stone", 0.5), giwa = pattern("tex-giwa", 0.094), rock = new Path2D();
+  for (let ty = y0; ty <= y1; ty++) for (let tx = x0; tx <= x1; tx++) if (LV.grid[ty * LV.w + tx] === 1) rock.rect(tx * T - .3, ty * T - .3, T + .6, T + .6);
+  ctx.fillStyle = pal.tile; ctx.fill(rock);
+  if (stone) { ctx.globalAlpha = pal.rim ? .8 : 1; ctx.fillStyle = stone; ctx.fill(rock); ctx.globalAlpha = 1; }
   for (let ty = y0; ty <= y1; ty++) for (let tx = x0; tx <= x1; tx++) {
     const v = LV.grid[ty * LV.w + tx], px = tx * T, py = ty * T;
     if (v === 1) {
-      ctx.fillStyle = pal.tile; ctx.fillRect(px - .3, py - .3, T + .6, T + .6);
-      if (tileAt(tx, ty - 1) !== 1) {
+      if (tileAt(tx, ty - 1) !== 1 && giwa) {
+        // giwa eave band along exposed tops, overhanging open ends a little
+        const l = tileAt(tx - 1, ty) !== 1 || tileAt(tx - 1, ty - 1) === 1 ? 3 : 0, r = tileAt(tx + 1, ty) !== 1 || tileAt(tx + 1, ty - 1) === 1 ? 3 : 0;
+        ctx.fillStyle = pal.tile; ctx.fillRect(px - l, py - 4, T + l + r, 12);
+        ctx.save(); ctx.translate(0, py - .8); ctx.fillStyle = giwa; ctx.fillRect(px - l, -3.2, T + l + r, 9); ctx.restore(); // align a cap row to the eave
+        ctx.fillStyle = pal.tile; ctx.fillRect(px - l, py + 5, T + l + r, 2.5);
+        if (pal.rim) { ctx.fillStyle = pal.rim; ctx.fillRect(px - l, py - 4.5, T + l + r, 1); }
+      } else if (tileAt(tx, ty - 1) !== 1) {
         const s = (tx * 73 + ty * 31) % 7;
         ctx.beginPath(); ctx.moveTo(px - .5, py + 2); ctx.lineTo(px + 6 + s, py - 1.5); ctx.lineTo(px + 18, py + .5 - s * .2); ctx.lineTo(px + T + .5, py - 1); ctx.lineTo(px + T + .5, py + 3); ctx.closePath(); ctx.fill();
         if (pal.rim) { ctx.fillStyle = pal.rim; ctx.fillRect(px, py - 1, T, 1.2); }
       }
-      if ((tx * 7 + ty * 3) % 5 === 0) { ctx.fillStyle = `rgba(${pal.wash === "236,230,216" ? "236,230,216" : "255,255,255"},.04)`; ctx.fillRect(px + 3, py + 8, T - 9, 1.5); ctx.fillRect(px + 9, py + 19, T - 14, 1.2); }
+      if (pal.rim && (tileAt(tx - 1, ty) !== 1 || tileAt(tx + 1, ty) !== 1)) { // stone-rubbing speckle on exposed sides
+        ctx.fillStyle = pal.rim; const sx = tileAt(tx - 1, ty) !== 1 ? px : px + T - 1.5;
+        for (let i = 0; i < 4; i++) ctx.fillRect(sx, py + ((tx * 13 + ty * 7 + i * 9) % T), 1.5, 2 + (i % 2) * 2);
+      }
     } else if (v === 2) {
       ctx.fillStyle = pal.tile; ctx.beginPath();
       for (let i = 0; i < 4; i++) { ctx.moveTo(px + i * 8, py + T); ctx.lineTo(px + i * 8 + 3 + (i % 2), py + 11); ctx.lineTo(px + i * 8 + 8, py + T); }
@@ -789,18 +827,15 @@ function drawBackdrop(pal) {
   const camX = cam.x || 0, camY = cam.y || 0;
   const lh = LV ? LV.h * T : 512;
   ctx.setTransform(DPR, 0, 0, DPR, 0, 0);
-  const layers = [["far", .08, pal.farA, .58, .62], ["mid", .22, pal.midA, .78, .7]];
+  const layers = [["far", .08, pal.farA, .58, .66], ["mid", .22, pal.midA, .8, .78]];
   layers.forEach(([key, f, alpha, bottom, hFrac], li) => {
     const yoff = (lh - camY) * f * .5 * SCALE;
     const by = H * bottom + yoff;
     const img = IMG[key];
     ctx.globalAlpha = alpha;
     if (img) {
-      const h = H * hFrac, w = h * img.width / img.height, off = ((camX * f * SCALE) % (2 * w) + 2 * w) % (2 * w);
-      for (let x = -off, i = 0; x < W; x += w, i++) {
-        if (i % 2) { ctx.save(); ctx.translate(x + w, by - h); ctx.scale(-1, 1); ctx.drawImage(img, 0, 0, w, h); ctx.restore(); }
-        else ctx.drawImage(img, x, by - h, w, h);
-      }
+      const h = H * hFrac, w = h * img.width / img.height, off = ((camX * f * SCALE) % w + w) % w;
+      for (let x = -off; x < W; x += w) ctx.drawImage(img, x, by - h, w, h);
     } else if (LV) {
       const r = LV.ridges[li], off = camX * r.f * SCALE;
       const g = ctx.createLinearGradient(0, by - 140, 0, by + 120);
@@ -817,6 +852,12 @@ function drawBackdrop(pal) {
     }
   });
   ctx.globalAlpha = 1;
+  if (LV) { // mist band in front of the city, as in the reference art
+    const my = H * .8 + (lh - camY) * .11 * SCALE, mg = ctx.createLinearGradient(0, my - 90, 0, my + 70);
+    const fog = pal.rim ? "37,35,33" : "236,232,223";
+    mg.addColorStop(0, `rgba(${fog},0)`); mg.addColorStop(.55, `rgba(${fog},${pal.rim ? .55 : .7})`); mg.addColorStop(1, `rgba(${fog},0)`);
+    ctx.fillStyle = mg; ctx.fillRect(0, my - 90, W, 160);
+  }
 }
 function drawTrail() {
   const now = performance.now();
@@ -852,8 +893,15 @@ function drawBeatBar(pal) {
 function drawRunner(x, y, face, col, pl) {
   const cx = x + 9, lean = pl ? Math.max(-4, Math.min(4, pl.vx * 0.012)) : face * 2;
   ctx.strokeStyle = col; ctx.fillStyle = col; ctx.lineCap = "round";
-  // 갓-less topknot head + coat
-  ctx.beginPath(); ctx.arc(cx + lean, y + 6, 4.6, 0, Math.PI * 2); ctx.fill();
+  // head under a 삿갓 (conical bamboo hat) - the silhouette that sets 무명 apart from the 갓-wearing guards
+  const hx = cx + lean, tilt = lean * 0.04;
+  ctx.beginPath(); ctx.arc(hx, y + 7.5, 4, 0, Math.PI * 2); ctx.fill();
+  ctx.save(); ctx.translate(hx, y + 4); ctx.rotate(tilt);
+  ctx.beginPath(); ctx.moveTo(-12, 2.2); ctx.quadraticCurveTo(-6, -1, face * 1.2, -7.5); ctx.quadraticCurveTo(6, -1, 12, 2.2); ctx.quadraticCurveTo(0, 3.6, -12, 2.2); ctx.fill();
+  ctx.strokeStyle = HAT_WEAVE[col] || "rgba(128,120,110,.55)"; ctx.lineWidth = .7;
+  ctx.beginPath(); ctx.moveTo(-7, .9); ctx.lineTo(face * 1.2, -7); ctx.lineTo(7, .9); ctx.moveTo(-3.5, 1.4); ctx.lineTo(face * 1.2, -7); ctx.lineTo(3.5, 1.4); ctx.stroke();
+  ctx.restore(); ctx.strokeStyle = col;
+  // coat
   ctx.beginPath(); ctx.moveTo(cx + lean - 4, y + 10); ctx.lineTo(cx + lean + 4, y + 10); ctx.lineTo(cx + 5 - face * 2, y + 22); ctx.lineTo(cx - 5 - face * 4, y + 23); ctx.closePath(); ctx.fill();
   let a1 = .35, a2 = -.35;
   if (pl) {
