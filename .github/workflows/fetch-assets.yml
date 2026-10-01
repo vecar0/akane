@@ -1,0 +1,33 @@
+name: Fetch generated assets
+
+# Downloads image files listed in assets/sources.json that are not yet in the repo and commits them.
+on:
+  push:
+    branches: [master]
+    paths: [assets/sources.json]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  fetch:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Download missing files
+        run: |
+          jq -r '.files | to_entries[] | "\(.key)\t\(.value)"' assets/sources.json | while IFS=$'\t' read -r path url; do
+            if [ ! -f "$path" ]; then
+              mkdir -p "$(dirname "$path")"
+              curl -fsSL --retry 3 -o "$path" "$url" && echo "fetched $path"
+            fi
+          done
+      - name: Commit
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898283+github-actions[bot]@users.noreply.github.com"
+          git add assets
+          if git diff --cached --quiet; then echo "nothing new"; exit 0; fi
+          git commit -m "Fetch generated assets"
+          git push

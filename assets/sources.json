@@ -1,0 +1,16 @@
+{
+  "_note": "Higgsfield outputs. fetch-assets.yml downloads any missing file listed here into the repo.",
+  "files": {
+    "assets/raw/far.webp": "https://d8j0ntlcm91z4.cloudfront.net/user_3JapKqiFl3bD4aJ6KDAHkR3xQow/hf_20261001_090821_98c862ee-73de-4fc1-bc60-b8e0ef261e79_min.webp",
+    "assets/raw/far.png": "https://d8j0ntlcm91z4.cloudfront.net/user_3JapKqiFl3bD4aJ6KDAHkR3xQow/hf_20261001_090821_98c862ee-73de-4fc1-bc60-b8e0ef261e79.png",
+    "assets/raw/mid.webp": "https://d8j0ntlcm91z4.cloudfront.net/user_3JapKqiFl3bD4aJ6KDAHkR3xQow/hf_20261001_090821_2bce7717-70c7-47cf-a5a1-785aa599a1ce_min.webp",
+    "assets/raw/mid.png": "https://d8j0ntlcm91z4.cloudfront.net/user_3JapKqiFl3bD4aJ6KDAHkR3xQow/hf_20261001_090821_2bce7717-70c7-47cf-a5a1-785aa599a1ce.png",
+    "assets/raw/title.webp": "https://d8j0ntlcm91z4.cloudfront.net/user_3JapKqiFl3bD4aJ6KDAHkR3xQow/hf_20261001_090821_b22dd936-fa3c-4afb-9ff6-2869908f1b3a_min.webp",
+    "assets/raw/icon.png": "https://d8j0ntlcm91z4.cloudfront.net/user_3JapKqiFl3bD4aJ6KDAHkR3xQow/hf_20261001_090821_1e5f2dd6-82be-40d3-bdc1-10160459563d.png",
+    "assets/raw/ref-day.webp": "https://d8j0ntlcm91z4.cloudfront.net/user_3JapKqiFl3bD4aJ6KDAHkR3xQow/hf_20261001_093535_9a269ff3-8562-46b2-a442-ae4bf30d469a_min.webp",
+    "assets/raw/ref-night.webp": "https://d8j0ntlcm91z4.cloudfront.net/user_3JapKqiFl3bD4aJ6KDAHkR3xQow/hf_20261001_093536_fcccc154-fb0c-41a1-a5da-36ada0c5ade9_min.webp",
+    "assets/raw/tex-paper.png": "https://d8j0ntlcm91z4.cloudfront.net/user_3JapKqiFl3bD4aJ6KDAHkR3xQow/hf_20261001_093535_60553933-654d-455a-9baf-6336fafec2ac.png",
+    "assets/raw/tex-stone.png": "https://d8j0ntlcm91z4.cloudfront.net/user_3JapKqiFl3bD4aJ6KDAHkR3xQow/hf_20261001_093535_cd98508e-9635-4185-9b80-7bd33c958c44.png",
+    "assets/raw/tex-giwa.png": "https://d8j0ntlcm91z4.cloudfront.net/user_3JapKqiFl3bD4aJ6KDAHkR3xQow/hf_20261001_093535_eca86630-1d1f-4b81-90ca-fae8e8036db7.png"
+  }
+}
