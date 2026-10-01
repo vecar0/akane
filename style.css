@@ -136,6 +136,3 @@ body, .btn, .set > span, #hud .t { font-weight: 400; }
 #hud .t { font-family: var(--f-head); letter-spacing: .02em; }
 #hud .t { min-width: 4.6em; text-align: right; font-variant-numeric: tabular-nums; }
 .tb span { display: none !important; }
-#cv { transition: filter .12s ease-out; }
-#cv.inverted { filter: invert(1) hue-rotate(180deg); }  /* slow-mo aim: ink reversed like a stone rubbing, red stays red */
-@media (prefers-reduced-motion: reduce) { #cv { transition: none; } }

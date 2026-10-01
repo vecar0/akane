@@ -44,6 +44,8 @@ const PAL = [
 ];
 const BODY_FONT = getComputedStyle(document.documentElement).getPropertyValue("--f-body");
 const HAT_WEAVE = { "#ece6d8": "rgba(60,56,50,.6)" }; // weave lines on the inverted (night) figure
+// slow-mo aim switches to this stone-rubbing palette: dark paper, bone-white ink
+const NIGHT = { bg: "#252321", tile: "#0b0a0c", fig: "#ece6d8", foe: "#a49d92", text: "#ece6d8", wash: "236,230,216", farA: .22, midA: .35, rim: "rgba(236,230,216,.5)", night: true };
 const SEAL = "#c3161c", JJOK = "#27466a", JJOK_L = "#5f86b5";
 
 // ---------- images (optional; drawn procedurally when missing) ----------
@@ -809,7 +811,7 @@ function frame(now) {
   shake = Math.max(0, shake - rdt * 40); flash = Math.max(0, flash - rdt);
   if (toastT > 0) { toastT -= rdt; if (toastT <= 0) $("toast").classList.remove("on"); }
   const inv = !!(P && P.focus && state === "play");
-  if (inv !== cvInverted) { cvInverted = inv; cv.classList.toggle("inverted", inv); }
+  if (inv !== cvInverted) { cvInverted = inv; document.body.classList.toggle("night", inv); }
   render(rdt);
   requestAnimationFrame(frame);
 }
@@ -846,7 +848,7 @@ function makePaper() {
 }
 function render(rdt) {
   if (!paperPat) makePaper();
-  const pal = LV ? LV.pal : PAL[0], k = SCALE * DPR, vw = W / SCALE, vh = H / SCALE;
+  const pal = !LV ? PAL[0] : (P && P.focus && state === "play") ? NIGHT : LV.pal, k = SCALE * DPR, vw = W / SCALE, vh = H / SCALE;
   if (P && LV) {
     const tx = P.x + P.w / 2 + Math.max(-110, Math.min(110, P.vx * 0.22)) + P.face * 24, ty = P.y + P.h / 2 - 24, f = Math.min(1, rdt * 7);
     cam.x += (tx - cam.x) * f; cam.y += (ty - cam.y) * f;
@@ -965,7 +967,7 @@ function render(rdt) {
       let n = 1; while (tileAt(tx + n, ty) === 3) n++;
       const i = LV.ledgeStone ? P2.ledge : P2.plank, f = SPR.props2 && SPR.props2.f[i];
       if (f) { const segN = Math.max(1, Math.round(n / 4)), segW = n * T / segN, hh = segW * f.h / f.w;
-        for (let k = 0; k < segN; k++) ctx.drawImage(LV.pal.night ? SPR.props2.inv : SPR.props2.img, f.x, f.y, f.w, f.h, px + k * segW - 2, py - 3, segW + 4, Math.min(hh, LV.ledgeStone ? 30 : 26)); }
+        for (let k = 0; k < segN; k++) ctx.drawImage(pal.night ? SPR.props2.inv : SPR.props2.img, f.x, f.y, f.w, f.h, px + k * segW - 2, py - 3, segW + 4, Math.min(hh, LV.ledgeStone ? 30 : 26)); }
       else { ctx.fillStyle = pal.tile; ctx.fillRect(px, py, n * T, 6); }
     } else if (v === 2 && SPR.objects) {
       const f = SPR.objects.f[OBJ.thorns];
