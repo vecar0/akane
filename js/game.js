@@ -29,11 +29,11 @@ const MNAME = ["초입", "연비", "망루", "승천", "결전"];   // 初入 �
 const MADANG = [
   // "w" entries draw from wall chunks (climb / wall-jump), so every 마당 has walls to run
   // "w" entries draw from wall chunks, "m" from multi-floor chunks with ledges
-  { jd: "jinyang",   line: "북은 아직 멀리서 울린다.",          tiers: [0, "m1", "w0", 1, "m1", "w1", 1] },
-  { jd: "jungmori",  line: "연줄 위로, 바람을 타라.",            tiers: ["m1", "w1", 1, "m1", "w0", 1, "m2"] },
-  { jd: "jajinmori", line: "포수의 눈은 장단을 놓치지 않는다.",  tiers: [1, "m2", "w1", 2, "m1", "w2", 2] },
-  { jd: "hwimori",   line: "오를수록 장단은 빨라진다.",          tiers: ["w1", "m2", 2, "w2", "m1", 1, "w2"] },
-  { jd: "danmori",   line: "천고가 가깝다.",                     tiers: ["m2", 2, "w2", "m2", 2, "w1", 2] }
+  { jd: "jinyang",   line: "북은 아직 멀리서 울린다.",          tiers: [0, "m1", "w0", 1, "m1", "w1", 1, "m1", 1] },
+  { jd: "jungmori",  line: "연줄 위로, 바람을 타라.",            tiers: ["m1", "w1", 1, "m1", "w0", 1, "m2", "w1", "m1"] },
+  { jd: "jajinmori", line: "포수의 눈은 장단을 놓치지 않는다.",  tiers: [1, "m2", "w1", 2, "m1", "w2", 2, "m2", 2] },
+  { jd: "hwimori",   line: "오를수록 장단은 빨라진다.",          tiers: ["w1", "m2", 2, "w2", "m1", 1, "w2", "m2", "w2"] },
+  { jd: "danmori",   line: "천고가 가깝다.",                     tiers: ["m2", 2, "w2", "m2", 2, "w1", 2, 2, "m2"] }
 ];
 const PAL = [
   { bg: "#e6e2d7", tile: "#1c1b1f", fig: "#141317", foe: "#55525b", text: "#1c1b1f", wash: "23,22,26", farA: .36, midA: .5, rim: null },
@@ -190,14 +190,14 @@ function buildScenery() {
     for (let y = 0; y < LV.h; y++) for (let x = 0; x < LV.w; x++) {
       if (tileAt(x, y) !== 1 || tileAt(x - 1, y) === 1) continue;
       let n = 0; while (tileAt(x + n, y) === 1 && x + n < LV.w) n++;
-      if (n <= 3 && x > 0 && tileAt(x - 1, y) === 0 && tileAt(x + n, y) === 0) { const k = x + "," + n; (spans.get(k) || spans.set(k, []).get(k)).push(y); }
+      if (n <= 3 && x > 0 && tileAt(x - 1, y) !== 1 && tileAt(x + n, y) !== 1) { const k = x + "," + n; (spans.get(k) || spans.set(k, []).get(k)).push(y); }
       x += n - 1;
     }
     for (const [k, ys] of spans) {
       const [x, n] = k.split(",").map(Number);
       for (let a = 0; a < ys.length;) { let b = a; while (b + 1 < ys.length && ys[b + 1] === ys[b] + 1) b++;
         if (b - a + 1 >= 3) { for (let y = ys[a]; y <= ys[b]; y++) for (let xx = x; xx < x + n; xx++) LV.slabTiles.add(y * LV.w + xx);
-          pillars.push({ i: (rnd() * 3) | 0, x: x * T + n * T / 2, y0: ys[a] * T - 2, y1: (ys[b] + 1) * T, w: n * T + 10, flip: rnd() < .5 }); }
+          pillars.push({ i: (rnd() * 3) | 0, x: x * T + n * T / 2, y0: ys[a] * T - 2, y1: ys[b] + 1 >= LV.h ? LV.h * T + 200 : (ys[b] + 1) * T, w: n * T + 10, flip: rnd() < .5 }); }
         a = b + 1; }
     }
   }
@@ -332,6 +332,12 @@ function buildMadangMap(seed, m) {
         c[y][x] = m === 0 ? "g" : m === 1 ? (r < .75 ? "g" : "s") : m === 2 ? (r < .5 ? "g" : r < .75 ? "h" : "s") : (r < .4 ? "g" : r < .7 ? "h" : "s");
       } else if (ch === "*") c[y][x] = rng() < .5 + .12 * m ? "d" : " ";
       else if ((ch === "L" || ch === "M") && rng() < .5) c[y][x] = ch === "L" ? "M" : "L";
+    }
+    // extra guard on open ground in about half the pieces
+    if (rng() < .45 + .08 * m) for (let tries = 0; tries < 8; tries++) {
+      const x = 3 + ((rng() * (c[0].length - 6)) | 0);
+      let y = 2; while (y < 15 && c[y][x] === " ") y++;
+      if (y < 15 && c[y][x] === "#" && c[y - 1][x] === " " && c[y - 2][x] === " " && !c[y - 1].some(ch => "gshd".includes(ch))) { c[y - 1][x] = m >= 2 && rng() < .35 ? "h" : "g"; break; }
     }
     for (let y = 0; y < 16; y++) rows[y] += c[y].join("");
   }
@@ -967,9 +973,10 @@ function render(rdt) {
   if (SC && SPR.pillars) for (const c of SC.pillars) if (Math.abs(c.x - cam.x) < vw / 2 + c.w) { // stacked pillar segments, art width kept
     const f = SPR.pillars.f[c.i], segH = c.w * f.h / f.w, img = pal.night ? SPR.pillars.inv : SPR.pillars.img;
     ctx.save(); ctx.beginPath(); ctx.rect(c.x - c.w, c.y0, c.w * 2, c.y1 - c.y0 + 4); ctx.clip();
-    ctx.filter = "brightness(.8) contrast(1.15)";
-    for (let y = c.y0, k = 0; y < c.y1; y += segH - 2, k++) { ctx.save(); ctx.translate(c.x, y); if ((k + (c.flip ? 1 : 0)) % 2) ctx.scale(-1, 1); ctx.drawImage(img, f.x, f.y, f.w, f.h, -c.w / 2, 0, c.w, segH); ctx.restore(); }
-    ctx.restore(); ctx.filter = "none"; ctx.globalAlpha = 1;
+    ctx.filter = "brightness(.72) contrast(1.15)"; ctx.globalAlpha = pal.night ? .45 : .88;
+    for (let y = c.y0, k = 0; y < c.y1; y += segH - 10, k++) { ctx.save(); ctx.translate(c.x, y); if ((k + (c.flip ? 1 : 0)) % 2) ctx.scale(-1, 1); ctx.drawImage(img, f.x, f.y, f.w, f.h, -c.w / 2, 0, c.w, segH); ctx.restore(); }
+    ctx.filter = "none"; ctx.globalAlpha = 1;
+    ctx.restore();
   }
   if (SC) for (const c of SC.back) if (Math.abs(c.x - cam.x) < vw / 2 + c.h * 2 + 200) drawCliff(c, pal.night ? SPR.rocks.inv : SPR.rocks.img, pal.night ? .25 : .45);
   // hints
@@ -1479,9 +1486,9 @@ let installEvt = null;
 window.addEventListener("beforeinstallprompt", e => { e.preventDefault(); installEvt = e; $("bInstall").hidden = false; });
 $("bInstall").addEventListener("click", async () => { if (!installEvt) return; installEvt.prompt(); try { await installEvt.userChoice; } catch (e) {} installEvt = null; $("bInstall").hidden = true; });
 const standalone = matchMedia("(display-mode: standalone)").matches || matchMedia("(display-mode: fullscreen)").matches || navigator.standalone;
-if (/iPhone|iPad|iPod/.test(navigator.userAgent) && !standalone) $("installNote").hidden = false;
 
-if (location.hash === "#debug") window.__dbg = { tp(tx, ty) { P.x = tx * T + 7; P.y = (ty + 1) * T - 30; P.vx = P.vy = 0; }, get state() { return state; }, get P() { return P; }, get LV() { return LV; }, get state2() { return state; } };
+
+if (location.hash === "#debug") window.__dbg = { tp(tx, ty) { P.x = tx * T + 7; P.y = (ty + 1) * T - 30; P.vx = P.vy = 0; }, get state() { return state; }, get P() { return P; }, get LV() { return LV; }, get state2() { return state; }, get SC() { return LV.scenery; } };
 resize();
 toMenu();
 P = null; cam.x = 600; cam.y = 300;
