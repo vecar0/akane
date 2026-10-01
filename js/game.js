@@ -83,6 +83,7 @@ const HERO = { idle: 0, run: [1, 2, 3, 4, 5, 6, 7], rise: 8, wall: 9, slash: 10,
 const HERO_AX = { 0: .5, 9: .5, 10: .4, 11: .55, 13: .45, 14: .55, 15: .45 };   // body centre as a fraction of frame width
 const FOE = { g: [0, 1], s: [2, 3], d: [4, 5], h: [6, 7] };
 const FOE_AX = { 0: .5, 1: .3, 2: .45, 3: .3, 6: .45, 7: .45 };
+const F2 = { mudang: 0, mudangCast: 1, reaper: 2, reaperSmoke: 3, boss: 4, bossUp: 5, bossSlam: 6, bossKneel: 7, ward: 8 };   // foes2 sheet
 const FX = { slashA: 0, slashARed: 1, slashB: 2, slashBRed: 3, burst: 4, spray: 5, seal: 6, drops: 7, pool: 8 };
 const HUD = { bigDrum: 0, struck: 1, drum: 2, aimLine: 3, reticle: 4, rope: 5, spark: 6, smoke: 7, dust: 8 }; // hudsolid for 0-5, hud (soft) for 6-8
 // props sheet: geumjul rope, enemy aim stroke, dash reticle, then set dressing
@@ -122,11 +123,38 @@ const CHOSIK = [
   { id: "gangta", name: "고진", han: "鼓震", desc: "일격의 범위가 넓어진다", icon: 305 },
   { id: "geompung", name: "검풍", han: "劍風", desc: "벨 때마다 검기가 날아간다", icon: 306 },
   { id: "bulsa", name: "불사", han: "不死", desc: "숨이 다할 때 한 번 되살아난다", icon: 307 },
-  { id: "chukji", name: "축지", han: "縮地", desc: "땅에서의 대시가 두 배 멀리 간다", icon: 308 }
+  { id: "chukji", name: "축지", han: "縮地", desc: "땅에서의 대시가 두 배 멀리 간다", icon: 308 },
+  // 조합 비급: offered once both halves are learned
+  { id: "ssangryong", name: "쌍룡검", han: "雙龍劍", desc: "보통 베기도 두 번 벤다", combo: ["ssang", "yeongyeok"] },
+  { id: "nodo", name: "질풍노도", han: "疾風怒濤", desc: "대시에 닿은 적은 일격처럼 쓰러진다", combo: ["jilpung", "chukji"] },
+  { id: "cheonra", name: "천라지망", han: "天羅地網", desc: "조준하는 동안 날아든 탄은 쏜 자에게 돌아간다", combo: ["bantan", "jangmak"] },
+  { id: "pilsal", name: "일격필살", han: "一擊必殺", desc: "일격 때 둘레의 탄이 모두 흩어진다", combo: ["eot", "gangta"] },
+  { id: "bicheon", name: "비천", han: "飛天", desc: "공중 대시를 쓰면 공중 도약이 되살아난다", combo: ["biyeon", "idan"] },
+  { id: "bulmyeol", name: "불멸", han: "不滅", desc: "호신부가 마당마다 두 번 탄다", combo: ["bulsa", "hosin"] },
+  { id: "hyeolpung", name: "혈풍", han: "血風", desc: "혈로가 다섯 명마다 숨을 준다", combo: ["hyeol", "heuphon"] },
+  { id: "yeonbi", name: "연비어약", han: "鳶飛魚躍", desc: "연을 놓으면 잠시 무적, 대시가 바로 찬다", combo: ["baram", "yeonsa"] },
+  { id: "gwisin", name: "귀신검", han: "鬼神劍", desc: "일격으로 날린 검풍은 적을 단번에 꿰뚫는다", combo: ["gwigeom", "geompung"] }
 ];
+for (const c of CHOSIK) if (c.combo) { c.icon = CHOSIK.find(o => o.id === c.combo[0]).icon; c.icon2 = CHOSIK.find(o => o.id === c.combo[1]).icon; }
+// 징조: one rule chosen for each new turn of the tower, harder ones pay back
+const OMENS = [
+  { id: "angae", name: "안개", han: "霧", desc: "앞이 잘 보이지 않는다", gift: "비급 하나 더", bonus: true },
+  { id: "geupbak", name: "급박", han: "急拍", desc: "장단이 한층 빨라진다", gift: "숨 하나 (최대 5)" },
+  { id: "yeokpung", name: "역풍", han: "逆風", desc: "앞에서 바람이 밀어낸다", gift: "비급 하나 더", bonus: true },
+  { id: "hyeolmaeng", name: "피의 맹세", han: "血盟", desc: "적은 일격으로만 쓰러진다", gift: "다섯을 벨 때마다 숨 하나" },
+  { id: "gyeopjul", name: "겹금줄", han: "重繩", desc: "금줄이 훨씬 많아진다", gift: "비급 하나 더", bonus: true },
+  { id: "gunse", name: "군세", han: "軍勢", desc: "적이 더 많이 나온다", gift: "비급 하나 더", bonus: true },
+  { id: "goyo", name: "고요", han: "靜", desc: "장단판의 북이 보이지 않는다", gift: "비급 하나 더", bonus: true },
+  { id: "pyeong", name: "평온", han: "平", desc: "아무 일도 일어나지 않는다", gift: "보상 없음", calm: true }
+];
+const SEASON = [{ name: "여름", line: "장맛비가 그치지 않는다." }, { name: "가을", line: "단풍이 진다. 천고가 다시 울린다." }, { name: "겨울", line: "눈이 내린다. 장단이 얼어붙듯 빠르다." }, { name: "봄", line: "꽃잎이 날린다. 탑은 다시 처음이다." }];
 const has = id => !!(run && run.perks && run.perks.includes(id));
 const baseAir = () => (has("biyeon") ? 2 : 1);
 const cyc = () => (run && mode !== "tutorial" ? run.cycle || 0 : 0);   // how many times 천고 has been cut
+const omen = id => !!(run && mode !== "tutorial" && run.omen === id);
+const season = () => { const c = cyc(); return c ? ((c - 1) % 3) + 1 : 0; };   // 여름 비, then 가을 · 겨울 · 봄 in turn
+const ghostly = e => e.type === "r" && e.ph === "gone";
+const bossAlive = () => enemies.some(e => e.alive && e.type === "b");
 const maxv = () => MAXV * (has("jilpung") ? 1.18 : 1);
 const strikeWin = () => STRIKE_WIN * (has("eot") ? 1.6 : 1);
 const PINE_N = 5, DEATH_SEAL = 5;   // pines sheet: five misty pines, then the 絶命 seal
@@ -135,7 +163,7 @@ const CAL = { title: 0, death: 1, madang: [2, 3, 4, 5, 6], end: 7, clear: 8 };  
 const PROP = { rope: 0, aim: 1, reticle: 2, pine: 3, stoneLantern: 4, jars: 5, banner: 6, sotdae: 7, palisade: 8 };
 const DRESS = [[PROP.pine, 74, 3], [PROP.stoneLantern, 34, 2], [PROP.jars, 26, 1], [PROP.banner, 80, 3], [PROP.sotdae, 84, 3], [PROP.palisade, 28, 1]]; // [frame, world height, headroom tiles]
 const OBJ = { lanternOn: 0, lanternOff: 1, kite: 2, thorns: 3, seal: 4, emitter: 5, slash: 6, slashRed: 7, splat: 8 };
-for (const n of ["hero", "hero2", "foes", "objects", "ui", "fx", "hud", "hudsolid", "props", "props2", "rocks", "pines", "slabs", "pillars", "rogue", "roguea", "rogue2", "rogue3", "rogue4"]) {
+for (const n of ["hero", "hero2", "foes", "objects", "ui", "fx", "hud", "hudsolid", "props", "props2", "rocks", "pines", "slabs", "pillars", "rogue", "roguea", "rogue2", "rogue3", "rogue4", "foes2"]) {
   Promise.all([
     fetch(`assets/sprites/${n}.json`).then(r => r.json()),
     new Promise((res, rej) => { const im = new Image(); im.onload = () => res(im); im.onerror = rej; im.src = `assets/sprites/${n}.webp`; })
@@ -375,13 +403,14 @@ const START_PIECE = (() => { const r = []; for (let y = 0; y < 16; y++) r.push(y
 const END_PIECE = (() => { const r = []; for (let y = 0; y < 16; y++) r.push(y >= 12 ? "########" : y === 11 ? "     E  " : "        "); return r; })();
 // procedural piece: flat ground with a random run of features, each kept within jump reach
 // (gaps <= 5 tiles, steps <= 2 up, pillars 3 tall); edges stay flat ground so pieces always join
-function genPiece(rng, m) {
+function genPiece(rng, m, ropes) {
   const W = 16 + ((rng() * 11) | 0), c = [];
   for (let y = 0; y < 16; y++) c.push(Array.from({ length: W }, () => (y >= 12 ? "#" : " ")));
   const put = (x, y, ch) => { if (x >= 0 && x < W && y >= 0 && y < 16) c[y][x] = ch; };
   let x = 3 + ((rng() * 2) | 0);
   while (x < W - 5) {
-    const r = rng(), room = W - 3 - x;
+    let r = rng(); const room = W - 3 - x;
+    if (ropes && r > .62 && room >= 4) r = .8;                   // 겹금줄: rock and open ground give way to more ropes
     if (r < .24 && room >= 5) {                                   // gap over thorns, kite above the wide ones
       const gw = Math.min(room - 2, 2 + ((rng() * (m >= 2 ? 4 : 3)) | 0));
       for (let k = 0; k < gw; k++) { for (let y = 12; y < 16; y++) put(x + k, y, " "); put(x + k, 15, "^"); }
@@ -401,7 +430,7 @@ function genPiece(rng, m) {
       for (let y = 9; y < 12; y++) { put(x, y, "#"); put(x + 1, y, "#"); }
       if (rng() < .4) put(x, 8, "?");
       x += 3 + ((rng() * 2) | 0);
-    } else if (r < .84 && m >= 1 && room >= 4) {                  // 금줄 hung from a short roof
+    } else if (r < .84 && (m >= 1 || ropes) && room >= 4) {                  // 금줄 hung from a short roof
       for (let k = -1; k <= 1; k++) put(x + 1 + k, 3, "#");
       put(x + 1, 4, rng() < .5 ? "L" : "M");
       x += 4;
@@ -412,8 +441,10 @@ function genPiece(rng, m) {
   }
   return c;
 }
-function buildMadangMap(seed, m) {
-  const rng = mulberry(seed ^ Math.imul(m + 1, 0x9E3779B1));
+// boss arena before the last drum: a long floor with two ledges to dodge the 수문장's ground waves
+const ARENA_PIECE = (() => { const r = []; for (let y = 0; y < 16; y++) r.push(y >= 12 ? "#".repeat(26) : y === 11 ? " C" + " ".repeat(16) + "b" + " ".repeat(7) : y === 9 ? "     ====      ====       " : " ".repeat(26)); return r; })();
+function buildMadangMap(seed, m, cy = 0, om = null) {
+  const rng = mulberry(seed ^ Math.imul(m + 1, 0x9E3779B1) ^ Math.imul(cy, 0x85EBCA6B));   // each turn of the tower lays out fresh
   const rows = START_PIECE.slice();
   const used = new Set();
   const tiers = MADANG[m].tiers.slice();
@@ -425,7 +456,7 @@ function buildMadangMap(seed, m) {
     if (!pool.length) pool = CHUNKS.map((c, i) => i).filter(fits);
     const ci = pool[(rng() * pool.length) | 0];
     let c;
-    if (rng() < .4) c = genPiece(rng, m);                          // about 40% of pieces are generated fresh
+    if (rng() < (om === "gyeopjul" ? .7 : .4)) c = genPiece(rng, m, om === "gyeopjul");                          // about 40% of pieces are generated fresh
     else { used.add(ci); c = CHUNKS[ci].map.map(r => r.split("")); if (rng() < .5) c.forEach(row => row.reverse()); }   // handmade, sometimes mirrored
     if (c[11][1] === " ") c[11][1] = "C";
     for (let y = 0; y < 16; y++) for (let x = 0; x < c[y].length; x++) {
@@ -433,17 +464,19 @@ function buildMadangMap(seed, m) {
       if (ch === "?") {
         const r = rng();
         c[y][x] = m === 0 ? "g" : m === 1 ? (r < .75 ? "g" : "s") : m === 2 ? (r < .5 ? "g" : r < .75 ? "h" : "s") : (r < .4 ? "g" : r < .7 ? "h" : "s");
+        if (cy >= 1) { const r2 = rng(); if (r2 < .14) c[y][x] = "m"; else if (cy >= 2 && r2 < .28) c[y][x] = "r"; }   // 무당 from the second turn, 저승사자 from the third
       } else if (ch === "*") c[y][x] = rng() < .5 + .12 * m ? "d" : " ";
       else if ((ch === "L" || ch === "M") && rng() < .5) c[y][x] = ch === "L" ? "M" : "L";
     }
     // extra guard on open ground in about half the pieces
-    if (rng() < .45 + .08 * m) for (let tries = 0; tries < 8; tries++) {
+    for (let extra = om === "gunse" ? 2 : 1; extra > 0; extra--) if (rng() < .45 + .08 * m + (om === "gunse" ? .35 : 0)) for (let tries = 0; tries < 8; tries++) {
       const x = 3 + ((rng() * (c[0].length - 6)) | 0);
       let y = 2; while (y < 15 && c[y][x] === " ") y++;
-      if (y < 15 && c[y][x] === "#" && c[y - 1][x] === " " && c[y - 2][x] === " " && !c[y - 1].some(ch => "gshd".includes(ch))) { c[y - 1][x] = m >= 2 && rng() < .35 ? "h" : "g"; break; }
+      if (y < 15 && c[y][x] === "#" && c[y - 1][x] === " " && c[y - 2][x] === " " && !c[y - 1].some(ch => "gshdmr".includes(ch))) { c[y - 1][x] = m >= 2 && rng() < .35 ? "h" : "g"; break; }
     }
     for (let y = 0; y < 16; y++) rows[y] += c[y].join("");
   }
+  if (m === 4) for (let y = 0; y < 16; y++) rows[y] += ARENA_PIECE[y];
   for (let y = 0; y < 16; y++) rows[y] += END_PIECE[y];
   // scatter extra kites through open sky so the 연 line can carry you across most of the 마당
   const W = rows[0].length, grid = rows.map(r => r.split(""));
@@ -471,7 +504,7 @@ function loadMap(map, pal, hints) {
     else if (ch === "=") grid[y * w + x] = 3;   // ledge: stand on it, jump up through it
     else if (ch === "P") lv.start = { x: x * T + 7, y: (y + 1) * T - 30 };
     else if (ch === "E") lv.exit = { x: x * T + 1, y: (y - 1) * T + 6, w: T - 2, h: 2 * T - 6 };
-    else if ("gsdh".includes(ch)) lv.defs.push({ type: ch, tx: x, ty: y, id: id++ });
+    else if ("gsdhmrb".includes(ch)) lv.defs.push({ type: ch, tx: x, ty: y, id: id++ });
     else if (ch === "o") lv.points.push({ x: x * T + 16, y: y * T + 16, sway: Math.random() * 6 });
     else if (ch === "C") lv.cps.push({ x: x * T + 16, y: (y + 1) * T, on: false });
     else if (ch === "L" || ch === "M") lv.lasers.push({ tx: x, ty: y, phase: ch === "L" ? 0 : 2 });
@@ -573,6 +606,9 @@ function spawnEnemies() {
   enemies = LV.defs.filter(d => !deadIds.has(d.id)).map(d => {
     if (d.type === "d") return { hp, maxHp: hp, id: d.id, type: "d", x: d.tx * T + 2, y: d.ty * T + 6, w: 28, h: 20, vx: 0, vy: 0, hx: d.tx * T + 2, hy: d.ty * T + 6, t: Math.random() * 6, alive: true };
     if (d.type === "h") return { hp, maxHp: hp, id: d.id, type: "h", x: d.tx * T + 4, y: (d.ty + 1) * T - 42, w: 24, h: 42, face: -1, vx: 0, alive: true };
+    if (d.type === "m") return { hp, maxHp: hp, id: d.id, type: "m", x: d.tx * T + 5, y: (d.ty + 1) * T - 44, w: 22, h: 44, face: -1, castAt: songPos + 1 + Math.random(), castT: 0, alive: true };
+    if (d.type === "r") return { hp, maxHp: hp, id: d.id, type: "r", x: d.tx * T + 5, y: (d.ty + 1) * T - 46, w: 22, h: 46, face: -1, ph: "idle", nextAt: songPos + 1.5 + Math.random(), fade: 1, alive: true };
+    if (d.type === "b") { const bh = 8 + 3 * cyc(); return { hp: bh, maxHp: bh, id: d.id, type: "b", x: d.tx * T - 6, y: (d.ty + 1) * T - 84, w: 44, h: 84, face: -1, vx: 0, act: null, nextAt: 0, n: (run && run.seed || 0) % 4, alive: true }; }
     return { hp, maxHp: hp, id: d.id, type: d.type, x: d.tx * T + 5, y: (d.ty + 1) * T - 42, w: 22, h: 42, face: -1, fireAt: null, aimFrom: 0, readyAt: songPos + 0.6 + Math.random() * 0.8, tx: 0, ty: 0, alive: true };
   });
 }
@@ -588,17 +624,18 @@ function newRun(daily) {
 function continueRun() {
   const s = store.get("run", null); if (!s) return;
   run = s; mode = s.daily ? "daily" : "run";
-  if (s.choosing) showChoice(s.choosing); else showInterlude();
+  if (s.choosing === "omen") showOmen(); else if (s.choosing) showChoice(s.choosing); else showInterlude();
 }
 function saveRun() { if (run && mode !== "tutorial") store.set("run", run); }
 function showInterlude() {
   state = "interlude";
   const md = MADANG[run.m], jd = Music.JANGDAN[md.jd];
   $("iOrd").textContent = MNAME[run.m];
-  $("iLine").textContent = run.m === 0 && run.cycle ? "천고가 다시 울린다. 장단이 빨라졌다." : run.m === 4 ? "끝에서 천고를 베어라." : md.line;
-  $("iMeta").textContent = ((run.cycle || 0) ? `${run.cycle + 1}번째 판 · ` : "") + ORD[run.m] + " 마당 · " + jd.name + " · " + "●".repeat(run.breath) + "○".repeat(Math.max(0, 3 - run.breath)) + (run.daily ? " · 오늘의 판" : "");
+  const om = OMENS.find(o => o.id === run.omen);
+  $("iLine").textContent = run.m === 0 && run.cycle ? SEASON[season()].line : run.m === 4 ? "수문장을 넘어 천고를 베어라." : md.line;
+  $("iMeta").textContent = ((run.cycle || 0) ? `${run.cycle + 1}번째 판 · ${SEASON[season()].name} · ` : "") + ORD[run.m] + " 마당 · " + jd.name + " · " + "●".repeat(run.breath) + "○".repeat(Math.max(0, 3 - run.breath)) + (om && !om.calm ? " · 징조 " + om.name : "") + (run.daily ? " · 오늘의 판" : "");
   $("interlude").classList.remove("night");
-  loadMap(buildMadangMap(run.seed, run.m), PAL[run.m]); LV.ledgeStone = run.m >= 3;
+  loadMap(buildMadangMap(run.seed, run.m, run.cycle || 0, run.omen), PAL[run.m]); LV.ledgeStone = run.m >= 3;
   if (run.m === 4 && LV.exit) { // the last 마당 ends at 천고 itself instead of a seal
     LV.drums = [{ id: 0, big: true, x: LV.exit.x + LV.exit.w / 2, y: LV.exit.y + LV.exit.h, w: 60, h: 80 }]; LV.exit = null; LV.gate = null;
   }
@@ -615,9 +652,9 @@ function enterMadang() {
     cpSave = { x: c.x - 9, y: c.y - 30.01, dead: new Set(deadIds), idx: run.cp };
   }
   const s = cpSave || LV.start;
-  P = newPlayer(s.x, s.y); run.hosinUsed = false; run.cutDrums = run.cutDrums || [];
+  P = newPlayer(s.x, s.y); run.hosinUsed = 0; run.cutDrums = run.cutDrums || [];
   bullets = []; parts = []; ghosts = []; seals = []; vfx = [];
-  Music.start(MADANG[run.m].jd, run.seed + run.m, 1 + .08 * (run.cycle || 0));
+  Music.start(MADANG[run.m].jd, run.seed + run.m, (1 + .08 * (run.cycle || 0)) * (omen("geupbak") ? 1.15 : 1));
   songPos = Music.pos(); spawnEnemies();
   cam.x = P.x; cam.y = P.y;
   setHud(); showScreen(null); state = "play";
@@ -646,8 +683,8 @@ function respawn() {
 }
 function die() {
   if (state !== "play" || (P.invT || 0) > 0) return;
-  if (has("hosin") && !run.hosinUsed && P.y < LV.h * T) { // talisman burns instead of the swordsman
-    run.hosinUsed = true; P.invT = 1.2; flash = .3; shake = 8; Music.sfx("clang"); toast("호신부가 타올랐다");
+  if (has("hosin") && (run.hosinUsed || 0) < (has("bulmyeol") ? 2 : 1) && P.y < LV.h * T) { // talisman burns instead of the swordsman
+    run.hosinUsed = (run.hosinUsed || 0) + 1; P.invT = 1.2; flash = .3; shake = 8; Music.sfx("clang"); toast("호신부가 타올랐다");
     addFx("fx", FX.burst, P.x + P.w / 2, P.y + P.h / 2, 70, { life: .5 }); return;
   }
   state = "dead"; deathT = 0; run.deaths++;
@@ -671,19 +708,26 @@ function madangClear() {
   state = "result";
   setTimeout(() => showChoice("madang"), 700);
 }
-function showChoice(kind) {   // kind: "madang" after a cleared 마당, "cycle" after cutting 천고
+function showChoice(kind) {   // kind: "madang" after a cleared 마당, "cycle" after cutting 천고, "bonus" as an omen's gift
   const done = () => {
     run.choosing = null;
-    if (kind === "cycle") { run.cycle = (run.cycle || 0) + 1; run.m = 0; run.breath = Math.max(run.breath, 3); run.cp = -1; run.dead = []; run.cutDrums = []; }
+    if (kind === "cycle") { // a new turn of the tower: next, its omen
+      run.cycle = (run.cycle || 0) + 1; run.m = 0; run.breath = Math.max(run.breath, 3); run.cp = -1; run.dead = []; run.cutDrums = []; run.omen = null;
+      run.choosing = "omen"; saveRun(); showOmen(); return;
+    }
     saveRun(); Music.stop(); showInterlude();
   };
-  const rnd = mulberry((run.seed ^ (run.m * 7919) ^ ((run.cycle || 0) * 104729) ^ ((run.perks || []).length * 31337)) >>> 0), pool = CHOSIK.filter(c => c.repeat ? run.breath < 5 : !(run.perks || []).includes(c.id));
-  const picks = []; while (picks.length < 3 && pool.length) picks.push(pool.splice((rnd() * pool.length) | 0, 1)[0]);
-  if (!picks.length) { toast("익힐 비급이 더 없다"); done(); return; }   // every 초식 learned and breath full
+  const owned = id => (run.perks || []).includes(id);
+  const rnd = mulberry((run.seed ^ (run.m * 7919) ^ ((run.cycle || 0) * 104729) ^ ((run.perks || []).length * 31337)) >>> 0), pool = CHOSIK.filter(c => !c.combo && (c.repeat ? run.breath < 5 : !owned(c.id)));
+  const combos = CHOSIK.filter(c => c.combo && !owned(c.id) && c.combo.every(owned));
+  const picks = []; if (combos.length) picks.push(combos[(rnd() * combos.length) | 0]);   // a ready combination always shows up first
+  while (picks.length < 3 && pool.length) picks.push(pool.splice((rnd() * pool.length) | 0, 1)[0]);
+  if (!picks.length) { toast("익힐 비급이 더 없다"); done(); return; }   // every 비급 learned and breath full
+  $("chTitle").textContent = "비급을 고르라";
   const box = $("cards"); box.innerHTML = "";
   for (const c of picks) {
-    const b = document.createElement("button"); b.className = "card";
-    b.innerHTML = `<i class="ic" style="--ic:var(--chosik-${c.icon})"></i><b class="nm"></b><span class="han"></span><span class="ds"></span>`;
+    const b = document.createElement("button"); b.className = "card" + (c.combo ? " combo" : "");
+    b.innerHTML = (c.combo ? `<i class="ic duo" style="--ic:var(--chosik-${c.icon});--ic2:var(--chosik-${c.icon2})"></i><em class="tag">조합 · ${c.combo.map(id => CHOSIK.find(o => o.id === id).name).join(" + ")}</em>` : `<i class="ic" style="--ic:var(--chosik-${c.icon})"></i>`) + `<b class="nm"></b><span class="han"></span><span class="ds"></span>`;
     b.querySelector(".nm").textContent = c.name; b.querySelector(".han").textContent = c.han; b.querySelector(".ds").textContent = c.desc;
     b.addEventListener("click", () => {
       run.perks = run.perks || [];
@@ -692,7 +736,28 @@ function showChoice(kind) {   // kind: "madang" after a cleared 마당, "cycle" 
     });
     box.appendChild(b);
   }
-  $("chMadang").textContent = kind === "cycle" ? `천고를 베었다 · ${(run.cycle || 0) + 1}번째` : `${ORD[run.m - 1]} 마당을 넘었다`;
+  $("chMadang").textContent = kind === "cycle" ? `천고를 베었다 · ${(run.cycle || 0) + 1}번째` : kind === "bonus" ? "징조의 대가" : `${ORD[run.m - 1]} 마당을 넘었다`;
+  state = "choice"; Music.pause(); if (P) P.focus = false; for (const k in held) held[k] = 0; showScreen("choice");
+}
+function showOmen() {   // the rule for the coming turn: two omens drawn at random, or a calm one
+  const rnd = mulberry((run.seed ^ ((run.cycle || 0) * 7477)) >>> 0), pool = OMENS.filter(o => !o.calm), picks = [];
+  while (picks.length < 2) picks.push(pool.splice((rnd() * pool.length) | 0, 1)[0]);
+  picks.push(OMENS.find(o => o.calm));
+  $("chTitle").textContent = "징조를 고르라";
+  $("chMadang").textContent = `${(run.cycle || 0) + 1}번째 판 · ${SEASON[season()].name}`;
+  const box = $("cards"); box.innerHTML = "";
+  for (const o of picks) {
+    const b = document.createElement("button"); b.className = "card omen" + (o.calm ? " calm" : "");
+    b.innerHTML = `<i class="ic"></i><b class="nm"></b><span class="ds"></span><span class="gift"></span>`;
+    b.querySelector(".ic").textContent = o.han; b.querySelector(".nm").textContent = o.name; b.querySelector(".ds").textContent = o.desc; b.querySelector(".gift").textContent = "대가 · " + o.gift;
+    b.addEventListener("click", () => {
+      run.omen = o.calm ? null : o.id; Music.sfx("lantern");
+      if (o.id === "geupbak") run.breath = Math.min(5, run.breath + 1);
+      if (o.bonus) { run.choosing = "bonus"; saveRun(); showChoice("bonus"); return; }
+      run.choosing = null; saveRun(); Music.stop(); showInterlude();
+    });
+    box.appendChild(b);
+  }
   state = "choice"; Music.pause(); if (P) P.focus = false; for (const k in held) held[k] = 0; showScreen("choice");
 }
 function endRun(won) {
@@ -733,7 +798,7 @@ const CLIMBV = 270, CLIMB_T = 0.5, GRAV = 1900, JUMPV = 640, MAXV = 300, DASHV =
 function aimDir() { const a = axis(), m = Math.hypot(a.x, a.y); return m < 0.35 ? { x: P.face, y: 0 } : { x: a.x / m, y: a.y / m }; }
 function startDash(dir) {
   if (P.dashCd > 0) return false;
-  if (!P.onGround) { if (P.airDash <= 0) return false; P.airDash--; }
+  if (!P.onGround) { if (P.airDash <= 0) return false; P.airDash--; if (has("bicheon")) P.dj = false; }
   let d = dir || aimDir();
   if (P.onGround && d.y > 0.2) d = { x: d.x === 0 ? P.face : Math.sign(d.x), y: 0 };
   P.dashDir = d; P.dashT = (has("janyeong") ? 0.21 : 0.15) * (P.onGround && has("chukji") ? 1.8 : 1); P.dashCd = has("seomgwang") ? 0.1 : 0.32; P.dashHit = new Set(); P.hook = null;
@@ -749,7 +814,8 @@ function doSlash(req) {
   const strike = Math.abs(off) < strikeWin();
   run.slashes++; if (strike) run.strikes++;
   P.slashDir = d; P.slashT = req.dash ? 0.22 : 0.14; P.slashCd = has("yeongyeok") ? 0.08 : 0.2; P.strike = strike; P.clanged = new Set(); P.hitSet = new Set();
-  if (has("geompung")) bullets.push({ x: P.x + P.w / 2 + d.x * 20, y: P.y + P.h / 2 + d.y * 20, vx: d.x * 760, vy: d.y * 760, friendly: true, wind: true, life: .32, owner: null });
+  if (has("geompung")) { const gs = strike && has("gwisin"); bullets.push({ x: P.x + P.w / 2 + d.x * 20, y: P.y + P.h / 2 + d.y * 20, vx: d.x * 760, vy: d.y * 760, friendly: true, wind: true, strike: gs, pierce: gs, life: gs ? .5 : .32, owner: null }); }
+  if (strike && has("pilsal")) for (const b of bullets) if (!b.friendly && Math.hypot(b.x - P.x - P.w / 2, b.y - P.y - P.h / 2) < 280) { b.life = 0; addFx("hud", HUD.spark, b.x, b.y, 22, { life: .25 }); }
   if (strike && has("gwigeom")) { const cx = P.x + P.w / 2, cy = P.y + P.h / 2; for (const e of enemies) if (e.alive && Math.hypot(e.x + e.w / 2 - cx, e.y + e.h / 2 - cy) < 140) hurtEnemy(e, false); addFx("hud", HUD.spark, cx, cy, 120, { life: .35 }); }
   if (Math.abs(d.x) > 0.2) P.face = Math.sign(d.x);
   if (!P.onGround && P.vy > 60) P.vy = 60;
@@ -784,10 +850,10 @@ const approach = (v, t, a) => v < t ? Math.min(t, v + a) : Math.max(t, v - a);
 function stepPlayer(dt) {
   const a = axis(), ix = a.x > 0.3 ? 1 : a.x < -0.3 ? -1 : 0;
   P.invT = Math.max(0, (P.invT || 0) - dt);
-  if (P.dashT > 0) for (const d of drumsInPlay()) if (Math.abs(P.x + P.w / 2 - d.x) < 24 && P.y + P.h > d.y - d.h && P.y < d.y) cutDrum(d); P.landT = Math.max(0, (P.landT || 0) - dt); P.dropT = Math.max(0, (P.dropT || 0) - dt); P.dashCd = Math.max(0, P.dashCd - dt); P.slashCd = Math.max(0, P.slashCd - dt); P.hookCd = Math.max(0, P.hookCd - dt); P.wallLock = Math.max(0, P.wallLock - dt);
+  if (P.dashT > 0 && !bossAlive()) for (const d of drumsInPlay()) if (Math.abs(P.x + P.w / 2 - d.x) < 24 && P.y + P.h > d.y - d.h && P.y < d.y) cutDrum(d); P.landT = Math.max(0, (P.landT || 0) - dt); P.dropT = Math.max(0, (P.dropT || 0) - dt); P.dashCd = Math.max(0, P.dashCd - dt); P.slashCd = Math.max(0, P.slashCd - dt); P.hookCd = Math.max(0, P.hookCd - dt); P.wallLock = Math.max(0, P.wallLock - dt);
   if (P.hook) {
     const cx = P.x + P.w / 2, cy = P.y + P.h / 2, dx = P.hook.x - cx, dy = P.hook.y - cy, d = Math.hypot(dx, dy);
-    if (d < 30) { const lb = has("baram") ? 1.25 : 1; P.vx = dx / d * 700 * lb; P.vy = dy / d * 700 * lb - 260 * lb; P.hook = null; P.hookCd = 0.25; P.airDash = has("yeonsa") ? 2 : baseAir(); if (Math.abs(P.vx) > 40) P.face = Math.sign(P.vx); }
+    if (d < 30) { const lb = has("baram") ? 1.25 : 1; P.vx = dx / d * 700 * lb; P.vy = dy / d * 700 * lb - 260 * lb; P.hook = null; P.hookCd = 0.25; P.airDash = has("yeonsa") ? 2 : baseAir(); if (has("yeonbi")) { P.invT = Math.max(P.invT || 0, .5); P.dashCd = 0; } if (Math.abs(P.vx) > 40) P.face = Math.sign(P.vx); }
     else {
       P.vx = dx / d * 1050; P.vy = dy / d * 1050;
       if (moveX(P, P.vx * dt) | moveY(P, P.vy * dt)) { P.hook = null; P.vx *= 0.3; P.vy *= 0.3; }
@@ -819,6 +885,7 @@ function stepPlayer(dt) {
     P.climbing = !!(P.wall && ix === P.wall && P.climbT > 0 && !P.wallLock);
     if (P.climbing) { P.vy = Math.min(P.vy, -CLIMBV); P.climbT -= dt; if (Math.random() < .3) puff(P.wall > 0 ? P.x + P.w : P.x, P.y + P.h - 4, 1); }
     moveX(P, P.vx * dt);
+    if (omen("yeokpung")) moveX(P, -(P.onGround ? 45 : 85) * dt);   // 역풍 blows back toward the start
     const pb = P.y + P.h;
     if (moveY(P, P.vy * dt)) P.vy = 0;
     else if (P.vy > 0 && !(P.dropT > 0)) { const top = ledgeBelow(P, pb); if (top != null) { P.y = top - P.h - .001; P.vy = 0; } }
@@ -871,7 +938,19 @@ function playerHazards() {
 // ---------- enemies ----------
 // one hit point per cut 천고 beyond the first; a plain cut removes one, an 일격 kills outright
 function hurtEnemy(e, strike) {
-  if (!e.alive) return;
+  if (!e.alive || ghostly(e)) return;
+  if (e.ward && !strike) { // 무당's talisman takes the cut instead
+    e.ward = false; addFx("hud", HUD.spark, e.x + e.w / 2, e.y + 6, 40, { life: .3 }); Music.sfx("clang"); return;
+  }
+  if (e.type === "b") { // 수문장: a plain cut takes one, an 일격 three and staggers him out of his swing
+    e.hp -= strike ? 3 : has("ssangryong") ? 2 : 1; e.hitT = .22;
+    if (strike) { e.stagT = .6; e.act = null; e.chargeT = 0; e.nextAt = songPos + 2 * Music.beatLen; }
+    addFx("fx", FX.drops, e.x + e.w / 2, e.y + 30, 30, { life: .4, rot: Math.random() * 6.28 });
+    hitstop = Math.max(hitstop, .05); Music.sfx("clang"); shake = Math.max(shake, 4);
+    if (e.hp <= 0) killEnemy(e); return;
+  }
+  if (omen("hyeolmaeng") && !strike) { e.hitT = .12; Music.sfx("clang"); addFx("hud", HUD.spark, e.x + e.w / 2, e.y + 12, 26, { life: .25 }); return; }   // 피의 맹세: only an 일격 draws blood
+  if (!strike && has("ssangryong")) e.hp--;
   if (strike || (e.hp || 1) <= 1) { killEnemy(e); return; }
   e.hp--; e.hitT = .22;
   const cx = e.x + e.w / 2, cy = e.y + e.h / 2;
@@ -883,7 +962,10 @@ function hurtEnemy(e, strike) {
 function killEnemy(e) {
   if (!e.alive) return;
   e.alive = false; deadIds.add(e.id); run.kills++;
-  if (has("hyeol") && run.kills % 10 === 0 && run.breath < 5) { run.breath++; setHud(); toast("혈로 · 숨 하나를 되찾았다"); }
+  if (e.type === "m") for (const o of enemies) if (o.wardBy === e.id) o.ward = false;
+  if (e.type === "b") { toast("수문장이 쓰러졌다 · 천고를 베어라"); Music.jing(); shake = 14; for (let k = 0; k < 3; k++) bleed(e.x + e.w / 2 + (k - 1) * 20, e.y + 20 + k * 18, { x: k - 1, y: -.4 }, true); }
+  if (omen("hyeolmaeng") && mode !== "tutorial") { run.oath = (run.oath || 0) + 1; if (run.oath % 5 === 0 && run.breath < 5) { run.breath++; setHud(); toast("피의 맹세 · 숨 하나를 되찾았다"); } }
+  if (has("hyeol") && run.kills % (has("hyeolpung") ? 5 : 10) === 0 && run.breath < 5) { run.breath++; setHud(); toast("혈로 · 숨 하나를 되찾았다"); }
   if (has("heuphon") && P.slashT > 0 && P.strike) { P.invT = Math.max(P.invT || 0, .5); P.airDash = Math.max(P.airDash, baseAir()); }
   if (has("nakhwa") && P.slashT > 0 && P.slashDir.y > .5 && !P.onGround) { P.vy = -560; P.airDash = Math.max(P.airDash, 1); }
   const cx = e.x + e.w / 2, cy = e.y + e.h / 2;
@@ -911,9 +993,12 @@ function stepEnemies(dt) {
       const sp = Math.hypot(e.vx, e.vy), cap = (sees ? 175 : 80) * (has("mae") ? .55 : 1); if (sp > cap) { e.vx *= cap / sp; e.vy *= cap / sp; }
       if (moveX(e, e.vx * dt)) e.vx *= -0.5;
       if (moveY(e, e.vy * dt)) e.vy *= -0.5;
-      if (live && overlap(e, P)) { if (P.dashT > 0 || P.slashT > 0) { if (P.dashT > 0 ? !P.dashHit.has(e.id) : !(P.hitSet && P.hitSet.has(e.id))) { (P.dashT > 0 ? P.dashHit : P.hitSet).add(e.id); hurtEnemy(e, P.strike && P.slashT > 0); } } else if (!(e.hitT > 0)) die(); }
+      if (live && overlap(e, P)) { if (P.dashT > 0 || P.slashT > 0) { if (P.dashT > 0 ? !P.dashHit.has(e.id) : !(P.hitSet && P.hitSet.has(e.id))) { (P.dashT > 0 ? P.dashHit : P.hitSet).add(e.id); hurtEnemy(e, (P.strike && P.slashT > 0) || (P.dashT > 0 && has("nodo"))); } } else if (!(e.hitT > 0)) die(); }
       continue;
     }
+    if (e.type === "m") { stepMudang(e, dt, pcx, dist, live); continue; }
+    if (e.type === "r") { stepReaper(e, dt, pcx, pcy, dist, live); continue; }
+    if (e.type === "b") { stepBoss(e, dt, pcx, pcy, dist, live); continue; }
     if (e.type === "h") {
       const sees = live && dist < 380 && Math.abs(pcy - ecy) < 80 && los(ecx, e.y + 8, pcx, pcy);
       if (sees) e.face = Math.sign(pcx - ecx) || e.face;
@@ -943,8 +1028,85 @@ function stepEnemies(dt) {
       if (sniper) { const m4 = Math.max(1, Math.round(4 / fast)); k = Math.ceil(k / m4) * m4; }
       e.fireAt = k * bl; e.aimFrom = songPos; e.tx = pcx; e.ty = pcy;
     }
-    if (live && P.dashT > 0 && overlap(e, P) && !P.dashHit.has(e.id)) { P.dashHit.add(e.id); hurtEnemy(e, false); }
+    if (live && P.dashT > 0 && overlap(e, P) && !P.dashHit.has(e.id)) { P.dashHit.add(e.id); hurtEnemy(e, has("nodo")); }
   }
+}
+function dashThrough(e) { if (state === "play" && P.dashT > 0 && overlap(e, P) && !P.dashHit.has(e.id)) { P.dashHit.add(e.id); hurtEnemy(e, has("nodo") && e.type !== "b"); } }
+// 무당: every fourth beat she lays a talisman ward on the two nearest soldiers; it eats one plain cut
+function stepMudang(e, dt, pcx, dist, live) {
+  e.castT = Math.max(0, e.castT - dt);
+  const sees = live && dist < 560; if (sees) e.face = Math.sign(pcx - (e.x + e.w / 2)) || e.face;
+  if (sees && songPos >= e.castAt) {
+    const bl = Music.beatLen, near = enemies.filter(o => o.alive && o !== e && o.type !== "m" && o.type !== "b" && !o.ward && Math.hypot(o.x - e.x, o.y - e.y) < 280).sort((a, b) => Math.hypot(a.x - e.x, a.y - e.y) - Math.hypot(b.x - e.x, b.y - e.y)).slice(0, 2);
+    for (const o of near) { o.ward = true; o.wardBy = e.id; addFx("hud", HUD.spark, o.x + o.w / 2, o.y + 4, 34, { life: .4 }); }
+    e.castT = .6; e.castAt = (Math.floor(songPos / bl) + 4) * bl; if (near.length) Music.sfx("hook");
+  }
+  dashThrough(e);
+}
+// 저승사자: sinks into ink, rises beside you one beat later and swings on the next beat
+function stepReaper(e, dt, pcx, pcy, dist, live) {
+  const bl = Music.beatLen, fast = 1 + .22 * cyc();
+  e.fade = approach(e.fade, e.ph === "gone" ? 0 : 1, dt * 5); e.swingT = Math.max(0, (e.swingT || 0) - dt);
+  if (e.ph === "idle") {
+    e.face = Math.sign(pcx - (e.x + e.w / 2)) || e.face;
+    if (live && dist < 620 && songPos >= e.nextAt) { e.ph = "gone"; e.nextAt = (Math.floor(songPos / bl) + 1) * bl; addFx("hud", HUD.smoke, e.x + e.w / 2, e.y + e.h - 10, 60, { life: .7, grow: .8 }); }
+  } else if (e.ph === "gone" && songPos >= e.nextAt) {
+    const foot = P.y + P.h, offs = [-140, 140, -175, 175, -105, 105]; if (Math.random() < .5) offs.reverse();
+    for (const o of offs) { // stand on solid ground near the swordsman's feet, clear above
+      const x = pcx + o, tx = Math.floor(x / T); let ty = Math.floor((foot - 4) / T);
+      while (ty < LV.h && tileAt(tx, ty) !== 1) ty++;
+      if (ty >= LV.h || Math.abs(ty * T - foot) > 3 * T || tileAt(tx, ty - 1) || tileAt(tx, ty - 2) || !los(x, ty * T - 20, pcx, pcy)) continue;
+      e.x = x - e.w / 2; e.y = ty * T - e.h - .01; break;
+    }
+    e.face = Math.sign(pcx - (e.x + e.w / 2)) || 1; e.ph = "rise"; e.nextAt = (Math.floor(songPos / bl) + 1) * bl + (bl < .5 ? bl : 0);
+    addFx("hud", HUD.smoke, e.x + e.w / 2, e.y + e.h - 10, 60, { life: .7, grow: .8 });
+  } else if (e.ph === "rise" && songPos >= e.nextAt) {
+    const ex = e.x + e.w / 2, zone = { x: e.face > 0 ? ex : ex - 78, y: e.y - 6, w: 78, h: e.h + 6 };
+    addFx("fx", FX.slashARed, ex + e.face * 36, e.y + e.h / 2, 70, { life: .3, rot: e.face > 0 ? 0 : Math.PI });
+    Music.sfx("slash"); e.swingT = .3;
+    if (live && P.dashT <= 0 && !((P.invT || 0) > 0) && overlap(zone, P)) { lastHitDir = { x: e.face, y: -.2 }; die(); }
+    e.ph = "idle"; e.nextAt = songPos + Math.max(3, Math.round(7 / fast)) * bl;
+  }
+  if (e.ph !== "gone") dashThrough(e);
+}
+// 수문장, who guards 천고: slams, charges, fires a volley or calls hawks, always on the beat
+function stepBoss(e, dt, pcx, pcy, dist, live) {
+  const bl = Music.beatLen, ecx = e.x + e.w / 2, c = cyc();
+  e.stagT = Math.max(0, (e.stagT || 0) - dt); e.swingT = Math.max(0, (e.swingT || 0) - dt);
+  if (!e.awake) { if (!(live && dist < 460)) return; e.awake = true; toast("수문장이 길을 막는다"); Music.jing(); e.nextAt = (Math.floor(songPos / bl) + 2) * bl; }
+  if (e.chargeT > 0) { // the charge itself
+    e.chargeT -= dt; const ahead = ecx + e.face * 26;
+    if (!groundPt(ahead, e.y + e.h + 4) || moveX(e, e.face * (520 + 40 * c) * dt)) e.chargeT = 0;
+    if (live && P.dashT <= 0 && !((P.invT || 0) > 0) && overlap(e, P)) { lastHitDir = { x: e.face, y: -.3 }; die(); }
+  } else if (!e.act) {
+    if (e.stagT <= 0) e.face = Math.sign(pcx - ecx) || e.face;
+    if (dist > 110 && e.stagT <= 0) { const ahead = ecx + e.face * 26; if (groundPt(ahead, e.y + e.h + 4) && !solidPt(ahead, e.y + e.h - 10)) moveX(e, e.face * (55 + 10 * c) * dt); }
+    if (live && songPos >= e.nextAt && e.stagT <= 0) {
+      const pool = ["slam", "charge"]; if (c >= 1) pool.push("volley"); if (c >= 2) pool.push("summon");
+      let a = pool[(e.n = (e.n || 0) + 1) % pool.length];
+      if (a === "slam" && dist > 260) a = c >= 1 ? "volley" : "charge";
+      e.act = a; e.hitAt = (Math.floor(songPos / bl) + 1) * bl; if (e.hitAt - songPos < .45) e.hitAt += bl;   // wind up for at least a beat-ish, strike on the beat
+    }
+  } else if (songPos >= e.hitAt) {
+    const a = e.act; e.act = null; e.swingT = .35; e.nextAt = e.hitAt + Math.max(2, 4 - (c >> 1)) * bl;
+    if (a === "slam") {
+      const zone = { x: e.face > 0 ? ecx : ecx - 150, y: e.y + e.h - 70, w: 150, h: 70 };
+      shake = 10; Music.sfx("kill"); addFx("hud", HUD.dust, ecx + e.face * 90, e.y + e.h, 90, { life: .5, ay: 1 });
+      if (live && P.dashT <= 0 && !((P.invT || 0) > 0) && overlap(zone, P)) { lastHitDir = { x: e.face, y: -.5 }; die(); }
+      if (c >= 1) for (const dir of [-1, 1]) bullets.push({ x: ecx + dir * 40, y: e.y + e.h - 12, vx: dir * (360 + 30 * c), vy: 0, owner: e, friendly: false, life: 2.2, wave: true, noReflect: true });
+    } else if (a === "charge") { e.chargeT = .5; Music.sfx("dash"); }
+    else if (a === "volley") {
+      const n = c >= 3 ? 5 : 3, ang = Math.atan2(pcy - (e.y + 30), pcx - ecx), sp = 420 * (1 + .1 * c) * (has("gwian") ? .7 : 1);
+      for (let i = 0; i < n; i++) { const t = ang + (i - (n - 1) / 2) * .16; bullets.push({ x: ecx + e.face * 30, y: e.y + 30, vx: Math.cos(t) * sp, vy: Math.sin(t) * sp, owner: e, friendly: false, life: 3 }); }
+      Music.sfx("shoot");
+    } else if (a === "summon") {
+      const hp = 1 + c;
+      for (const dx of [-60, 60]) enemies.push({ hp, maxHp: hp, id: 9000 + Math.floor(Math.random() * 1e6), type: "d", x: ecx + dx, y: e.y - 50, w: 28, h: 20, vx: 0, vy: 0, hx: ecx + dx, hy: e.y - 50, t: Math.random() * 6, alive: true });
+      Music.sfx("hook");
+    }
+  }
+  if (live && !(e.chargeT > 0) && overlap(e, P) && P.dashT <= 0) { P.vx = Math.sign(pcx - ecx || 1) * 320; if (!P.onGround) P.vy = Math.min(P.vy, -120); }   // his bulk shoves you back
+  dashThrough(e);
 }
 function muzzle(e) { return e.type === "s" ? [e.x + e.w / 2 + e.face * 34, e.y + 17] : [e.x + e.w / 2 + e.face * 32, e.y + 6]; }
 function cutDrum(d) {
@@ -957,21 +1119,21 @@ function cutDrum(d) {
 function drumsInPlay() { return mode === "tutorial" || !LV.drums ? [] : LV.drums.filter(d => !(run.cutDrums || []).includes(d.id)); }
 function slashHits() {
   if (P.slashT <= 0) return;
-  for (const d of drumsInPlay()) { const cx = P.x + P.w / 2 + P.slashDir.x * 26, cy = P.y + P.h / 2 + P.slashDir.y * 26; if (Math.abs(cx - d.x) < 52 + (d.big ? 20 : 0) && cy > d.y - d.h - 24 && cy < d.y + 10) cutDrum(d); }
+  if (!bossAlive()) for (const d of drumsInPlay()) { const cx = P.x + P.w / 2 + P.slashDir.x * 26, cy = P.y + P.h / 2 + P.slashDir.y * 26; if (Math.abs(cx - d.x) < 52 + (d.big ? 20 : 0) && cy > d.y - d.h - 24 && cy < d.y + 10) cutDrum(d); }
   const R = (P.strike ? 54 * (has("gangta") ? 1.5 : 1) : 40) * (has("ssang") ? 1.35 : 1) + (has("ilseom") ? 12 : 0), reach = (P.strike ? 30 : 26) + (has("ilseom") ? 14 : 0);
   const cx = P.x + P.w / 2 + P.slashDir.x * reach, cy = P.y + P.h / 2 + P.slashDir.y * reach;
   for (const e of enemies) {
-    if (!e.alive) continue;
+    if (!e.alive || ghostly(e)) continue;
     const ex = Math.max(e.x, Math.min(cx, e.x + e.w)), ey = Math.max(e.y, Math.min(cy, e.y + e.h));
     if (Math.hypot(ex - cx, ey - cy) >= R) continue;
-    if (e.type === "h" && !P.strike && !has("cheol")) { if (!P.clanged.has(e.id)) { P.clanged.add(e.id); clang(e); } continue; }
+    if (e.type === "h" && !P.strike && !has("cheol") && Math.sign(P.x + P.w / 2 - (e.x + e.w / 2)) === e.face) { if (!P.clanged.has(e.id)) { P.clanged.add(e.id); clang(e); } continue; }   // the shield only covers his front
     if (P.hitSet && P.hitSet.has(e.id)) continue;   // one hit per swing
     if (P.hitSet) P.hitSet.add(e.id);
     if (P.strike) seals.push({ x: e.x + e.w / 2, y: e.y + 6, t: 0, rot: (Math.random() - .5) * 0.4 });
     hurtEnemy(e, P.strike);
   }
   for (const b of bullets) {
-    if (b.friendly || Math.hypot(b.x - cx, b.y - cy) >= R + 8) continue;
+    if (b.friendly || b.noReflect || Math.hypot(b.x - cx, b.y - cy) >= R + 8) continue;
     b.friendly = true; b.pierce = P.strike || has("bantan"); b.life = 3;
     const sp = Math.max(700, Math.hypot(b.vx, b.vy) * (has("bantan") ? 1.6 : 1.1)), o = b.owner;
     if (o && o.alive) { const dx = o.x + o.w / 2 - b.x, dy = o.y + o.h / 2 - b.y, d = Math.hypot(dx, dy) || 1; b.vx = dx / d * sp; b.vy = dy / d * sp; }
@@ -988,12 +1150,18 @@ function stepBullets(dt) {
       b.x += b.vx * dt / n; b.y += b.vy * dt / n;
       if (solidPt(b.x, b.y)) { b.life = 0; addFx("hud", HUD.spark, b.x, b.y, 22, { life: .25, rot: Math.random() * 6.28 }); break; }
       if (b.friendly) {
-        for (const e of enemies) if (e.alive && b.x > e.x && b.x < e.x + e.w && b.y > e.y && b.y < e.y + e.h) {
+        for (const e of enemies) if (e.alive && !ghostly(e) && b.x > e.x && b.x < e.x + e.w && b.y > e.y && b.y < e.y + e.h) {
           if (b.hits && b.hits.has(e.id)) continue;
           if (e.type === "h" && Math.sign(b.vx) === -e.face && !b.pierce) { b.life = 0; Music.sfx("clang"); break; }
-          (b.hits = b.hits || new Set()).add(e.id); hurtEnemy(e, b.pierce && !b.wind); if (!b.pierce) b.life = 0;
+          (b.hits = b.hits || new Set()).add(e.id); hurtEnemy(e, b.pierce && (!b.wind || b.strike)); if (!b.pierce) b.life = 0;
         }
-      } else if (state === "play" && P.dashT <= 0 && !(has("jangmak") && P.focus) && !((P.invT || 0) > 0) && b.x > pr.x - 3 && b.x < pr.x + pr.w + 3 && b.y > pr.y - 3 && b.y < pr.y + pr.h + 3) { const sp = Math.hypot(b.vx, b.vy) || 1; lastHitDir = { x: b.vx / sp, y: b.vy / sp }; die(); b.life = 0; }
+      } else if (state === "play" && P.dashT <= 0 && !(has("jangmak") && P.focus) && !((P.invT || 0) > 0) && b.x > pr.x - 3 && b.x < pr.x + pr.w + 3 && b.y > pr.y - 3 && b.y < pr.y + pr.h + 3) {
+        if (has("cheonra") && P.focus && !b.noReflect) { // 천라지망: the shot turns back on its shooter
+          const o = b.owner, sp = Math.hypot(b.vx, b.vy) * 1.3; b.friendly = true; b.pierce = true; b.life = 3;
+          if (o && o.alive) { const dx = o.x + o.w / 2 - b.x, dy = o.y + o.h / 2 - b.y, d = Math.hypot(dx, dy) || 1; b.vx = dx / d * sp; b.vy = dy / d * sp; } else { b.vx = -b.vx; b.vy = -b.vy; }
+          Music.sfx("reflect"); break;
+        }
+        const sp = Math.hypot(b.vx, b.vy) || 1; lastHitDir = { x: b.vx / sp, y: b.vy / sp }; die(); b.life = 0; }
     }
     b.life -= dt;
   }
@@ -1040,7 +1208,7 @@ function fmt(t) { const m = Math.floor(t / 60), s = t - m * 60; return m + ":" +
 function setHud() {
   document.body.classList.toggle("night", !!(LV && LV.pal.night));
   if (mode === "tutorial") { $("hMadang").textContent = "수련터"; $("hJang").textContent = Music.JANGDAN[TUTORIAL.jd].name; }
-  else { $("hMadang").textContent = ORD[run.m] + " 마당"; $("hJang").textContent = Music.JANGDAN[MADANG[run.m].jd].name; }
+  else { const om = OMENS.find(o => o.id === run.omen); $("hMadang").textContent = ORD[run.m] + " 마당"; $("hJang").textContent = Music.JANGDAN[MADANG[run.m].jd].name + (om ? " · " + om.name : ""); }
   const hb = $("hBreath"); hb.innerHTML = ""; hb.classList.toggle("inf", mode === "tutorial");
   if (mode !== "tutorial") for (let i = 0; i < Math.max(3, run.breath); i++) { const d = document.createElement("i"); if (i >= run.breath) d.className = "lost"; hb.appendChild(d); }
   hudCache = "";
@@ -1085,16 +1253,9 @@ function render(rdt) {
   if (paperTex) { ctx.globalCompositeOperation = "multiply"; ctx.globalAlpha = pal.rim ? .35 : .9; ctx.fillStyle = paperTex; ctx.fillRect(0, 0, cv.width, cv.height); ctx.globalCompositeOperation = "source-over"; ctx.globalAlpha = 1; }
   else { ctx.fillStyle = paperPat; ctx.fillRect(0, 0, cv.width, cv.height); }
   if (!LV || state === "menu") return;
-
-  // rain
-  ctx.setTransform(DPR, 0, 0, DPR, 0, 0);
-  ctx.strokeStyle = `rgba(${pal.wash},.13)`; ctx.lineWidth = 1; ctx.beginPath();
-  const tt = performance.now() / 1000;
-  for (let i = 0; i < 60; i++) {
-    const rx = ((i * 137.5 + tt * 50 - cam.x * 0.6) % (W + 40) + W + 40) % (W + 40) - 20, ry = ((i * 89.3 + tt * 650) % (H + 40)) - 20;
-    ctx.moveTo(rx, ry); ctx.lineTo(rx - 3, ry + 13);
-  }
-  ctx.stroke();
+  const ssn = season(), tt = performance.now() / 1000;
+  if (ssn && !pal.night) { ctx.globalCompositeOperation = "multiply"; ctx.fillStyle = SEASON_TINT[ssn]; ctx.fillRect(0, 0, cv.width, cv.height); ctx.globalCompositeOperation = "source-over"; }
+  drawWeather(ssn, tt, pal);
 
   ctx.setTransform(k, 0, 0, k, Math.round((W / 2 + sx) * DPR - cam.x * k), Math.round((H / 2 + sy) * DPR - cam.y * k));
   const x0 = Math.max(0, Math.floor((cam.x - vw / 2) / T) - 1), x1 = Math.min(LV.w - 1, Math.ceil((cam.x + vw / 2) / T) + 1);
@@ -1180,6 +1341,7 @@ function render(rdt) {
         ctx.save(); ctx.translate(0, py - .8); ctx.fillStyle = giwa; ctx.fillRect(px - l, -3.2, T + l + r, 9); ctx.restore(); // align a cap row to the eave
         ctx.fillStyle = pal.tile; ctx.fillRect(px - l, py + 5, T + l + r, 2.5);
         if (pal.rim) { ctx.fillStyle = pal.rim; ctx.fillRect(px - l, py - 4.5, T + l + r, 1); }
+        if (ssn === 2) { ctx.fillStyle = pal.night ? "rgba(236,230,216,.5)" : "rgba(250,250,252,.92)"; ctx.fillRect(px - l, py - 6.5, T + l + r, 3); }
       } else if (tileAt(tx, ty - 1) !== 1) {
         const s = (tx * 73 + ty * 31) % 7;
         ctx.beginPath(); ctx.moveTo(px - .5, py + 2); ctx.lineTo(px + 6 + s, py - 1.5); ctx.lineTo(px + 18, py + .5 - s * .2); ctx.lineTo(px + T + .5, py - 1); ctx.lineTo(px + T + .5, py + 3); ctx.closePath(); ctx.fill();
@@ -1209,11 +1371,14 @@ function render(rdt) {
     }
   }
   if (SC && SPR.pines) { ctx.globalAlpha = .8; for (const p of SC.front) if (visible(p.x)) for (let r = 1; r > 0; r--) drawSprite("pines", p.i, p.x, p.y + 6, p.h / SPR.pines.f[p.i].h, p.flip, .5, pal.night); ctx.globalAlpha = 1; }
-  for (const d of drumsInPlay()) if (visible(d.x)) { // 초식 drum on a lacquered stand, pulsing on the beat
+  const sealed = bossAlive();
+  for (const d of drumsInPlay()) if (visible(d.x)) { // 천고 on a lacquered stand, pulsing on the beat; dim while its guardian stands
+    if (sealed) ctx.globalAlpha = .45;
     const beat = 1 - (songPos / Music.beatLen % 1), s = 1 + Math.max(0, beat - .75) * .4;
     const gl = ctx.createRadialGradient(d.x, d.y - 22, 4, d.x, d.y - 22, 44); gl.addColorStop(0, "rgba(195,22,28,.28)"); gl.addColorStop(1, "rgba(195,22,28,0)"); ctx.fillStyle = gl; ctx.fillRect(d.x - 44, d.y - 66, 88, 88);
     ctx.fillStyle = "#3a1b14"; ctx.fillRect(d.x - 12, d.y - 14, 3, 14); ctx.fillRect(d.x + 9, d.y - 14, 3, 14);
     if (!drawSprite("hudsolid", HUD.bigDrum, d.x, d.y - 10, (d.big ? 86 : 38) * s / (SPR.hudsolid ? SPR.hudsolid.f[HUD.bigDrum].h : 1), false, .5, false, 1)) { ctx.fillStyle = SEAL; ctx.beginPath(); ctx.arc(d.x, d.y - 26, 16, 0, 7); ctx.fill(); }
+    ctx.globalAlpha = 1;
   }
   if (LV.gate && SPR.props2 && visible(LV.gate.x)) drawSprite("props2", P2.gate, LV.gate.x, LV.gate.y, 78 / SPR.props2.f[P2.gate].h, false, .5, pal.night);
   for (const d of LV.dress) {
@@ -1279,12 +1444,22 @@ function render(rdt) {
   for (const e of enemies) if (e.alive && visible(e.x)) {
     if (e.hitT > 0 && Math.floor(e.hitT * 30) % 2) ctx.globalAlpha = .45;   // hit flicker
     drawEnemy(e, pal); ctx.globalAlpha = 1;
-    if (e.maxHp > 1) { // remaining hits as small ink drops over the head
+    if (e.ward) { // 무당's talisman hovering over the warded soldier
+      const wy = e.type === "d" ? e.y - 22 : e.y - 46, bob = Math.sin(tt * 3 + e.id) * 2;
+      if (!drawSprite("foes2", F2.ward, e.x + e.w / 2, wy + bob, 24 / (SPR.foes2 ? SPR.foes2.f[F2.ward].h : 1), false, .5, false, .5)) { ctx.strokeStyle = JJOK; ctx.lineWidth = 2; ctx.beginPath(); ctx.arc(e.x + e.w / 2, e.y + e.h / 2, 26, 0, 7); ctx.stroke(); }
+    }
+    if (e.maxHp > 1 && e.type !== "b") { // remaining hits as small ink drops over the head
       const top = e.type === "d" ? e.y - 10 : e.y - 34, cx = e.x + e.w / 2;
       for (let i = 0; i < e.maxHp; i++) { ctx.fillStyle = i < e.hp ? SEAL : "rgba(80,74,70,.35)"; ctx.beginPath(); ctx.arc(cx + (i - (e.maxHp - 1) / 2) * 7, top, 2.6, 0, 7); ctx.fill(); }
     }
   }
   for (const b of bullets) {
+    if (b.wave) { // 수문장's ground wave: a running crest of black ink with a red lip
+      const d = Math.sign(b.vx), wob = Math.sin(tt * 30 + b.x * .05) * 2;
+      ctx.fillStyle = pal.night ? "#d8d1c4" : "#17161a"; ctx.beginPath(); ctx.moveTo(b.x - d * 34, b.y + 12); ctx.quadraticCurveTo(b.x - d * 10, b.y - 20 + wob, b.x + d * 8, b.y - 14 + wob); ctx.quadraticCurveTo(b.x + d * 2, b.y, b.x + d * 12, b.y + 12); ctx.closePath(); ctx.fill();
+      ctx.strokeStyle = SEAL; ctx.lineWidth = 2; ctx.beginPath(); ctx.moveTo(b.x - d * 6, b.y - 16 + wob); ctx.quadraticCurveTo(b.x + d * 6, b.y - 16 + wob, b.x + d * 8, b.y - 6); ctx.stroke();
+      continue;
+    }
     const sp = Math.hypot(b.vx, b.vy), tl = b.sniper ? 34 : 18;
     const tr = ctx.createLinearGradient(b.x, b.y, b.x - b.vx / sp * tl, b.y - b.vy / sp * tl);
     tr.addColorStop(0, b.friendly ? "rgba(39,70,106,.8)" : "rgba(195,22,28,.75)"); tr.addColorStop(1, "rgba(140,134,126,0)");
@@ -1335,7 +1510,21 @@ function render(rdt) {
   // screen space overlays
   ctx.setTransform(1, 0, 0, 1, 0, 0);
   if (!vignette) { vignette = ctx.createRadialGradient(cv.width / 2, cv.height / 2, Math.min(cv.width, cv.height) * .35, cv.width / 2, cv.height / 2, Math.max(cv.width, cv.height) * .75); vignette.addColorStop(0, "rgba(20,18,16,0)"); vignette.addColorStop(1, "rgba(20,18,16,.32)"); }
+  if (omen("angae") && P) { // 안개: only a pocket of paper around the swordsman stays clear
+    const px = (P.x + P.w / 2 - cam.x) * SCALE * DPR + cv.width / 2, py = (P.y + P.h / 2 - cam.y) * SCALE * DPR + cv.height / 2, r = 120 * SCALE * DPR;
+    const fg = ctx.createRadialGradient(px, py, r * .8, px, py, r * 2.6); fg.addColorStop(0, "rgba(226,222,212,0)"); fg.addColorStop(1, pal.night ? "rgba(30,28,30,.9)" : "rgba(226,222,212,.9)");
+    ctx.fillStyle = fg; ctx.fillRect(0, 0, cv.width, cv.height);
+  }
   ctx.fillStyle = vignette; ctx.fillRect(0, 0, cv.width, cv.height);
+  const boss = enemies.find(e => e.type === "b" && e.alive && e.awake);
+  if (boss && (state === "play" || state === "dead" || state === "pause")) { // 수문장's life as a brush bar along the top
+    ctx.setTransform(DPR, 0, 0, DPR, 0, 0);
+    const bw = Math.min(320, W * .44), bx = W / 2 - bw / 2, by = 46;
+    ctx.fillStyle = "rgba(23,22,26,.25)"; ctx.fillRect(bx, by, bw, 7);
+    ctx.fillStyle = SEAL; ctx.fillRect(bx, by, bw * Math.max(0, boss.hp) / boss.maxHp, 7);
+    ctx.fillStyle = pal.text; ctx.font = `400 14px "Song Myung", serif`; ctx.textAlign = "center"; ctx.textBaseline = "bottom"; ctx.fillText("수문장 守門將", W / 2, by - 3); ctx.textAlign = "left";
+    ctx.setTransform(1, 0, 0, 1, 0, 0);
+  }
   if (P && P.focus && state === "play") { ctx.fillStyle = "rgba(39,70,106,.14)"; ctx.fillRect(0, 0, cv.width, cv.height); }
   if (flash > 0) { ctx.strokeStyle = `rgba(195,22,28,${flash * 3})`; ctx.lineWidth = 10 * DPR; ctx.strokeRect(0, 0, cv.width, cv.height); }
   drawTrail();
@@ -1353,6 +1542,30 @@ function render(rdt) {
     if (mode !== "tutorial") { ctx.font = `600 13px ${BODY_FONT}`; ctx.fillText(run.breath > 0 ? `남은 숨 ${run.breath}` : "숨이 다했다", W / 2, H - 92); }
     ctx.textAlign = "left"; ctx.globalAlpha = 1;
   }
+}
+const SEASON_TINT = [null, "rgb(236,206,170)", "rgb(196,210,232)", "rgb(246,226,226)"];
+const LEAF = ["#a8471f", "#c7782a", "#7a3a1a", "#b5561f"], PETAL = ["#e9a3b0", "#f2c4cc", "#f7dbe0"];
+function drawWeather(ssn, tt, pal) { // screen-space weather: 여름 비, 가을 낙엽, 겨울 눈, 봄 꽃잎; 역풍 slants it hard
+  ctx.setTransform(DPR, 0, 0, DPR, 0, 0);
+  const wind = omen("yeokpung") ? 1 : 0, wrap = (v, m) => ((v % m) + m) % m;
+  if (ssn === 0) {
+    ctx.strokeStyle = `rgba(${pal.wash},.13)`; ctx.lineWidth = 1; ctx.beginPath();
+    for (let i = 0; i < 60; i++) {
+      const rx = wrap(i * 137.5 + tt * (50 - wind * 420) - cam.x * 0.6, W + 40) - 20, ry = wrap(i * 89.3 + tt * 650, H + 40) - 20;
+      ctx.moveTo(rx, ry); ctx.lineTo(rx - 3 - wind * 9, ry + 13);
+    }
+    ctx.stroke(); return;
+  }
+  const n = ssn === 2 ? 80 : 34;
+  for (let i = 0; i < n; i++) {
+    const sp = ssn === 2 ? 40 + (i % 5) * 12 : 55 + (i % 4) * 14, sway = Math.sin(tt * (1 + i % 3 * .4) + i) * (ssn === 2 ? 14 : 30);
+    const x = wrap(i * 173.3 + sway + tt * (14 - wind * 260) - cam.x * .5, W + 40) - 20, y = wrap(i * 97.1 + tt * sp, H + 40) - 20;
+    if (ssn === 2) { ctx.fillStyle = pal.night ? "rgba(236,230,216,.6)" : "rgba(255,255,255,.85)"; ctx.beginPath(); ctx.arc(x, y, 1 + (i % 3) * .7, 0, 7); ctx.fill(); continue; }
+    ctx.save(); ctx.translate(x, y); ctx.rotate(tt * (1 + i % 4) * .7 + i); ctx.globalAlpha = .75;
+    ctx.fillStyle = ssn === 1 ? LEAF[i % 4] : PETAL[i % 3];
+    ctx.beginPath(); ctx.ellipse(0, 0, ssn === 1 ? 4.2 : 3, ssn === 1 ? 2.2 : 1.8, 0, 0, 7); ctx.fill(); ctx.restore();
+  }
+  ctx.globalAlpha = 1;
 }
 function drawBackdrop(pal) {
   const camX = cam.x || 0, camY = cam.y || 0;
@@ -1417,7 +1630,8 @@ function drawBeatBar(pal) {
   }
   else uiPatch(5, mx - 46, y - 30, gap * ahead + 92, 60, pal.night ? .5 : .9);
   const near = Math.abs(Music.offBeat(pos)) < strikeWin();
-  uiPatch(0, mx - 25, y - 25, 50, 50, near ? 1 : .55);                      // judgement ring
+  uiPatch(0, mx - 25, y - 25, 50, 50, near && !omen("goyo") ? 1 : .55);                      // judgement ring
+  if (omen("goyo")) return;   // 고요: the drums are heard, not seen
   const k0 = Math.floor(pos / bl) - 1;
   for (let k = k0 + ahead + 1; k >= k0; k--) {
     const dt = k * bl - pos, x = mx + dt / bl * gap;
@@ -1521,6 +1735,7 @@ function legacyPlayer(pal) {
 }
 function drawEnemy(e, pal) {
   const cx = e.x + e.w / 2;
+  if ("mrb".includes(e.type)) { drawNewFoe(e, pal, cx); return; }
   if (SPR.foes) {
     const fr = FOE[e.type], now = performance.now();
     if (e.type === "d") { drawSprite("foes", fr[Math.sin(now / 90 + e.id) > 0 ? 0 : 1], cx, e.y + e.h + 12, kOf("foes", 0, FOE_H) * .6, e.vx < 0, .5, pal.night); return; }
@@ -1574,6 +1789,32 @@ function drawEnemy(e, pal) {
   ctx.fillStyle = SEAL; ctx.fillRect(cx + e.face * 2 - 1, e.y + 6, 2, 2);
 }
 
+function drawNewFoe(e, pal, cx) {
+  const has2 = !!SPR.foes2, feet = e.y + e.h + 1;
+  if (e.type === "m") {
+    if (!has2 || !drawSprite("foes2", e.castT > 0 ? F2.mudangCast : F2.mudang, cx, feet, kOf("foes2", F2.mudang, FOE_H * 1.02), e.face < 0, .5, pal.night)) { ctx.fillStyle = SEAL; ctx.fillRect(e.x, e.y, e.w, e.h); }
+    return;
+  }
+  if (e.type === "r") {
+    if (e.ph === "rise") { // the coming swing, painted as a red arc that fills in toward the beat
+      const bl = Music.beatLen, prog = Math.max(0, Math.min(1, 1 - (e.nextAt - songPos) / bl));
+      ctx.fillStyle = `rgba(195,22,28,${.08 + prog * .22})`; ctx.beginPath(); ctx.moveTo(cx, e.y + e.h / 2); ctx.arc(cx, e.y + e.h / 2, 78, e.face > 0 ? -1.1 : Math.PI - 1.1, e.face > 0 ? 1.1 : Math.PI + 1.1); ctx.closePath(); ctx.fill();
+    }
+    ctx.globalAlpha *= Math.max(.05, e.fade);
+    if (!has2 || !drawSprite("foes2", e.ph === "gone" || e.fade < .9 ? F2.reaperSmoke : F2.reaper, cx, feet, kOf("foes2", F2.reaper, FOE_H * 1.08), e.face < 0, .5, pal.night)) { ctx.fillStyle = "#111"; ctx.fillRect(e.x, e.y, e.w, e.h); }
+    return;
+  }
+  // 수문장
+  if (e.act && songPos < e.hitAt) { // telegraph what is coming
+    const prog = Math.max(0, Math.min(1, 1 - (e.hitAt - songPos) / Music.beatLen)), a = .1 + prog * .3;
+    if (e.act === "slam") { ctx.fillStyle = `rgba(195,22,28,${a})`; ctx.fillRect(e.face > 0 ? cx : cx - 150, e.y + e.h - 70, 150, 70); }
+    else if (e.act === "charge") { ctx.strokeStyle = `rgba(195,22,28,${a + .2})`; ctx.lineWidth = 6; ctx.beginPath(); ctx.moveTo(cx, e.y + e.h - 20); ctx.lineTo(cx + e.face * 220, e.y + e.h - 20); ctx.stroke(); }
+    else if (e.act === "volley") { ctx.fillStyle = `rgba(195,22,28,${a + .3})`; ctx.beginPath(); ctx.arc(cx + e.face * 30, e.y + 30, 6 + prog * 8, 0, 7); ctx.fill(); }
+    else { ctx.strokeStyle = `rgba(39,70,106,${a + .2})`; ctx.lineWidth = 3; ctx.beginPath(); ctx.arc(cx, e.y + 20, 30 + prog * 30, 0, 7); ctx.stroke(); }
+  }
+  const fr = e.stagT > 0 ? F2.bossKneel : e.chargeT > 0 ? F2.bossSlam : e.act ? F2.bossUp : e.swingT > 0 ? F2.bossSlam : F2.boss;
+  if (!has2 || !drawSprite("foes2", fr, cx, feet, kOf("foes2", F2.boss, 124), e.face < 0, .5, pal.night)) { ctx.fillStyle = "#222"; ctx.fillRect(e.x, e.y, e.w, e.h); }
+}
 // ---------- screens ----------
 function showScreen(id) {
   for (const s of ["menu", "settings", "interlude", "pause", "result", "choice"]) $(s).hidden = s !== id;
@@ -1643,7 +1884,7 @@ $("bInstall").addEventListener("click", async () => { if (!installEvt) return; i
 const standalone = matchMedia("(display-mode: standalone)").matches || matchMedia("(display-mode: fullscreen)").matches || navigator.standalone;
 
 
-if (location.hash === "#debug") window.__dbg = { tp(tx, ty) { P.x = tx * T + 7; P.y = (ty + 1) * T - 30; P.vx = P.vy = 0; }, get state() { return state; }, get P() { return P; }, get LV() { return LV; }, get state2() { return state; }, get SC() { return LV.scenery; } };
+if (location.hash === "#debug") window.__dbg = { tp(tx, ty) { P.x = tx * T + 7; P.y = (ty + 1) * T - 30; P.vx = P.vy = 0; }, get state() { return state; }, get P() { return P; }, get LV() { return LV; }, get state2() { return state; }, get SC() { return LV.scenery; }, get E() { return enemies; }, get run() { return run; } };
 window.addEventListener("pointerdown", () => Music.unlock(), { once: true, capture: true });   // first tap anywhere starts the sound
 resize();
 toMenu();
