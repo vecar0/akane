@@ -49,7 +49,7 @@ const SEAL = "#c3161c", JJOK = "#27466a", JJOK_L = "#5f86b5";
 // ---------- images (optional; drawn procedurally when missing) ----------
 // far/mid: Higgsfield ink-wash panoramas with alpha. tex-*: seamless tiles (seam ratio checked <= 1.3).
 const IMG = {}, PAT = {};
-for (const k of ["tex-paper", "tex-stone", "tex-giwa"]) { const im = new Image(); im.onload = () => { IMG[k] = im; PAT[k] = null; }; im.src = "assets/" + k + ".webp"; }
+for (const k of ["tex-paper", "tex-stone", "tex-giwa", "tex-granite"]) { const im = new Image(); im.onload = () => { IMG[k] = im; PAT[k] = null; }; im.src = "assets/" + k + ".webp"; }
 function pattern(key, scale) { // world- or screen-anchored repeating pattern, built once per image
   if (!IMG[key]) return null;
   if (!PAT[key]) { PAT[key] = ctx.createPattern(IMG[key], "repeat"); PAT[key].setTransform(new DOMMatrix().scale(scale)); }
@@ -154,7 +154,8 @@ function buildScenery() {
   LV.scenery = { skins, back, pines, front };
 }
 function drawCliff(c, img, alpha) {
-  const f = SPR.rocks.f[c.i], ov = c.w * .14 + 8, w = c.w + ov * 2;
+  const f = SPR.rocks.f[c.i], w = f.w * c.h / f.h;   // height fixed, width follows the art
+
   ctx.save(); ctx.translate(c.x, 0); if (c.flip) ctx.scale(-1, 1); ctx.globalAlpha = alpha;
   ctx.drawImage(img, f.x, f.y, f.w, f.h, -w / 2, c.y, w, c.h); ctx.restore(); ctx.globalAlpha = 1;
 }
@@ -851,7 +852,7 @@ function render(rdt) {
     const k = p.h / f.h; ctx.drawImage(pal.night ? SPR.pines.inv : SPR.pines.img, f.x, f.y, f.w, f.h, -f.w * k / 2, -p.h, f.w * k, p.h); ctx.restore();
   }
   ctx.globalAlpha = 1;
-  if (SC) for (const c of SC.back) if (Math.abs(c.x - cam.x) < vw / 2 + c.w + 200) drawCliff(c, pal.night ? SPR.rocks.inv : SPR.rocks.img, pal.night ? .25 : .45);
+  if (SC) for (const c of SC.back) if (Math.abs(c.x - cam.x) < vw / 2 + c.h * 2 + 200) drawCliff(c, pal.night ? SPR.rocks.inv : SPR.rocks.img, pal.night ? .25 : .45);
   // hints
   ctx.font = `600 11px ${BODY_FONT}`; ctx.textBaseline = "top";
   for (const [hx, hy, text] of LV.hints) {
@@ -881,10 +882,13 @@ function render(rdt) {
   // tiles: all visible rock in one path, filled once with the stone texture
   const stone = pattern("tex-stone", 0.5), giwa = pattern("tex-giwa", 0.094), rock = new Path2D();
   for (let ty = y0; ty <= y1; ty++) for (let tx = x0; tx <= x1; tx++) if (LV.grid[ty * LV.w + tx] === 1) rock.rect(tx * T - .3, ty * T - .3, T + .6, T + .6);
+  const granite = pattern("tex-granite", 0.32);
   ctx.fillStyle = pal.tile; ctx.fill(rock);
-  if (stone) { ctx.globalAlpha = pal.rim ? .8 : 1; ctx.fillStyle = stone; ctx.fill(rock); ctx.globalAlpha = 1; }
-  if (SC && !pal.night) { ctx.fillStyle = "rgba(168,160,146,.42)"; ctx.fill(rock); }   // lift the base toward the granite of the painted cliffs
-  if (SC) for (const c of SC.skins) if (Math.abs(c.x - cam.x) < vw / 2 + c.w + 120) drawCliff(c, pal.night ? SPR.rocks.inv : SPR.rocks.img, pal.night ? .55 : 1);
+  if (granite) { // painted granite face, darkening with depth; night keeps it dim
+    ctx.globalAlpha = pal.night ? .35 : 1; ctx.fillStyle = granite; ctx.fill(rock); ctx.globalAlpha = 1;
+    const sh = ctx.createLinearGradient(0, cam.y - vh / 2, 0, cam.y + vh / 2); sh.addColorStop(0, "rgba(20,18,16,0)"); sh.addColorStop(1, "rgba(20,18,16,.35)");
+    ctx.fillStyle = sh; ctx.fill(rock);
+  } else if (stone) { ctx.globalAlpha = pal.rim ? .8 : 1; ctx.fillStyle = stone; ctx.fill(rock); ctx.globalAlpha = 1; }
   for (let ty = y0; ty <= y1; ty++) for (let tx = x0; tx <= x1; tx++) {
     const v = LV.grid[ty * LV.w + tx], px = tx * T, py = ty * T;
     if (v === 1) {
@@ -899,6 +903,10 @@ function render(rdt) {
         const s = (tx * 73 + ty * 31) % 7;
         ctx.beginPath(); ctx.moveTo(px - .5, py + 2); ctx.lineTo(px + 6 + s, py - 1.5); ctx.lineTo(px + 18, py + .5 - s * .2); ctx.lineTo(px + T + .5, py - 1); ctx.lineTo(px + T + .5, py + 3); ctx.closePath(); ctx.fill();
         if (pal.rim) { ctx.fillStyle = pal.rim; ctx.fillRect(px, py - 1, T, 1.2); }
+      }
+      for (const sd of [-1, 1]) if (tileAt(tx + sd, ty) !== 1 && granite) { // dark ink edge where the rock face turns away
+        const gx = sd < 0 ? px : px + T - 7, gg = ctx.createLinearGradient(gx, 0, gx + 7, 0);
+        gg.addColorStop(sd < 0 ? 0 : 1, "rgba(15,14,16,.75)"); gg.addColorStop(sd < 0 ? 1 : 0, "rgba(15,14,16,0)"); ctx.fillStyle = gg; ctx.fillRect(gx, py, 7, T);
       }
       if (pal.rim && (tileAt(tx - 1, ty) !== 1 || tileAt(tx + 1, ty) !== 1)) { // stone-rubbing speckle on exposed sides
         ctx.fillStyle = pal.rim; const sx = tileAt(tx - 1, ty) !== 1 ? px : px + T - 1.5;
