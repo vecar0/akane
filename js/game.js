@@ -360,7 +360,7 @@ function loadMap(map, pal, hints) {
   for (const l of lv.lasers) { let yy = l.ty + 1; while (yy < h && grid[yy * w + l.tx] !== 1) yy++; l.x = l.tx * T + 16; l.y0 = l.ty * T + 22; l.y1 = yy * T; }
   lv.ridges = makeRidges(w * T, hashStr(map[11]));
   lv.drums = [];
-  for (const frac of [.32, .68]) { // 초식 drums: cut one to choose a technique
+  for (const frac of []) { // (retired) mid-마당 drums
     const spot = () => {
       for (let dx = 0; dx < 40; dx++) for (const x of [Math.floor(w * frac) + dx, Math.floor(w * frac) - dx]) {
         if (x < 3 || x >= w - 3 || lv.defs.some(d => Math.abs(d.tx - x) < 2)) continue;
@@ -474,10 +474,13 @@ function showInterlude() {
   state = "interlude";
   const md = MADANG[run.m], jd = Music.JANGDAN[md.jd];
   $("iOrd").textContent = MNAME[run.m];
-  $("iLine").textContent = md.line;
-  $("iMeta").textContent = ORD[run.m] + " 마당 · " + jd.name + " · " + "●".repeat(run.breath) + "○".repeat(3 - run.breath) + (run.daily ? " · 오늘의 판" : "");
+  $("iLine").textContent = run.m === 0 && run.cycle ? "천고가 다시 울린다. 장단이 빨라졌다." : run.m === 4 ? "끝에서 천고를 베어라." : md.line;
+  $("iMeta").textContent = ((run.cycle || 0) ? `${run.cycle + 1}번째 판 · ` : "") + ORD[run.m] + " 마당 · " + jd.name + " · " + "●".repeat(run.breath) + "○".repeat(Math.max(0, 3 - run.breath)) + (run.daily ? " · 오늘의 판" : "");
   $("interlude").classList.remove("night");
   loadMap(buildMadangMap(run.seed, run.m), PAL[run.m]); LV.ledgeStone = run.m >= 3;
+  if (run.m === 4 && LV.exit) { // the last 마당 ends at 천고 itself instead of a seal
+    LV.drums = [{ id: 0, big: true, x: LV.exit.x + LV.exit.w / 2, y: LV.exit.y + LV.exit.h, w: 60, h: 80 }]; LV.exit = null; LV.gate = null;
+  }
   showScreen("interlude");
   Music.unlock(); Music.stop(); Music.jing();
   setTimeout(() => $("bEnter").focus({ preventScroll: true }), 30);
@@ -492,7 +495,7 @@ function enterMadang() {
   const s = cpSave || LV.start;
   P = newPlayer(s.x, s.y); run.hosinUsed = false; run.cutDrums = run.cutDrums || [];
   bullets = []; parts = []; ghosts = []; seals = []; vfx = [];
-  Music.start(MADANG[run.m].jd, run.seed + run.m);
+  Music.start(MADANG[run.m].jd, run.seed + run.m, 1 + .08 * (run.cycle || 0));
   songPos = Music.pos(); spawnEnemies();
   cam.x = P.x; cam.y = P.y;
   setHud(); showScreen(null); state = "play";
@@ -556,23 +559,24 @@ function showChoice() {
     b.addEventListener("click", () => {
       run.perks = run.perks || [];
       if (c.id === "sum") run.breath = Math.min(5, run.breath + 1); else run.perks.push(c.id);
-      saveRun(); Music.sfx("lantern"); setHud(); showScreen(null); Music.resume(); state = "play"; last = performance.now();
+      run.cycle = (run.cycle || 0) + 1; run.m = 0; run.cp = -1; run.dead = []; run.cutDrums = [];
+      saveRun(); Music.sfx("lantern"); Music.stop(); showInterlude();
     });
     box.appendChild(b);
   }
-  $("chMadang").textContent = "북을 베었다";
+  $("chMadang").textContent = `천고를 베었다 · ${(run.cycle || 0) + 1}번째`;
   state = "choice"; Music.pause(); P.focus = false; for (const k in held) held[k] = 0; showScreen("choice");
 }
 function endRun(won) {
   state = "result"; Music.stop();
   store.del("run");
-  const reached = run.m + (won ? 1 : 0);
+  const reached = (run.cycle || 0) * 5 + run.m + (won ? 1 : 0);
   const rate = run.slashes ? Math.round(run.strikes / run.slashes * 100) : 0;
   $("rSeal").textContent = won ? "登" : "終";
   $("rTitle").textContent = won ? "등천" : "종국";
   $("rSub").textContent = won ? "천고는 아직 위에서 울린다." : ORD[run.m] + " 마당에서 숨이 다했다.";
   $("rStats").innerHTML = "";
-  for (const [k, v] of [["오른 마당", reached + " / 5"], ["시간", fmt(run.time)], ["일격", run.strikes + "회 · " + rate + "%"], ["벤 적", run.kills], ["베인 횟수", run.deaths]]) {
+  for (const [k, v] of [["넘은 마당", reached + ((run.cycle || 0) ? ` · ${run.cycle}번 천고를 벰` : "")], ["시간", fmt(run.time)], ["일격", run.strikes + "회 · " + rate + "%"], ["벤 적", run.kills], ["베인 횟수", run.deaths]]) {
     const a = document.createElement("span"), b = document.createElement("b"); a.textContent = k; b.textContent = v; $("rStats").append(a, b);
   }
   let rec = "";
@@ -592,7 +596,8 @@ let lastResult = null;
 function shareText() {
   const r = lastResult; if (!r) return "";
   const head = r.daily ? `천고 · 오늘의 판 ${r.dateKey.slice(5).replace("-", ".")}` : "천고";
-  return `${head}\n${r.won ? "다섯 마당 돌파" : ORD[Math.max(0, r.reached)] + " 마당에서 끝"} · ${fmt(r.time)} · 일격 ${r.rate}%\n` + "▮".repeat(r.reached) + "▯".repeat(5 - r.reached);
+  const cyc = Math.floor(r.reached / 5), m = r.reached % 5;
+  return `${head}\n${r.reached}마당 넘음${cyc ? ` · 천고 ${cyc}번 벰` : ""} · ${fmt(r.time)} · 일격 ${r.rate}%\n` + "●".repeat(cyc) + "▮".repeat(m) + "▯".repeat(5 - m);
 }
 
 // ---------- player ----------
@@ -797,12 +802,12 @@ function cutDrum(d) {
   run.cutDrums.push(d.id); saveRun();
   addFx("hud", HUD.spark, d.x, d.y - 20, 70, { life: .5 }); seals.push({ x: d.x, y: d.y - 30, t: 0, rot: -.1 });
   Music.sfx("strike"); Music.jing(); shake = 8; hitstop = .12; buzz(30);
-  setTimeout(() => { if (state === "play") showChoice(); }, 380);
+  state = "result"; Music.stop(); setTimeout(showChoice, 700);
 }
 function drumsInPlay() { return mode === "tutorial" || !LV.drums ? [] : LV.drums.filter(d => !(run.cutDrums || []).includes(d.id)); }
 function slashHits() {
   if (P.slashT <= 0) return;
-  for (const d of drumsInPlay()) { const cx = P.x + P.w / 2 + P.slashDir.x * 26, cy = P.y + P.h / 2 + P.slashDir.y * 26; if (Math.abs(cx - d.x) < 52 && cy > d.y - d.h - 24 && cy < d.y + 10) cutDrum(d); }
+  for (const d of drumsInPlay()) { const cx = P.x + P.w / 2 + P.slashDir.x * 26, cy = P.y + P.h / 2 + P.slashDir.y * 26; if (Math.abs(cx - d.x) < 52 + (d.big ? 20 : 0) && cy > d.y - d.h - 24 && cy < d.y + 10) cutDrum(d); }
   const R = (P.strike ? 54 : 40) * (has("ssang") ? 1.35 : 1), reach = P.strike ? 30 : 26;
   const cx = P.x + P.w / 2 + P.slashDir.x * reach, cy = P.y + P.h / 2 + P.slashDir.y * reach;
   for (const e of enemies) {
@@ -884,7 +889,7 @@ function setHud() {
   if (mode === "tutorial") { $("hMadang").textContent = "수련터"; $("hJang").textContent = Music.JANGDAN[TUTORIAL.jd].name; }
   else { $("hMadang").textContent = ORD[run.m] + " 마당"; $("hJang").textContent = Music.JANGDAN[MADANG[run.m].jd].name; }
   const hb = $("hBreath"); hb.innerHTML = ""; hb.classList.toggle("inf", mode === "tutorial");
-  if (mode !== "tutorial") for (let i = 0; i < 3; i++) { const d = document.createElement("i"); if (i >= run.breath) d.className = "lost"; hb.appendChild(d); }
+  if (mode !== "tutorial") for (let i = 0; i < Math.max(3, run.breath); i++) { const d = document.createElement("i"); if (i >= run.breath) d.className = "lost"; hb.appendChild(d); }
   hudCache = "";
 }
 let hudCache = "";
@@ -998,7 +1003,20 @@ function render(rdt) {
   for (let ty = y0; ty <= y1; ty++) for (let tx = x0; tx <= x1; tx++) if (LV.grid[ty * LV.w + tx] === 1 && !(LV.slabTiles && LV.slabTiles.has(ty * LV.w + tx))) rock.rect(tx * T - .3, ty * T - .3, T + .6, T + .6);
   const granite = pattern("tex-slab", 0.45);
   ctx.fillStyle = pal.tile; ctx.fill(rock);
-  if (granite) { // painted granite face, darkening with depth; night keeps it dim
+  if (SPR.pillars) { // ground built from the same painted rock columns as the pillars, so both read as one cliff
+    const pf = SPR.pillars.f, colW = 70, img = pal.night ? SPR.pillars.inv : SPR.pillars.img;
+    ctx.save(); ctx.clip(rock); ctx.filter = "brightness(.8) contrast(1.15)"; if (pal.night) ctx.globalAlpha = .45;
+    const cx0 = Math.floor((cam.x - vw / 2) / colW) - 1, cx1 = Math.ceil((cam.x + vw / 2) / colW) + 1;
+    for (let c = cx0; c <= cx1; c++) {
+      const hsh = (c * 2654435761) >>> 0, i = hsh % 3, f = pf[i], w = colW * 1.35, segH = w * f.h / f.w, off = (hsh >>> 8) % 97;
+      for (let y = Math.floor((cam.y - vh / 2 - off) / segH) * segH + off - segH; y < cam.y + vh / 2 + segH; y += segH - 10) {
+        ctx.save(); ctx.translate(c * colW + colW / 2, y); if ((hsh >>> 3) & 1) ctx.scale(-1, 1); ctx.drawImage(img, f.x, f.y, f.w, f.h, -w / 2, 0, w, segH); ctx.restore();
+      }
+    }
+    ctx.restore(); ctx.filter = "none"; ctx.globalAlpha = 1;
+    const sh = ctx.createLinearGradient(0, cam.y - vh / 2, 0, cam.y + vh / 2); sh.addColorStop(0, "rgba(20,18,16,0)"); sh.addColorStop(1, "rgba(20,18,16,.3)");
+    ctx.fillStyle = sh; ctx.fill(rock);
+  } else if (granite) { // painted granite face, darkening with depth; night keeps it dim
     ctx.globalAlpha = pal.night ? .35 : 1; ctx.fillStyle = granite; ctx.fill(rock); ctx.globalAlpha = 1;
     const sh = ctx.createLinearGradient(0, cam.y - vh / 2, 0, cam.y + vh / 2); sh.addColorStop(0, "rgba(20,18,16,0)"); sh.addColorStop(1, "rgba(20,18,16,.35)");
     ctx.fillStyle = sh; ctx.fill(rock);
@@ -1046,7 +1064,7 @@ function render(rdt) {
     const beat = 1 - (songPos / Music.beatLen % 1), s = 1 + Math.max(0, beat - .75) * .4;
     const gl = ctx.createRadialGradient(d.x, d.y - 22, 4, d.x, d.y - 22, 44); gl.addColorStop(0, "rgba(195,22,28,.28)"); gl.addColorStop(1, "rgba(195,22,28,0)"); ctx.fillStyle = gl; ctx.fillRect(d.x - 44, d.y - 66, 88, 88);
     ctx.fillStyle = "#3a1b14"; ctx.fillRect(d.x - 12, d.y - 14, 3, 14); ctx.fillRect(d.x + 9, d.y - 14, 3, 14);
-    if (!drawSprite("hudsolid", HUD.bigDrum, d.x, d.y - 10, 38 * s / (SPR.hudsolid ? SPR.hudsolid.f[HUD.bigDrum].h : 1), false, .5, false, 1)) { ctx.fillStyle = SEAL; ctx.beginPath(); ctx.arc(d.x, d.y - 26, 16, 0, 7); ctx.fill(); }
+    if (!drawSprite("hudsolid", HUD.bigDrum, d.x, d.y - 10, (d.big ? 86 : 38) * s / (SPR.hudsolid ? SPR.hudsolid.f[HUD.bigDrum].h : 1), false, .5, false, 1)) { ctx.fillStyle = SEAL; ctx.beginPath(); ctx.arc(d.x, d.y - 26, 16, 0, 7); ctx.fill(); }
   }
   if (LV.gate && SPR.props2 && visible(LV.gate.x)) drawSprite("props2", P2.gate, LV.gate.x, LV.gate.y, 78 / SPR.props2.f[P2.gate].h, false, .5, pal.night);
   for (const d of LV.dress) {
@@ -1173,7 +1191,7 @@ function render(rdt) {
     ctx.fillStyle = "#f1ede4"; ctx.textAlign = "center"; ctx.textBaseline = "middle";
     const sf = SPR.roguea && SPR.roguea.f[0];
     if (sf) { // 絶命 in red brush, written down the screen; lands large and settles
-      const k = Math.min(1, deathT / .12), sw = Math.min(W * .5, 400) * (1.2 - .2 * k), sh = sw * sf.h / sf.w;
+      const k = Math.min(1, deathT / .12), sw = Math.min(W * .32, 260) * (1.2 - .2 * k), sh = sw * sf.h / sf.w;
       ctx.drawImage(SPR.roguea.img, sf.x, sf.y, sf.w, sf.h, W / 2 - sw / 2, H / 2 - sh / 2 - 6, sw, sh);
     } else { ctx.font = `400 ${Math.min(72, W / 8)}px "Song Myung", serif`; ctx.fillText("절명", W / 2, H / 2 - 12); }
     if (mode !== "tutorial") { ctx.font = `600 13px ${BODY_FONT}`; ctx.fillText(run.breath > 0 ? `남은 숨 ${run.breath}` : "숨이 다했다", W / 2, H - 92); }

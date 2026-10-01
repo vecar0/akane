@@ -127,9 +127,9 @@ const Music = (() => {
   return {
     JANGDAN,
     unlock() { return ensure(); },
-    start(key, seed) {
+    start(key, seed, speed = 1) {
       ensure(); this.stop();
-      def = JANGDAN[key] || JANGDAN.jungmori;
+      const base = JANGDAN[key] || JANGDAN.jungmori; def = Object.assign({}, base, { bpm: Math.round(base.bpm * speed) });
       let s = (seed >>> 0) || 1; rng = () => ((s = (s * 1664525 + 1013904223) >>> 0) / 4294967296);
       nextIdx = 0; running = true; rate = 1;
       if (ac) { t0 = ac.currentTime + 0.25; baseTime = t0; basePos = 0; timer = setInterval(tick, 25); tick(); }
