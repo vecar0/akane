@@ -190,7 +190,7 @@ const CAL = { title: 0, death: 1, madang: [2, 3, 4, 5, 6], end: 7, clear: 8 };  
 const PROP = { rope: 0, aim: 1, reticle: 2, pine: 3, stoneLantern: 4, jars: 5, banner: 6, sotdae: 7, palisade: 8 };
 const DRESS = [[PROP.pine, 74, 3], [PROP.stoneLantern, 34, 2], [PROP.jars, 26, 1], [PROP.banner, 80, 3], [PROP.sotdae, 84, 3], [PROP.palisade, 28, 1]]; // [frame, world height, headroom tiles]
 const OBJ = { lanternOn: 0, lanternOff: 1, kite: 2, thorns: 3, seal: 4, emitter: 5, slash: 6, slashRed: 7, splat: 8 };
-for (const n of ["hero", "hero2", "foes", "objects", "ui", "fx", "hud", "hudsolid", "props", "props2", "rocks", "pines", "slabs", "pillars", "rogue", "roguea", "rogue2", "rogue3", "rogue4", "foes2", "bossA", "bossB", "bossfx"]) {
+for (const n of ["hero", "hero2", "foes", "objects", "ui", "fx", "hud", "hudsolid", "props", "props2", "rocks", "pines", "slabs", "pillars", "rogue", "roguea", "rogue2", "rogue3", "rogue4", "foes2", "bossA", "bossB", "bossfx", "bossC", "bossD"]) {
   Promise.all([
     fetch(`assets/sprites/${n}.json`).then(r => r.json()),
     new Promise((res, rej) => { const im = new Image(); im.onload = () => res(im); im.onerror = rej; im.src = `assets/sprites/${n}.webp`; })
@@ -1136,6 +1136,19 @@ const BOSSES = {
   talchum: { name: "탈춤꾼", han: "假面", hp: 8, w: 28, h: 60, draw: 98, sheet: "bossB", idle: 6, atk: 7, speed: 80, line: "탈을 바꿔 쓸 때마다 다른 사람이 된다.",
     pool: c => ["fan", "dance", "mask", "fan", ...(c >= 1 ? ["fan2"] : [])] }
 };
+// extra poses on bossC/bossD: hurt (recoil) for everyone, plus a move or signature-move frame
+const BOSS_POSE = {
+  gumiho: { hurt: ["bossC", 1], move: ["bossC", 0] },
+  dokkaebi: { hurt: ["bossC", 3], move: ["bossC", 2] },
+  imugi: { hurt: ["bossC", 5], spec: ["bossC", 4] },
+  wongwi: { hurt: ["bossC", 7], spec: ["bossC", 6] },
+  jangseung: { hurt: ["bossD", 0], spec: ["bossC", 8] },
+  haetae: { hurt: ["bossD", 2], spec: ["bossD", 1] },
+  bulgasari: { hurt: ["bossD", 4], spec: ["bossD", 3] },
+  baekho: { hurt: ["bossD", 6], spec: ["bossD", 5] },
+  talchum: { hurt: ["bossD", 8], spec: ["bossD", 7] }
+};
+const SHEET_SC = { bossA: 1.0241, bossB: .88235, bossC: 1, bossD: 1 };   // slicer scale per sheet, so poses from different sheets keep one size
 const BOSS_ORDER = ["gumiho", "dokkaebi", "imugi", "wongwi", "jangseung", "haetae", "bulgasari", "baekho", "talchum"];
 const MASKS = ["양반탈", "각시탈", "말뚝이탈"];
 function bossFor(seed, cy, m) { // a run-seeded order: first the 셋째 마당 boss, then 수문장, then the rest; never the same twice in a row
@@ -1206,7 +1219,7 @@ function bossPerform(e, a, I) {
     case "illusion": for (const dx of [-90, 90]) enemies.push({ hp: 1, maxHp: 1, id: 9000 + Math.floor(Math.random() * 1e6), type: "i", kind: "gumiho", x: ecx + dx - 20, y: f - 36, w: 40, h: 36, face: Math.sign(pcx - ecx - dx) || 1, life: 4, alive: true }); Music.sfx("hook"); break;
     case "coins": Music.sfx("clang"); break;
     case "gamtu": e.act = "club"; e.hitAt = (Math.floor(songPos / bl) + 2) * bl; return true;   // reappears swinging two beats later
-    case "burst": case "burst2": e.hidden = false; e.x = e.tx - e.w / 2; e.y = f - e.h; e.face = Math.sign(pcx - e.tx) || e.face; shake = 10; Music.sfx("kill"); addFx("hud", HUD.dust, e.tx, f, 110, { life: .5, ay: 1 }); break;
+    case "burst": case "burst2": e.hidden = false; e.emergeT = .6; e.x = e.tx - e.w / 2; e.y = f - e.h; e.face = Math.sign(pcx - e.tx) || e.face; shake = 10; Music.sfx("kill"); addFx("hud", HUD.dust, e.tx, f, 110, { life: .5, ay: 1 }); break;
     case "spit": for (const dx of [-70, 0, 70]) lob(e, ecx + e.face * 20, e.y + 16, pcx + dx, pcy, .9, { orb: true, water: true }); Music.sfx("shoot"); break;
     case "scream": haz.push({ kind: "ring", x: ecx, y: e.y + e.h / 2, at: songPos, speed: 300, max: 560 }); if (c >= 2) haz.push({ kind: "ring", x: ecx, y: e.y + e.h / 2, at: songPos + bl * .5, speed: 300, max: 560 }); shake = 6; Music.sfx("die"); break;
     case "blink": { const side = Math.random() < .5 ? -1 : 1; e.x = pcx + side * 190 - e.w / 2; e.y = f - 115 - e.h / 2; e.face = -side; addFx("hud", HUD.smoke, e.x + e.w / 2, e.y + e.h / 2, 70, { life: .6 });
@@ -1227,7 +1240,7 @@ function bossPerform(e, a, I) {
 }
 function stepBoss(e, dt, pcx, pcy, dist, live) {
   const B = BOSSES[e.kind], bl = Music.beatLen, c = cyc(), I = { pcx, pcy, bl, c };
-  e.stagT = Math.max(0, (e.stagT || 0) - dt); e.swingT = Math.max(0, (e.swingT || 0) - dt); e.invisT = Math.max(0, (e.invisT || 0) - dt);
+  e.emergeT = Math.max(0, (e.emergeT || 0) - dt); e.stagT = Math.max(0, (e.stagT || 0) - dt); e.swingT = Math.max(0, (e.swingT || 0) - dt); e.walkT = Math.max(0, (e.walkT || 0) - dt); e.invisT = Math.max(0, (e.invisT || 0) - dt);
   if (!e.awake) { if (!(live && dist < 470)) return; e.awake = true; toast(josa(B.name, "이", "가") + " 길을 막는다"); Music.jing(); e.nextAt = (Math.floor(songPos / bl) + 2) * bl; }
   let ecx = e.x + e.w / 2;
   const deadly = () => { if (live && hurtsPlayer() && overlap(e, P)) { lastHitDir = { x: Math.sign(pcx - ecx) || 1, y: -.3 }; die(); } };
@@ -1257,7 +1270,7 @@ function stepBoss(e, dt, pcx, pcy, dist, live) {
       e.x += Math.max(-140 * dt, Math.min(140 * dt, tx - ecx)); e.y += Math.max(-120 * dt, Math.min(120 * dt, ty - (e.y + e.h / 2)));
     } else if (!B.still && dist > 110 && e.stagT <= 0) {
       const ahead = ecx + e.face * (e.w / 2 + 4), sp = (B.speed || 55) * (e.invisT > 0 ? 2 : 1) * (e.mask === 1 ? 1.6 : 1) + 10 * c;
-      if (groundPt(ahead, e.y + e.h + 4) && !solidPt(ahead, e.y + e.h - 10)) moveX(e, e.face * sp * dt);
+      if (groundPt(ahead, e.y + e.h + 4) && !solidPt(ahead, e.y + e.h - 10)) { moveX(e, e.face * sp * dt); e.walkT = .12; }
     }
     if (live && songPos >= e.nextAt && e.stagT <= 0) {
       const pool = B.pool(c); let a = pool[(e.n = (e.n || 0) + 1) % pool.length];
@@ -1269,7 +1282,7 @@ function stepBoss(e, dt, pcx, pcy, dist, live) {
   } else {
     if (e.suck && live && P.dashT <= 0) P.vx += Math.sign(ecx - pcx) * 1100 * dt;   // 불가사리 breathes in
     if (songPos >= e.hitAt) {
-      const a = e.act; e.act = null; e.swingT = .35;
+      const a = e.act; e.act = null; e.swingT = .35; e.lastAct = a;
       const gap = Math.max(2, (e.kind === "jangseung" ? 3 : 4) - (c >> 1) - (e.mask === 1 ? 1 : 0));
       if (!bossPerform(e, a, I)) e.nextAt = e.hitAt + gap * bl;
     }
@@ -1997,7 +2010,8 @@ function drawNewFoe(e, pal, cx) {
   }
   if (e.type === "i") { // 구미호's illusion: a pale, flickering copy
     const B = BOSSES.gumiho; ctx.globalAlpha *= .45 + .2 * Math.sin(performance.now() / 60);
-    if (!drawSprite(B.sheet, B.atk, cx, feet, kOf(B.sheet, B.idle, B.draw * .8), e.face < 0, .5, pal.night)) { ctx.fillStyle = "#ddd"; ctx.fillRect(e.x, e.y, e.w, e.h); }
+    const [is, ifr] = SPR.bossC ? BOSS_POSE.gumiho.move : [B.sheet, B.atk];
+    if (!drawSprite(is, ifr, cx, feet, kOf(B.sheet, B.idle, B.draw * .8) * SHEET_SC[B.sheet] / SHEET_SC[is], e.face < 0, .5, pal.night)) { ctx.fillStyle = "#ddd"; ctx.fillRect(e.x, e.y, e.w, e.h); }
     return;
   }
   drawBoss(e, pal, cx, feet);
@@ -2017,10 +2031,17 @@ function drawBoss(e, pal, cx, feet) {
   }
   if (e.invisT > 0) ctx.globalAlpha *= .12;   // 도깨비 감투
   const atk = e.act || e.swingT > 0 || e.chargeT > 0 || e.air || e.swoopT > 0 || e.danceT > 0 || e.suck;
-  const fr = e.stagT > 0 ? (B.stag ?? B.atk) : e.kind === "sumun" && (e.chargeT > 0 || (!e.act && e.swingT > 0)) ? B.hit : atk ? B.atk : B.idle;
-  const k = kOf(B.sheet, B.idle, B.draw), spin = e.danceT > 0 ? Math.sin(performance.now() / 50) : 1;
-  ctx.save(); ctx.translate(cx, feet); if (e.stagT > 0 && B.stag == null) ctx.rotate(-.12 * e.face); if (e.kind === "jangseung" && e.act) ctx.translate(Math.sin(performance.now() / 30) * 1.5, 0);
-  if (!drawSprite(B.sheet, fr, 0, 0, k, (e.face < 0) !== (spin < 0), .5, pal.night)) { ctx.fillStyle = "#222"; ctx.fillRect(-e.w / 2, -e.h, e.w, e.h); }
+  const PO = BOSS_POSE[e.kind] || {}, now = performance.now();
+  let sheet = B.sheet, fr = e.kind === "sumun" && (e.chargeT > 0 || (!e.act && e.swingT > 0)) ? B.hit : atk ? B.atk : B.idle;
+  const spec = { imugi: e.emergeT > 0, wongwi: e.swoopT > 0, jangseung: !!e.act || e.swingT > 0, haetae: e.chargeT > 0, bulgasari: e.suck, baekho: e.act === "roar" || (e.lastAct === "roar" && e.swingT > 0), talchum: e.danceT > 0 }[e.kind];
+  if (e.stagT > 0 || e.hitT > 0) { if (PO.hurt) [sheet, fr] = PO.hurt; else fr = B.stag ?? B.atk; }
+  else if (spec && PO.spec) [sheet, fr] = PO.spec;
+  else if (!atk && e.walkT > 0 && PO.move) [sheet, fr] = PO.move;
+  if (!SPR[sheet]) { sheet = B.sheet; fr = atk ? B.atk : B.idle; }
+  const k = kOf(B.sheet, B.idle, B.draw) * (SHEET_SC[B.sheet] || 1) / (SHEET_SC[sheet] || 1), spin = e.danceT > 0 && !PO.spec ? Math.sin(now / 50) : 1;
+  const breathe = !atk && !(e.stagT > 0) ? 1 + Math.sin(now / 420 + e.id) * .015 : 1;   // idle: a slow breath so it never stands frozen
+  ctx.save(); ctx.translate(cx, feet); ctx.scale(1, breathe); if (e.stagT > 0 && B.stag == null && !PO.hurt) ctx.rotate(-.12 * e.face); if (e.kind === "jangseung" && e.act) ctx.translate(Math.sin(now / 30) * 1.5, 0);
+  if (!drawSprite(sheet, fr, 0, 0, k, (e.face < 0) !== (spin < 0), .5, pal.night)) { ctx.fillStyle = "#222"; ctx.fillRect(-e.w / 2, -e.h, e.w, e.h); }
   ctx.restore();
   if (e.kind === "talchum") { ctx.fillStyle = SEAL; ctx.font = `400 13px "Song Myung", serif`; ctx.textAlign = "center"; ctx.fillText(MASKS[e.mask || 0], cx, e.y - 34); ctx.textAlign = "left"; }
 }
