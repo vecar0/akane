@@ -550,7 +550,8 @@ function newRun(daily) {
 }
 function continueRun() {
   const s = store.get("run", null); if (!s) return;
-  run = s; mode = s.daily ? "daily" : "run"; showInterlude();
+  run = s; mode = s.daily ? "daily" : "run";
+  if (s.choosing) showChoice(s.choosing); else showInterlude();
 }
 function saveRun() { if (run && mode !== "tutorial") store.set("run", run); }
 function showInterlude() {
@@ -629,13 +630,19 @@ function madangClear() {
   if (mode === "tutorial") { toast("수련을 마쳤다"); setTimeout(toMenu, 900); state = "result"; return; }
   if (run.m >= 4) { endRun(true); return; }
   run.m++; run.cp = -1; run.dead = []; run.cutDrums = []; run.breath = Math.max(run.breath, 3);   // breath refills each 마당
-  saveRun();
+  run.choosing = "madang"; saveRun();   // every cleared 마당 grants a 초식
   state = "result";
-  setTimeout(showInterlude, 700);
+  setTimeout(() => showChoice("madang"), 700);
 }
-function showChoice() {
-  const rnd = mulberry((run.seed ^ (run.m * 7919) ^ ((run.cutDrums || []).length * 104729)) >>> 0), pool = CHOSIK.filter(c => c.repeat ? run.breath < 5 : !(run.perks || []).includes(c.id));
+function showChoice(kind) {   // kind: "madang" after a cleared 마당, "cycle" after cutting 천고
+  const done = () => {
+    run.choosing = null;
+    if (kind === "cycle") { run.cycle = (run.cycle || 0) + 1; run.m = 0; run.breath = Math.max(run.breath, 3); run.cp = -1; run.dead = []; run.cutDrums = []; }
+    saveRun(); Music.stop(); showInterlude();
+  };
+  const rnd = mulberry((run.seed ^ (run.m * 7919) ^ ((run.cycle || 0) * 104729) ^ ((run.perks || []).length * 31337)) >>> 0), pool = CHOSIK.filter(c => c.repeat ? run.breath < 5 : !(run.perks || []).includes(c.id));
   const picks = []; while (picks.length < 3 && pool.length) picks.push(pool.splice((rnd() * pool.length) | 0, 1)[0]);
+  if (!picks.length) { toast("익힐 초식이 더 없다"); done(); return; }   // every 초식 learned and breath full
   const box = $("cards"); box.innerHTML = "";
   for (const c of picks) {
     const b = document.createElement("button"); b.className = "card";
@@ -644,13 +651,12 @@ function showChoice() {
     b.addEventListener("click", () => {
       run.perks = run.perks || [];
       if (c.id === "sum") run.breath = Math.min(5, run.breath + 1); else run.perks.push(c.id);
-      run.cycle = (run.cycle || 0) + 1; run.m = 0; run.breath = Math.max(run.breath, 3); run.cp = -1; run.dead = []; run.cutDrums = [];
-      saveRun(); Music.sfx("lantern"); Music.stop(); showInterlude();
+      Music.sfx("lantern"); done();
     });
     box.appendChild(b);
   }
-  $("chMadang").textContent = `천고를 베었다 · ${(run.cycle || 0) + 1}번째`;
-  state = "choice"; Music.pause(); P.focus = false; for (const k in held) held[k] = 0; showScreen("choice");
+  $("chMadang").textContent = kind === "cycle" ? `천고를 베었다 · ${(run.cycle || 0) + 1}번째` : `${ORD[run.m - 1]} 마당을 넘었다`;
+  state = "choice"; Music.pause(); if (P) P.focus = false; for (const k in held) held[k] = 0; showScreen("choice");
 }
 function endRun(won) {
   state = "result"; Music.stop();
@@ -887,7 +893,8 @@ function cutDrum(d) {
   run.cutDrums.push(d.id); saveRun();
   addFx("hud", HUD.spark, d.x, d.y - 20, 70, { life: .5 }); seals.push({ x: d.x, y: d.y - 30, t: 0, rot: -.1 });
   Music.sfx("strike"); Music.jing(); shake = 8; hitstop = .12; buzz(30);
-  state = "result"; Music.stop(); setTimeout(showChoice, 700);
+  run.choosing = "cycle"; saveRun();
+  state = "result"; Music.stop(); setTimeout(() => showChoice("cycle"), 700);
 }
 function drumsInPlay() { return mode === "tutorial" || !LV.drums ? [] : LV.drums.filter(d => !(run.cutDrums || []).includes(d.id)); }
 function slashHits() {
