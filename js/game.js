@@ -1460,7 +1460,7 @@ function buildMenu() {
   $("bContinue").hidden = !s;
   if (s) $("bContinue").innerHTML = `<span>이어하기</span><small style="color:inherit">${ORD[s.m]} 마당 · 숨 ${s.breath}${s.daily ? " · 오늘의 판" : ""}</small>`;
   const d = store.get("daily." + todayKey(), null), dt = new Date();
-  $("dailyInfo").textContent = `${dt.getMonth() + 1}월 ${dt.getDate()}일` + (d ? ` · ${d.reached >= 5 ? "돌파" : ORD[Math.min(4, d.reached)] + " 마당"} ${fmt(d.time)}` : "");
+  $("dailyInfo").textContent = `${dt.getMonth() + 1}월 ${dt.getDate()}일` + (d ? ` · ${d.reached}마당 ${fmt(d.time)}` : "");
 }
 function toMenu() {
   document.body.classList.remove("night");
@@ -1488,7 +1488,7 @@ $("bTut").addEventListener("click", startTutorial);
 $("bEnter").addEventListener("click", enterMadang);
 $("bPause").addEventListener("click", pauseGame);
 $("bResume").addEventListener("click", resumeGame);
-$("bGiveUp").addEventListener("click", () => { state = "play"; endRun(false); });
+$("bGiveUp").addEventListener("click", () => { state = "play"; endRun(false); $("rSub").textContent = ORD[run.m] + " 마당에서 판을 내려놓았다."; });
 $("bToMenu").addEventListener("click", () => { saveRun(); toMenu(); });
 $("bPauseSet").addEventListener("click", () => openSettings("pause"));
 $("bSettings").addEventListener("click", () => openSettings("menu"));

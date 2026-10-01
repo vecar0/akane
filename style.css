@@ -10,7 +10,7 @@
   --f-brush: "Song Myung", "Nanum Myeongjo", serif;
   --f-head: "Song Myung", "Nanum Myeongjo", serif;
   --f-body: "Song Myung", "Nanum Myeongjo", "AppleMyungjo", serif;
-  --f-mono: "JetBrains Mono", ui-monospace, Menlo, monospace;
+  --f-mono: var(--f-head);   /* one voice: Song Myung everywhere, numbers included */
   color-scheme: light;
 }
 [hidden] { display: none !important; }
@@ -35,7 +35,7 @@ button:focus-visible { outline: 2px solid var(--jjok); outline-offset: 2px; }
 #hud .sp { flex: 1; background: none; }
 #pip { width: 10px; height: 10px; transform: rotate(45deg); box-shadow: inset 0 0 0 2px var(--jjok); border-radius: 1px; margin-right: 4px; }
 #pip.on { background: var(--jjok); }
-#hud .t { font-family: var(--f-mono); font-weight: 700; font-size: 17px; font-variant-numeric: tabular-nums; padding: 5px 10px; }
+#hud .t { font-family: var(--f-mono); font-weight: 400; font-size: 17px; font-variant-numeric: tabular-nums; padding: 5px 10px; }
 #bPause { pointer-events: auto; width: 40px; height: 34px; border: 0; display: grid; place-items: center; }
 #bPause i { display: block; width: 12px; height: 14px; border-left: 4px solid var(--ink); border-right: 4px solid var(--ink); box-sizing: border-box; }
 
@@ -69,7 +69,7 @@ h1 { font-family: var(--f-brush); font-weight: 400; font-size: clamp(72px, 12vw,
 .col { display: grid; gap: 8px; }
 .row2 { display: flex; flex-wrap: wrap; gap: 8px; }
 .btn { border: 0; border-radius: 6px; padding: 12px 16px; background: rgba(23, 22, 26, .07); box-shadow: inset 0 0 0 1px rgba(23, 22, 26, .22); font-weight: 600; font-size: 14px; text-align: left; display: flex; justify-content: space-between; align-items: baseline; gap: 10px; }
-.btn small { font-family: var(--f-mono); font-weight: 500; font-size: 11px; color: var(--ink-2); }
+.btn small { font-family: var(--f-mono); font-weight: 400; font-size: 11px; color: var(--ink-2); }
 .btn.pri { background: var(--ink); color: var(--paper); box-shadow: none; }
 .btn.ghost { background: transparent; }
 .btn:active { transform: translateY(1px); }
@@ -87,7 +87,7 @@ h2 { font-family: var(--f-head); font-weight: 400; font-size: 28px; margin: 0; }
 .step b { font-family: var(--f-mono); font-size: 13px; min-width: 52px; text-align: center; font-variant-numeric: tabular-nums; }
 .stats { display: grid; grid-template-columns: auto 1fr; gap: 6px 18px; font-size: 14px; }
 .stats span { color: var(--ink-2); }
-.stats b { font-family: var(--f-mono); font-variant-numeric: tabular-nums; text-align: right; }
+.stats b { font-weight: 400; font-family: var(--f-mono); font-variant-numeric: tabular-nums; text-align: right; }
 
 .inter { text-align: center; display: grid; gap: 10px; justify-items: center; }
 .inter .ord { font-family: var(--f-brush); font-size: clamp(64px, 13vw, 110px); line-height: .9; }
