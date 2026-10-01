@@ -9,7 +9,7 @@
   --jjok: #27466a;   /* 쪽빛 */
   --f-brush: "Nanum Brush Script", "Song Myung", serif;
   --f-head: "Song Myung", "Nanum Myeongjo", serif;
-  --f-body: "IBM Plex Sans KR", "Apple SD Gothic Neo", "Noto Sans KR", system-ui, sans-serif;
+  --f-body: "Song Myung", "Nanum Myeongjo", "AppleMyungjo", serif;
   --f-mono: "JetBrains Mono", ui-monospace, Menlo, monospace;
   color-scheme: light;
 }
@@ -131,3 +131,7 @@ h2 { font-family: var(--f-head); font-weight: 400; font-size: 28px; margin: 0; }
 .night #hJang { color: #b9b2a6; }
 .night #hud i, .night .tb i, .night .tb::before { filter: invert(.9); }
 .night .tb { color: #ece6d8; }
+/* one serif voice (Song Myung) throughout; it has a single weight, so no faux bold */
+body, .btn, .set > span, #hud .t { font-weight: 400; }
+#hud .t { font-family: var(--f-head); letter-spacing: .02em; }
+#hud .t { min-width: 4.6em; text-align: right; font-variant-numeric: tabular-nums; }

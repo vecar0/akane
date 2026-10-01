@@ -5,11 +5,12 @@
 
 // strokes: D 덩 (both), K 쿵 (북편), T 덕 (채편), G 기덕 (grace + 덕), 0 rest
 const JANGDAN = {
-  jinyang:   { name: "진양조",   bpm: 66,  beats: 6,  sub: 3, pat: "D00000000000K0TT00" },
-  jungmori:  { name: "중모리",   bpm: 88,  beats: 12, sub: 1, pat: "D0TKT0K0TT00" },
-  jajinmori: { name: "자진모리", bpm: 104, beats: 4,  sub: 3, pat: "D00T0TK0T0T0" },
-  hwimori:   { name: "휘모리",   bpm: 126, beats: 4,  sub: 2, pat: "D0TTK0T0" },
-  danmori:   { name: "단모리",   bpm: 146, beats: 4,  sub: 2, pat: "DTKTDGKT" }
+  // every 박 (beat) carries a stroke so the pulse is always audible; tempos are kept playable
+  jinyang:   { name: "진양조",   bpm: 66,  beats: 6,  sub: 3, pat: "D00K00T00K0TK00T00" },
+  jungmori:  { name: "중모리",   bpm: 84,  beats: 12, sub: 1, pat: "DKTKTTDKTKTT" },
+  jajinmori: { name: "자진모리", bpm: 96,  beats: 4,  sub: 3, pat: "D00T0TK0TK0T" },
+  hwimori:   { name: "휘모리",   bpm: 108, beats: 4,  sub: 2, pat: "D0TTK0T0" },
+  danmori:   { name: "단모리",   bpm: 120, beats: 4,  sub: 2, pat: "DTKTDGKT" }
 };
 // 계면조-ish pentatonic (Hz): mi la si re' mi' la'
 const SCALE = [164.8, 220.0, 246.9, 293.7, 329.6, 440.0];

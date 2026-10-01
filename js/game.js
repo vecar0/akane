@@ -26,11 +26,12 @@ Music.setVolume(settings.sound ? 1 : 0); Music.setOffset(settings.offset);
 // ---------- 마당 definitions & palettes ----------
 const ORD = ["첫째", "둘째", "셋째", "넷째", "다섯째"];
 const MADANG = [
-  { jd: "jinyang",   line: "북은 아직 멀리서 울린다.",          tiers: [0, 0, 1, 0, 0, 1] },
-  { jd: "jungmori",  line: "연줄 위로, 바람을 타라.",            tiers: [0, 1, 1, 0, 1, 1] },
-  { jd: "jajinmori", line: "포수의 눈은 장단을 놓치지 않는다.",  tiers: [1, 1, 2, 1, 1, 2] },
-  { jd: "hwimori",   line: "오를수록 장단은 빨라진다.",          tiers: [1, 2, 1, 2, 1, 2] },
-  { jd: "danmori",   line: "천고가 가깝다.",                     tiers: [2, 1, 2, 2, 2, 2] }
+  // "w" entries draw from wall chunks (climb / wall-jump), so every 마당 has walls to run
+  { jd: "jinyang",   line: "북은 아직 멀리서 울린다.",          tiers: [0, "w0", 1, 0, "w1", 1] },
+  { jd: "jungmori",  line: "연줄 위로, 바람을 타라.",            tiers: [0, "w1", 1, "w0", 1, "w1"] },
+  { jd: "jajinmori", line: "포수의 눈은 장단을 놓치지 않는다.",  tiers: [1, "w1", 2, "w2", 1, 2] },
+  { jd: "hwimori",   line: "오를수록 장단은 빨라진다.",          tiers: ["w1", 2, 1, "w2", 1, "w2"] },
+  { jd: "danmori",   line: "천고가 가깝다.",                     tiers: [2, "w2", 2, "w1", 2, "w2"] }
 ];
 const PAL = [
   { bg: "#e6e2d7", tile: "#1c1b1f", fig: "#141317", foe: "#55525b", text: "#1c1b1f", wash: "23,22,26", farA: .5, midA: .78, rim: null },
@@ -74,12 +75,14 @@ const HERO = { idle: 0, run: [1, 2, 3, 4, 5, 6, 7], rise: 8, wall: 9, slash: 10,
 const HERO_AX = { 0: .5, 9: .5, 10: .4, 11: .55, 13: .45, 14: .55, 15: .45 };   // body centre as a fraction of frame width
 const FOE = { g: [0, 1], s: [2, 3], d: [4, 5], h: [6, 7] };
 const FOE_AX = { 0: .5, 1: .3, 2: .45, 3: .3, 6: .45, 7: .45 };
+const FX = { slashA: 0, slashARed: 1, slashB: 2, slashBRed: 3, burst: 4, spray: 5, seal: 6, drops: 7, pool: 8 };
+const HUD = { bigDrum: 0, struck: 1, drum: 2, aimLine: 3, reticle: 4, rope: 5, spark: 6, smoke: 7, dust: 8 }; // hudsolid for 0-5, hud (soft) for 6-8
 const OBJ = { lanternOn: 0, lanternOff: 1, kite: 2, thorns: 3, seal: 4, emitter: 5, slash: 6, slashRed: 7, splat: 8 };
-for (const n of ["hero", "foes", "objects", "ui"]) {
+for (const n of ["hero", "foes", "objects", "ui", "fx", "hud", "hudsolid"]) {
   Promise.all([
     fetch(`assets/sprites/${n}.json`).then(r => r.json()),
     new Promise((res, rej) => { const im = new Image(); im.onload = () => res(im); im.onerror = rej; im.src = `assets/sprites/${n}.webp`; })
-  ]).then(([f, img]) => { SPR[n] = { f, img, inv: n === "ui" ? null : inkInverted(img) }; applyUiSprites(); }).catch(() => {});
+  ]).then(([f, img]) => { SPR[n] = { f, img, inv: ["hero", "foes", "objects", "fx"].includes(n) ? inkInverted(img) : null }; applyUiSprites(); }).catch(() => {});
 }
 function inkInverted(img) { // night palette: grey ink becomes bone white, coloured accents stay as they are
   const c = document.createElement("canvas"); c.width = img.width; c.height = img.height; const g = c.getContext("2d"); g.drawImage(img, 0, 0);
@@ -215,8 +218,10 @@ function buildMadangMap(seed, m) {
   const rows = START_PIECE.slice();
   const used = new Set();
   for (const tier of MADANG[m].tiers) {
-    let pool = CHUNKS.map((c, i) => i).filter(i => CHUNKS[i].tier === tier && !used.has(i));
-    if (!pool.length) pool = CHUNKS.map((c, i) => i).filter(i => CHUNKS[i].tier === tier);
+    const wall = typeof tier === "string", t = wall ? +tier.slice(1) : tier;
+    const fits = i => wall ? CHUNKS[i].wall && CHUNKS[i].tier <= t : CHUNKS[i].tier === t;
+    let pool = CHUNKS.map((c, i) => i).filter(i => fits(i) && !used.has(i));
+    if (!pool.length) pool = CHUNKS.map((c, i) => i).filter(fits);
     const ci = pool[(rng() * pool.length) | 0]; used.add(ci);
     const c = CHUNKS[ci].map.map(r => r.split(""));
     if (c[11][1] === " ") c[11][1] = "C";
@@ -281,14 +286,14 @@ let state = "menu";      // menu | interlude | play | dead | pause | result
 let mode = null;         // "run" | "daily" | "tutorial"
 let run = null;
 let P = null, enemies = [], bullets = [], parts = [], ghosts = [], seals = [];
-let deadIds = new Set(), cpSave = null;
-let deathT = 0, hitstop = 0, shake = 0, songPos = 0, flash = 0;
+let deadIds = new Set(), cpSave = null, vfx = [];
+let lastHitDir = null, deathT = 0, hitstop = 0, shake = 0, songPos = 0, flash = 0;
 let cam = { x: 0, y: 0 }, hookCand = null, toastT = 0;
 
 function newPlayer(x, y) {
   return { x, y, w: 18, h: 30, vx: 0, vy: 0, face: 1, onGround: false, coyote: 0, jumpBuf: 0, wall: 0, wallLock: 0,
     airDash: 1, dashT: 0, dashCd: 0, dashDir: { x: 1, y: 0 }, slashT: 0, slashCd: 0, slashDir: { x: 1, y: 0 }, strike: false, clanged: null,
-    hook: null, hookCd: 0, focus: false, focusT: 0, run: 0, scarf: [] };
+    hook: null, hookCd: 0, climbT: 0.5, climbing: false, focus: false, focusT: 0, run: 0, scarf: [] };
 }
 function spawnEnemies() {
   enemies = LV.defs.filter(d => !deadIds.has(d.id)).map(d => {
@@ -332,7 +337,7 @@ function enterMadang() {
   }
   const s = cpSave || LV.start;
   P = newPlayer(s.x, s.y);
-  bullets = []; parts = []; ghosts = []; seals = [];
+  bullets = []; parts = []; ghosts = []; seals = []; vfx = [];
   Music.start(MADANG[run.m].jd, run.seed + run.m);
   songPos = Music.pos(); spawnEnemies();
   cam.x = P.x; cam.y = P.y;
@@ -346,7 +351,7 @@ function startTutorial() {
   loadMap(TUTORIAL.map, PAL[0], TUTORIAL.hints);
   deadIds = new Set(); cpSave = null;
   P = newPlayer(LV.start.x, LV.start.y);
-  bullets = []; parts = []; ghosts = []; seals = [];
+  bullets = []; parts = []; ghosts = []; seals = []; vfx = [];
   Music.unlock(); Music.start(TUTORIAL.jd, 7);
   songPos = Music.pos(); spawnEnemies();
   cam.x = P.x; cam.y = P.y;
@@ -366,7 +371,7 @@ function die() {
   P.focus = false; Music.muffle(false);
   const cx = P.x + P.w / 2, cy = P.y + P.h / 2;
   for (let i = 0; i < 30; i++) { const a = Math.random() * Math.PI * 2, v = 80 + Math.random() * 340; parts.push({ x: cx, y: cy, vx: Math.cos(a) * v, vy: Math.sin(a) * v - 80, life: .8, max: .8, c: i % 4 ? LV.pal.fig : SEAL, s: 2 + Math.random() * 4 }); }
-  stain(cx, cy, 6, SEAL);
+  bleed(cx, cy, lastHitDir || { x: -P.face, y: -.3 }, true); lastHitDir = null;
   shake = 12; Music.sfx("die"); buzz(70);
 }
 function afterDeath() {
@@ -415,7 +420,7 @@ function shareText() {
 }
 
 // ---------- player ----------
-const GRAV = 1900, JUMPV = 640, MAXV = 300, DASHV = 1000, HOOK_R = 300, STRIKE_WIN = 0.11;
+const CLIMBV = 270, CLIMB_T = 0.5, GRAV = 1900, JUMPV = 640, MAXV = 300, DASHV = 1000, HOOK_R = 300, STRIKE_WIN = 0.15;
 function aimDir() { const a = axis(), m = Math.hypot(a.x, a.y); return m < 0.35 ? { x: P.face, y: 0 } : { x: a.x / m, y: a.y / m }; }
 function startDash(dir) {
   if (P.dashCd > 0) return false;
@@ -489,23 +494,35 @@ function stepPlayer(dt) {
     }
     if (P.jumpBuf > 0) {
       if (P.onGround || P.coyote > 0) { P.vy = -JUMPV; P.onGround = false; P.coyote = 0; P.jumpBuf = 0; Music.sfx("jump"); }
-      else if (P.wall) { P.vy = -600; P.vx = -P.wall * 380; P.face = -P.wall; P.wallLock = 0.15; P.jumpBuf = 0; Music.sfx("jump"); puff(P.wall > 0 ? P.x + P.w : P.x, P.y + P.h - 6, 6); }
+      else if (P.wall) { P.vy = -600; P.vx = -P.wall * 380; P.face = -P.wall; P.wallLock = 0.15; P.jumpBuf = 0; P.climbT = Math.max(P.climbT, 0.35); Music.sfx("jump"); puff(P.wall > 0 ? P.x + P.w : P.x, P.y + P.h - 6, 6); }
     }
-    let g = GRAV; if (P.vy < 0 && !held.jump && !P.wallLock) g *= 2.1;
+    let g = GRAV; if (P.vy < 0 && !held.jump && !P.wallLock && !P.climbing) g *= 2.1;
     P.vy = Math.min(1000, P.vy + g * dt);
     if (P.wall && P.vy > 0 && ix === P.wall) P.vy = Math.min(P.vy, 130);
+    // wall run: pushing into a wall while airborne carries you up it for a moment
+    P.climbing = !!(P.wall && ix === P.wall && P.climbT > 0 && !P.wallLock);
+    if (P.climbing) { P.vy = Math.min(P.vy, -CLIMBV); P.climbT -= dt; if (Math.random() < .3) puff(P.wall > 0 ? P.x + P.w : P.x, P.y + P.h - 4, 1); }
     moveX(P, P.vx * dt);
     if (moveY(P, P.vy * dt)) P.vy = 0;
   }
   const was = P.onGround;
   P.onGround = P.vy >= 0 && rectSolid(P.x, P.y + P.h, P.w, 2);
-  if (P.onGround) { P.coyote = 0.1; P.airDash = 1; if (!was) { puff(P.x + P.w / 2, P.y + P.h, 4); P.landT = 0.1; } } else P.coyote = Math.max(0, P.coyote - dt);
+  if (P.onGround) { P.coyote = 0.1; P.airDash = 1; P.climbT = CLIMB_T; if (!was) { addFx("hud", HUD.dust, P.x + P.w / 2, P.y + P.h + 2, 22, { life: .35, ay: 1, a: .8 }); P.landT = 0.1; } } else P.coyote = Math.max(0, P.coyote - dt);
   const wl = rectSolid(P.x - 3, P.y + 4, 3, P.h - 8), wr = rectSolid(P.x + P.w, P.y + 4, 3, P.h - 8);
   P.wall = P.onGround ? 0 : wr ? 1 : wl ? -1 : 0;
   if (P.wall) P.airDash = 1;
   if (P.onGround && Math.abs(P.vx) > 20) P.run += dt * Math.abs(P.vx) * 0.045;
 }
 function ghost(gap) { const l = ghosts[ghosts.length - 1]; if (!l || l.age > gap) ghosts.push({ x: P.x, y: P.y, face: P.face, age: 0, life: 0.22 }); for (const g of ghosts) g.age += 0.004; }
+// one-shot painted effects: grow and fade
+function addFx(sheet, i, x, y, h, o = {}) { vfx.push({ sheet, i, x, y, h, t: 0, life: o.life || .5, rot: o.rot || 0, grow: o.grow ?? .35, flip: !!o.flip, ay: o.ay ?? .5, a: o.a ?? 1 }); }
+function findFloor(x, y) { let ty = Math.floor(y / T); while (ty < LV.h && tileAt(Math.floor(x / T), ty) !== 1) ty++; return ty < LV.h ? ty * T : null; }
+function bleed(x, y, dir, big) { // blood burst + spray along the blow + a pool where it lands
+  addFx("fx", FX.burst, x, y, big ? 96 : 64, { life: big ? .7 : .45, rot: Math.random() * 6.28, grow: .5 });
+  addFx("fx", FX.spray, x, y, big ? 50 : 34, { life: .5, rot: Math.atan2(dir.y, dir.x), ay: .5, grow: .6 });
+  addFx("fx", FX.drops, x + dir.x * 20, y - 6, 26, { life: .6, rot: Math.random() * 6.28 });
+  const fy = findFloor(x, y); if (fy != null && LV.stains.length < 160) LV.stains.push({ x, y: fy + 2, pool: true, w: big ? 70 : 46, rot: 0 });
+}
 function puff(x, y, n) { for (let i = 0; i < n; i++) parts.push({ x, y, vx: (Math.random() - 0.5) * 140, vy: -Math.random() * 80, life: .3, max: .3, c: LV.pal.foe, s: 2 }); }
 function stain(x, y, n, col) {
   for (let i = 0; i < n; i++) LV.stains.push({ x: x + (Math.random() - .5) * 40, y: y + (Math.random() - .3) * 30, r: 2 + Math.random() * 6, c: col || LV.pal.tile, rot: Math.random() * 6.28 });
@@ -538,7 +555,7 @@ function killEnemy(e) {
   e.alive = false; deadIds.add(e.id); run.kills++;
   const cx = e.x + e.w / 2, cy = e.y + e.h / 2;
   for (let i = 0; i < 20; i++) { const a = Math.random() * Math.PI * 2, v = 60 + Math.random() * 320; parts.push({ x: cx, y: cy, vx: Math.cos(a) * v, vy: Math.sin(a) * v - 60, life: .6, max: .6, c: i % 5 ? LV.pal.tile : SEAL, s: 2 + Math.random() * 4 }); }
-  stain(cx, cy + 10, 5);
+  bleed(cx, cy, P.slashT > 0 ? P.slashDir : { x: Math.sign(cx - P.x - P.w / 2) || 1, y: -.2 }, false);
   hitstop = 0.07; shake = Math.max(shake, 6); P.airDash = 1; P.dashCd = 0;
   Music.sfx("kill"); buzz(18);
 }
@@ -582,7 +599,7 @@ function stepEnemies(dt) {
       else if (songPos >= e.fireAt) {
         const [mx, my] = muzzle(e), dx = e.tx - mx, dy = e.ty - my, d = Math.hypot(dx, dy) || 1, sp = sniper ? 1250 : 430;
         bullets.push({ x: mx, y: my, vx: dx / d * sp, vy: dy / d * sp, owner: e, friendly: false, life: 3, sniper });
-        for (let i = 0; i < 7; i++) parts.push({ x: mx, y: my, vx: e.face * (30 + Math.random() * 80), vy: -20 - Math.random() * 40, life: .6, max: .6, c: "rgba(140,134,126,.6)", s: 4 + Math.random() * 4 }); // powder smoke
+        addFx("hud", HUD.smoke, mx + e.face * 8, my - 4, 30, { life: .9, grow: .9, a: .8, flip: e.face < 0 }); // powder smoke
         e.fireAt = null; e.readyAt = songPos + (sniper ? 4 : 2) * bl;
         Music.sfx(sniper ? "snipe" : "shoot");
       }
@@ -623,13 +640,13 @@ function stepBullets(dt) {
     const n = Math.ceil(Math.hypot(b.vx, b.vy) * dt / 8);
     for (let i = 0; i < n && b.life > 0; i++) {
       b.x += b.vx * dt / n; b.y += b.vy * dt / n;
-      if (solidPt(b.x, b.y)) { b.life = 0; puff(b.x, b.y, 3); break; }
+      if (solidPt(b.x, b.y)) { b.life = 0; addFx("hud", HUD.spark, b.x, b.y, 22, { life: .25, rot: Math.random() * 6.28 }); break; }
       if (b.friendly) {
         for (const e of enemies) if (e.alive && b.x > e.x && b.x < e.x + e.w && b.y > e.y && b.y < e.y + e.h) {
           if (e.type === "h" && Math.sign(b.vx) === -e.face && !b.pierce) { b.life = 0; Music.sfx("clang"); break; }
           killEnemy(e); if (!b.pierce) b.life = 0;
         }
-      } else if (state === "play" && P.dashT <= 0 && b.x > pr.x - 3 && b.x < pr.x + pr.w + 3 && b.y > pr.y - 3 && b.y < pr.y + pr.h + 3) { die(); b.life = 0; }
+      } else if (state === "play" && P.dashT <= 0 && b.x > pr.x - 3 && b.x < pr.x + pr.w + 3 && b.y > pr.y - 3 && b.y < pr.y + pr.h + 3) { const sp = Math.hypot(b.vx, b.vy) || 1; lastHitDir = { x: b.vx / sp, y: b.vy / sp }; die(); b.life = 0; }
     }
     b.life -= dt;
   }
@@ -661,6 +678,7 @@ function frame(now) {
   parts = parts.filter(p => p.life > 0);
   for (const g of ghosts) g.age += rdt; ghosts = ghosts.filter(g => g.age < g.life);
   for (const s of seals) s.t += rdt; seals = seals.filter(s => s.t < 0.7);
+  for (const v of vfx) v.t += rdt; vfx = vfx.filter(v => v.t < v.life);
   shake = Math.max(0, shake - rdt * 40); flash = Math.max(0, flash - rdt);
   if (toastT > 0) { toastT -= rdt; if (toastT <= 0) $("toast").classList.remove("on"); }
   render(rdt);
@@ -745,7 +763,13 @@ function render(rdt) {
   for (const l of LV.lasers) {
     if (!visible(l.x)) continue;
     if (!drawSprite("objects", OBJ.emitter, l.x, l.ty * T + 26, kOf("objects", OBJ.emitter, 28), false, .5, pal.night)) { ctx.fillStyle = pal.tile; ctx.fillRect(l.x - 8, l.ty * T + 8, 16, 14); }
-    if (laserOn(l)) {
+    if (laserOn(l) && SPR.hudsolid) { // 금줄: glow underlay + twisted rope painted down the beam
+      ctx.fillStyle = "rgba(195,22,28,.10)"; ctx.fillRect(l.x - 14, l.y0, 28, l.y1 - l.y0);
+      const f = SPR.hudsolid.f[HUD.rope], sc = 20 / f.w, seg = f.h * sc * .82;
+      ctx.save(); ctx.beginPath(); ctx.rect(l.x - 20, l.y0, 40, l.y1 - l.y0); ctx.clip();
+      for (let yy = l.y0 - ((songPos * 40) % seg); yy < l.y1; yy += seg) drawSprite("hudsolid", HUD.rope, l.x, yy, sc, false, .5, false, 0);
+      ctx.restore();
+    } else if (laserOn(l)) {
       ctx.fillStyle = "rgba(195,22,28,.08)"; ctx.fillRect(l.x - 12, l.y0, 24, l.y1 - l.y0);
       ctx.fillStyle = "rgba(195,22,28,.18)"; ctx.fillRect(l.x - 6, l.y0, 12, l.y1 - l.y0);
       ctx.fillStyle = SEAL; ctx.fillRect(l.x - 1.8, l.y0, 3.6, l.y1 - l.y0);
@@ -790,6 +814,7 @@ function render(rdt) {
   for (const s of LV.stains) {
     if (!visible(s.x)) continue;
     ctx.globalAlpha = 0.75;
+    if (s.pool && SPR.fx) { const f = SPR.fx.f[FX.pool]; drawSprite("fx", FX.pool, s.x, s.y, s.w / f.w, false, .5, false, 1); continue; }
     if (s.c !== SEAL && SPR.objects) { ctx.save(); ctx.translate(s.x, s.y); ctx.rotate(s.rot || 0); drawSprite("objects", OBJ.splat, 0, 0, s.r * 3.4 / SPR.objects.f[OBJ.splat].h, false, .5, pal.night, .5); ctx.restore(); }
     else { ctx.fillStyle = s.c; ctx.beginPath(); ctx.arc(s.x, s.y, s.r, 0, Math.PI * 2); ctx.fill(); }
   }
@@ -855,8 +880,22 @@ function render(rdt) {
   if (P && (state === "play" || state === "pause" || state === "result" || state === "dead")) drawPlayer(pal);
   for (const p of parts) { ctx.globalAlpha = Math.max(0, p.life / p.max); ctx.fillStyle = p.c; ctx.fillRect(p.x - p.s / 2, p.y - p.s / 2, p.s, p.s); }
   ctx.globalAlpha = 1;
+  // painted one-shot effects
+  for (const v of vfx) {
+    const k = v.t / v.life, s = SPR[v.sheet]; if (!s) continue; const f = s.f[v.i], sc = v.h / f.h * (1 - v.grow * .5 + v.grow * k);
+    ctx.save(); ctx.translate(v.x, v.y); ctx.rotate(v.rot); ctx.globalAlpha = v.a * Math.min(1, (1 - k) * 2.2);
+    drawSprite(v.sheet, v.i, 0, 0, sc, v.flip, .5, pal.night && v.sheet === "hud" && v.i !== HUD.spark, v.ay);
+    ctx.restore();
+  }
+  ctx.globalAlpha = 1;
   // 일격 seals
   for (const s of seals) {
+    if (SPR.fx) {
+      const a = s.t < .08 ? s.t / .08 : 1 - Math.max(0, s.t - .35) / .35, sc = s.t < .08 ? 1.7 - s.t / .08 * .7 : 1;
+      ctx.save(); ctx.translate(s.x, s.y - 22); ctx.rotate(s.rot); ctx.globalAlpha = Math.max(0, a);
+      drawSprite("fx", FX.seal, 0, 0, 30 * sc / SPR.fx.f[FX.seal].h, false, .5, false, .5);
+      ctx.restore(); continue;
+    }
     const a = s.t < .08 ? s.t / .08 : 1 - Math.max(0, s.t - .35) / .35, sc = s.t < .08 ? 1.6 - s.t / .08 * .6 : 1;
     ctx.save(); ctx.translate(s.x, s.y - 18); ctx.rotate(s.rot); ctx.scale(sc, sc); ctx.globalAlpha = Math.max(0, a);
     ctx.fillStyle = SEAL; ctx.fillRect(-13, -13, 26, 26);
@@ -868,7 +907,9 @@ function render(rdt) {
   if (P && P.focus && state === "play") {
     const d = aimDir(), cx = P.x + P.w / 2, cy = P.y + P.h / 2;
     ctx.strokeStyle = JJOK; ctx.lineWidth = 2; ctx.setLineDash([6, 6]);
-    ctx.beginPath(); ctx.moveTo(cx, cy); ctx.lineTo(cx + d.x * 150, cy + d.y * 150); ctx.stroke(); ctx.setLineDash([]);
+    ctx.beginPath(); ctx.moveTo(cx, cy); ctx.lineTo(cx + d.x * 136, cy + d.y * 136); ctx.stroke(); ctx.setLineDash([]);
+    const rs = 1 + Math.sin(performance.now() / 90) * .06;
+    if (!drawSprite("hudsolid", HUD.reticle, cx + d.x * 152, cy + d.y * 152, 34 * rs / (SPR.hudsolid ? SPR.hudsolid.f[HUD.reticle].h : 1), false, .5, false, .5)) { ctx.beginPath(); ctx.arc(cx + d.x * 152, cy + d.y * 152, 10, 0, 6.28); ctx.stroke(); }
   }
 
   // screen space overlays
@@ -939,22 +980,25 @@ function drawTrail() {
   ctx.globalAlpha = 1; ctx.lineCap = "butt";
 }
 function drawBeatBar(pal) {
+  // drums slide in at an even spacing and are struck as they reach the ring on the left: that moment is the 일격 window
   const def = Music.def; if (!def) return;
-  const len = def.pat.length, subLen = Music.beatLen / def.sub, pos = Music.pos();
-  const cur = ((Math.floor(pos / subLen) % len) + len) % len;
-  const cell = Math.min(16, 240 / len), w = cell * len, x0 = W / 2 - w / 2, y = H - 22 - (window.visualViewport ? 0 : 0);
+  const bl = Music.beatLen, pos = Music.pos(), gap = 64, mx = W / 2 - 96, y = H - 30, ahead = 4;
   ctx.setTransform(DPR, 0, 0, DPR, 0, 0);
-  if (!uiPatch(5, x0 - 22, y - 16, w + 44, 32, pal.night ? .5 : .95)) { ctx.fillStyle = pal.rim ? "rgba(23,22,26,.55)" : "rgba(230,226,215,.7)"; ctx.fillRect(x0 - 10, y - 12, w + 20, 24); }
-  const off = Math.abs(Music.offBeat(pos)), near = off < STRIKE_WIN;
-  for (let i = 0; i < len; i++) {
-    const ch = def.pat[i], cx = x0 + i * cell + cell / 2, beatStart = i % def.sub === 0;
-    const r = ch === "D" ? 5 : ch === "K" ? 4 : ch === "T" || ch === "G" ? 2.6 : 1.2;
-    ctx.fillStyle = i === cur ? SEAL : pal.text; ctx.globalAlpha = i === cur ? 1 : .7;
-    ctx.beginPath(); ctx.arc(cx, y, r, 0, Math.PI * 2); ctx.fill();
-    if (beatStart) { ctx.globalAlpha = .4; ctx.fillRect(cx - .5, y + 7, 1, 4); }
+  uiPatch(5, mx - 46, y - 30, gap * ahead + 92, 60, pal.night ? .5 : .9);
+  const near = Math.abs(Music.offBeat(pos)) < STRIKE_WIN;
+  uiPatch(0, mx - 25, y - 25, 50, 50, near ? 1 : .55);                      // judgement ring
+  const k0 = Math.floor(pos / bl) - 1;
+  for (let k = k0 + ahead + 1; k >= k0; k--) {
+    const dt = k * bl - pos, x = mx + dt / bl * gap;
+    if (x < mx - 40 || x > mx + gap * ahead + 30) continue;
+    const strong = ((k % def.beats) + def.beats) % def.beats === 0, hit = Math.abs(dt) < STRIKE_WIN, past = dt < -STRIKE_WIN;
+    const size = (strong ? 38 : 28) * (hit ? 1.18 : 1), i = hit ? HUD.struck : strong ? HUD.bigDrum : HUD.drum;
+    ctx.globalAlpha = past ? Math.max(0, 1 + dt / bl * 3) : Math.min(1, 1.15 - Math.max(0, dt / bl - 2.5));
+    if (!SPR.hudsolid || !drawSprite("hudsolid", i, x, y, size / SPR.hudsolid.f[i].h, false, .5, false, .5)) {
+      ctx.fillStyle = hit ? SEAL : pal.text; ctx.beginPath(); ctx.arc(x, y, size / 3, 0, Math.PI * 2); ctx.fill();
+    }
   }
   ctx.globalAlpha = 1;
-  if (near) { ctx.fillStyle = SEAL; ctx.globalAlpha = .9; ctx.fillRect(x0 - 6, y + 12, w + 12, 2); ctx.globalAlpha = 1; }
 }
 function drawRunner(x, y, face, col, pl) {
   const cx = x + 9, lean = pl ? Math.max(-4, Math.min(4, pl.vx * 0.012)) : face * 2;
@@ -994,12 +1038,13 @@ function drawPlayer(pal) {
   if (state === "dead") ctx.globalAlpha = Math.max(0, 1 - deathT / 0.75);
   drawSprite("hero", fr, cx, P.y + P.h + 1, kOf("hero", 0, HERO_H), face < 0, HERO_AX[fr] ?? .55, pal.night);
   ctx.globalAlpha = 1;
-  if (P.slashT > 0 && state !== "dead" && SPR.objects) { // painted crescent along the cut
-    const d = P.slashDir, prog = 1 - Math.min(1, P.slashT / 0.14), ang = Math.atan2(d.y, d.x), i = P.strike ? OBJ.slashRed : OBJ.slash;
-    const f = SPR.objects.f[i], sc = (P.strike ? 70 : 56) / f.h * (0.88 + prog * 0.18);
-    ctx.save(); ctx.translate(cx + d.x * (P.strike ? 26 : 22), P.y + P.h / 2 + d.y * 22); ctx.rotate(ang + Math.PI);
-    ctx.globalAlpha = Math.min(1, (1 - prog) * 1.8);
-    drawSprite("objects", i, 0, 0, sc, false, .5, pal.night && !P.strike, .5);
+  if (P.slashT > 0 && state !== "dead" && SPR.fx) { // two painted frames: the edge, then the full stroke breaking into ink
+    const d = P.slashDir, prog = 1 - Math.min(1, P.slashT / 0.14), ang = Math.atan2(d.y, d.x);
+    const first = prog < .38, i = first ? (P.strike ? FX.slashARed : FX.slashA) : (P.strike ? FX.slashBRed : FX.slashB);
+    const f = SPR.fx.f[i], H2 = (P.strike ? 84 : 68) * (first ? .8 : 1), sc = H2 / f.h * (0.92 + prog * 0.14);
+    ctx.save(); ctx.translate(cx + d.x * (first ? 14 : 24), P.y + P.h / 2 - 4 + d.y * 22); ctx.rotate(ang + Math.PI); if (d.x < -.2) ctx.scale(1, -1);
+    ctx.globalAlpha = first ? 1 : Math.min(1, (1 - prog) * 2.4);
+    for (let n = P.strike ? 2 : 1; n > 0; n--) drawSprite("fx", i, 0, 0, sc, false, first ? .3 : .45, pal.night && !P.strike, .5); // vermilion keyed thin; double it
     ctx.restore(); ctx.globalAlpha = 1;
   }
 }
@@ -1032,8 +1077,15 @@ function drawEnemy(e, pal) {
       const [mx, my] = muzzle(e), sniper = e.type === "s", locked = songPos >= e.fireAt - (sniper ? .3 : .15);
       let dx = e.tx - mx, dy = e.ty - my; const d = Math.hypot(dx, dy) || 1; dx /= d; dy /= d;
       const prog = Math.min(1, (songPos - e.aimFrom) / Math.max(.01, e.fireAt - e.aimFrom)), len = sniper ? 1000 : Math.min(d, 200);
-      ctx.strokeStyle = SEAL; ctx.globalAlpha = locked ? .95 : .2 + prog * .5; ctx.lineWidth = locked ? 2.2 : 1; if (!sniper && !locked) ctx.setLineDash([4, 5]);
-      ctx.beginPath(); ctx.moveTo(mx, my); ctx.lineTo(mx + dx * len, my + dy * len); ctx.stroke(); ctx.setLineDash([]); ctx.globalAlpha = 1;
+      if (SPR.hudsolid) {
+        const f = SPR.hudsolid.f[HUD.aimLine], segW = 90, th = locked ? 9 : 5;
+        ctx.save(); ctx.translate(mx, my); ctx.rotate(Math.atan2(dy, dx)); ctx.globalAlpha = locked ? 1 : .25 + prog * .55;
+        for (let x = 0; x < len; x += segW) { const w = Math.min(segW, len - x); ctx.drawImage(SPR.hudsolid.img, f.x, f.y, f.w * w / segW, f.h, x, -th / 2, w, th); }
+        ctx.restore(); ctx.globalAlpha = 1;
+      } else {
+        ctx.strokeStyle = SEAL; ctx.globalAlpha = locked ? .95 : .2 + prog * .5; ctx.lineWidth = locked ? 2.2 : 1;
+        ctx.beginPath(); ctx.moveTo(mx, my); ctx.lineTo(mx + dx * len, my + dy * len); ctx.stroke(); ctx.globalAlpha = 1;
+      }
     }
     const i = e.type === "h" ? fr[e.vx ? Math.floor(now / 260) % 2 : 0] : fr[e.fireAt != null ? 1 : 0];
     drawSprite("foes", i, cx, e.y + e.h + 1, kOf("foes", 0, FOE_H), e.face < 0, FOE_AX[i] ?? .5, pal.night);
@@ -1138,7 +1190,7 @@ $("bInstall").addEventListener("click", async () => { if (!installEvt) return; i
 const standalone = matchMedia("(display-mode: standalone)").matches || matchMedia("(display-mode: fullscreen)").matches || navigator.standalone;
 if (/iPhone|iPad|iPod/.test(navigator.userAgent) && !standalone) $("installNote").hidden = false;
 
-if (location.hash === "#debug") window.__dbg = { tp(tx, ty) { P.x = tx * T + 7; P.y = (ty + 1) * T - 30; P.vx = P.vy = 0; }, get state() { return state; } };
+if (location.hash === "#debug") window.__dbg = { tp(tx, ty) { P.x = tx * T + 7; P.y = (ty + 1) * T - 30; P.vx = P.vy = 0; }, get state() { return state; }, get P() { return P; } };
 resize();
 toMenu();
 P = null; cam.x = 600; cam.y = 300;
