@@ -198,7 +198,7 @@ function buildScenery() {
       for (let a = 0; a < ys.length;) { let b = a; while (b + 1 < ys.length && ys[b + 1] === ys[b] + 1) b++;
         const grounded = ys[b] + 1 >= LV.h || [...Array(n).keys()].some(k => tileAt(x + k, ys[b] + 1) === 1) || tileAt(x - 1, ys[b] + 1) === 1 || tileAt(x + n, ys[b] + 1) === 1;
         if (b - a + 1 >= 3) { for (let y = ys[a]; y <= ys[b]; y++) for (let xx = x; xx < x + n; xx++) LV.slabTiles.add(y * LV.w + xx);
-          pillars.push({ i: (rnd() * 3) | 0, x: x * T + n * T / 2, y0: ys[a] * T - 2, y1: ys[b] + 1 >= LV.h ? LV.h * T + 200 : (ys[b] + 1) * T + (grounded ? 22 : 0), w: n * T + 10, flip: rnd() < .5 }); }
+          pillars.push({ i: (rnd() * 3) | 0, x: x * T + n * T / 2, y0: ys[a] * T - 2, y1: ys[b] + 1 >= LV.h ? LV.h * T + 200 : (ys[b] + 1) * T, g: grounded && ys[b] + 1 < LV.h ? (ys[b] + 1) * T : 0, w: n * T + 10, flip: rnd() < .5 }); }
         a = b + 1; }
     }
   }
@@ -207,6 +207,19 @@ function buildScenery() {
   const front = []; // big pines rooted on cliff edges (behind the actors), like the reference art
   if (P) for (const c of skins) if (c.w >= 3 * T && rnd() < .2) { const right = rnd() < .5; front.push({ i: (rnd() * Math.min(PINE_N, P.f.length)) | 0, x: c.x + (right ? 1 : -1) * (c.w / 2 - 14), y: c.y - 2, h: 150 + rnd() * 70, flip: right }); }
   LV.scenery = { skins, back, pines, front, slabs, pillars };
+}
+function drawPillar(c, pal) { // stacked rock segments; a grounded pillar fades into the ground over its last 56px
+  const f = SPR.pillars.f[c.i], segH = c.w * f.h / f.w, img = pal.night ? SPR.pillars.inv : SPR.pillars.img, base = pal.night ? .45 : .88;
+  const solidEnd = c.g ? c.g : c.y1, fade = c.g ? 56 : 0;
+  const bands = [[c.y0, c.g ? solidEnd : solidEnd + 4, base]];
+  for (let k = 1; k <= 7 && fade; k++) bands.push([solidEnd, solidEnd + k * 8, .26]);   // nested translucent layers sum to a smooth fade with no band edges
+  ctx.filter = "brightness(.72) contrast(1.15)";
+  for (const [a, b, al] of bands) {
+    ctx.save(); ctx.beginPath(); ctx.rect(c.x - c.w, a, c.w * 2, b - a); ctx.clip(); ctx.globalAlpha = al;
+    for (let y = c.y0, k = 0; y < b; y += segH - 10, k++) { if (y + segH < a) continue; ctx.save(); ctx.translate(c.x, y); if ((k + (c.flip ? 1 : 0)) % 2) ctx.scale(-1, 1); ctx.drawImage(img, f.x, f.y, f.w, f.h, -c.w / 2, 0, c.w, segH); ctx.restore(); }
+    ctx.restore();
+  }
+  ctx.filter = "none"; ctx.globalAlpha = 1;
 }
 function drawCliff(c, img, alpha) {
   const f = SPR.rocks.f[c.i], w = f.w * c.h / f.h;   // height fixed, width follows the art
@@ -971,14 +984,7 @@ function render(rdt) {
     ctx.save(); ctx.translate(c.x, c.y); if (c.flip) ctx.scale(-1, 1);
     ctx.drawImage(pal.night ? SPR.slabs.inv : SPR.slabs.img, f.x, f.y, f.w, f.h, -c.w / 2, 0, c.w, h); ctx.restore();
   }
-  if (SC && SPR.pillars) for (const c of SC.pillars) if (Math.abs(c.x - cam.x) < vw / 2 + c.w) { // stacked pillar segments, art width kept
-    const f = SPR.pillars.f[c.i], segH = c.w * f.h / f.w, img = pal.night ? SPR.pillars.inv : SPR.pillars.img;
-    ctx.save(); ctx.beginPath(); ctx.rect(c.x - c.w, c.y0, c.w * 2, c.y1 - c.y0 + 4); ctx.clip();
-    ctx.filter = "brightness(.72) contrast(1.15)"; ctx.globalAlpha = pal.night ? .45 : .88;
-    for (let y = c.y0, k = 0; y < c.y1; y += segH - 10, k++) { ctx.save(); ctx.translate(c.x, y); if ((k + (c.flip ? 1 : 0)) % 2) ctx.scale(-1, 1); ctx.drawImage(img, f.x, f.y, f.w, f.h, -c.w / 2, 0, c.w, segH); ctx.restore(); }
-    ctx.filter = "none"; ctx.globalAlpha = 1;
-    ctx.restore();
-  }
+  if (SC && SPR.pillars) for (const c of SC.pillars) if (!c.g && Math.abs(c.x - cam.x) < vw / 2 + c.w) drawPillar(c, pal);   // floating ones behind the rock
   if (SC) for (const c of SC.back) if (Math.abs(c.x - cam.x) < vw / 2 + c.h * 2 + 200) drawCliff(c, pal.night ? SPR.rocks.inv : SPR.rocks.img, pal.night ? .25 : .45);
   // hints
   ctx.font = `600 11px ${BODY_FONT}`; ctx.textBaseline = "top";
@@ -1082,6 +1088,7 @@ function render(rdt) {
     if (d.w) { ctx.drawImage(pal.night ? SPR[d.sheet].inv : SPR[d.sheet].img, f.x, f.y, f.w, f.h, d.x - d.w / 2, d.y, d.w, d.h); continue; }
     drawSprite(d.sheet, d.i, d.x, d.y, d.h / f.h, d.flip, .5, pal.night, d.ay);
   }
+  if (SC && SPR.pillars) for (const c of SC.pillars) if (c.g && Math.abs(c.x - cam.x) < vw / 2 + c.w) drawPillar(c, pal);   // grounded ones over the rock, fading into it
   // ink stains
   for (const s of LV.stains) {
     if (!visible(s.x)) continue;
