@@ -27,9 +27,9 @@ const Music = (() => {
     if (bgmBuf || bgmLoading || !ac) return; bgmLoading = true;
     fetch("assets/audio/bgm.mp3").then(r => r.arrayBuffer()).then(b => new Promise((res, rej) => ac.decodeAudioData(b, res, rej))).then(raw => {
       // drop the trailing silence and blend the tail into the head so the loop has no gap or click
-      // the phrase repeats every ~1.45 s; four of them end at 5.85 s, after which the recording only rings out.
-      // Loop exactly there (the next strike would land on the loop start) with a 40 ms blend to avoid a click.
-      const sr = raw.sampleRate, len = Math.min(raw.length, Math.round(5.85 * sr)), xf = Math.round(.02 * sr), buf = ac.createBuffer(raw.numberOfChannels, len, sr);
+      // only the first 4 s of the recording are looped (the rest drags).
+      // A 20 ms blend at the seam avoids a click.
+      const sr = raw.sampleRate, len = Math.min(raw.length, Math.round(4.0 * sr)), xf = Math.round(.02 * sr), buf = ac.createBuffer(raw.numberOfChannels, len, sr);
       for (let c = 0; c < raw.numberOfChannels; c++) {
         const a = raw.getChannelData(c), o = buf.getChannelData(c);
         for (let i = 0; i < len; i++) o[i] = i < xf ? a[i] * (i / xf) + (a[len + i] || 0) * (1 - i / xf) : a[i];   // last phrase's ring blends into the restart
@@ -39,7 +39,7 @@ const Music = (() => {
   }
   let useTag = false, tag = null, wantBgm = false;   // <audio> fallback when Web Audio can't decode the file
   function playBgm() {
-    if (useTag) { if (!tag) { tag = new Audio("assets/audio/bgm.mp3"); tag.loop = true; tag.addEventListener("timeupdate", () => { if (tag.currentTime > 5.85) tag.currentTime -= 5.85; }); tag.volume = .6 * volume; tag.preservesPitch = false; tag.webkitPreservesPitch = false; } tag.playbackRate = rate; tag.play().catch(() => {}); return; }
+    if (useTag) { if (!tag) { tag = new Audio("assets/audio/bgm.mp3"); tag.loop = true; tag.addEventListener("timeupdate", () => { if (tag.currentTime > 4) tag.currentTime -= 4; }); tag.volume = .6 * volume; tag.preservesPitch = false; tag.webkitPreservesPitch = false; } tag.playbackRate = rate; tag.play().catch(() => {}); return; }
     if (!ac || !bgmBuf || bgmSrc) return;
     bgmGain = ac.createGain(); bgmGain.gain.value = .6; bgmGain.connect(master);
     bgmSrc = ac.createBufferSource(); bgmSrc.buffer = bgmBuf; bgmSrc.loop = true; bgmSrc.playbackRate.value = rate;
