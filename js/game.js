@@ -268,13 +268,18 @@ const OATHS = [
   { id: "goyo2", name: "고요의 서약", han: "靜寂誓", desc: "일격의 범위가 두 배 반", cost: "일격이 아닌 베기는 피해를 주지 못한다" },
   { id: "jangdan", name: "장단의 서약", han: "長短誓", desc: "일격이 우두머리에게 두 배로 든다", cost: "박자를 놓친 베기는 헛친다" },
   { id: "pi", name: "피의 서약", han: "血誓", desc: "적을 벨 때마다 잠깐 무적, 대시가 바로 찬다", cost: "숨은 둘을 넘지 못한다" },
-  { id: "hyeon", name: "현의 서약", han: "玄誓", desc: "더 높이 뛰고, 두 배 빠르게 넓게 벤다", cost: "대시를 쓸 수 없다" }
+  { id: "hyeon", name: "현의 서약", han: "玄誓", desc: "더 높이 뛰고, 두 배 빠르게 넓게 벤다", cost: "대시를 쓸 수 없다" },
+  { id: "jilpung2", name: "질풍의 서약", han: "疾風誓", desc: "더 빨리 달리고, 대시로 벤 적은 일격을 맞는다", cost: "베기 범위가 30% 줄어든다" },
+  { id: "geommu", name: "칼춤의 서약", han: "劍舞誓", desc: "쉬지 않고 이어 벨수록 베기가 커진다 (최대 두 배)", cost: "한 박자 넘게 쉬면 베기가 반으로 줄어든다" },
+  { id: "godok", name: "고독의 서약", han: "孤獨誓", desc: "비급 카드가 한 장 더 나온다", cost: "숨 비급이 나오지 않고, 관문을 넘어도 숨이 차지 않는다" }
 ];
 const oath = id => !!(run && run.oath === id);
 const breathCap = () => oath("pi") || (run && run.char === "shadowc") ? 2 : 5;
 // 영구 기록: currencies, unlocks, sealed books, story, codex (one save, survives runs)
-const META = Object.assign({ hon: 0, shard: 0, bld: { seogo: 0, daejang: 0, bigeup: 0, sadang: 0, uibang: 0 }, tfs: ["sunbo", "hwalgong", "yeonbal", "bangyeok", "heup"], oaths: ["gonggung", "goyo2", "jangdan"],
+const META = Object.assign({ hon: 0, shard: 0, bld: { seogo: 0, daejang: 0, bigeup: 0, sadang: 0, uibang: 0 }, tfs: ["sunbo", "hwalgong", "yeonbal", "bangyeok", "heup"], oaths: ["gonggung", "goyo2", "jangdan", "jilpung2", "geommu"],
   weapons: ["hwando"], chars: ["mumyeong"], books: [], strokes: 0, mem: [], ended: false, upBest: 0, towerBest: 0, codex: {}, titles: [], title: null, mastery: {}, quests: null, sash: "red", firsts: {} }, store.get("meta", {}));
+for (const o of ["jilpung2", "geommu"]) if (!META.oaths.includes(o)) META.oaths.push(o);   // oaths added after a save was made
+if (META.bld.seogo >= 1 && !META.oaths.includes("godok")) META.oaths.push("godok");
 function saveMeta() { store.set("meta", META); }
 const baseAir = () => (has("biyeon") ? 2 : 1) + (has("bisang2") ? 1 : 0);
 const cyc = () => (run && mode !== "tutorial" ? (run.tower ? Math.floor((run.floor - 1) / 3) : run.cycle || 0) : 0);   // how many times 천고 has been cut
@@ -285,7 +290,7 @@ const season = () => { const c = cyc(); return c ? ((c - 1) % 3) + 1 : 0; };   /
 const ghostly = e => (e.type === "r" && e.ph === "gone") || !!e.hidden;
 const bossAlive = () => enemies.some(e => e.alive && e.type === "b");
 const F3 = { orb: 8 }, FXB = { coin: 0, fire: 1, claw: 2, hair: 3, pillar: 4, beam: 5, fan: 6, water: 7, scrap: 8 };   // bossB extra frame; bossfx sheet
-const maxv = () => MAXV * (has("jilpung") ? 1.18 : 1);
+const maxv = () => MAXV * (has("jilpung") ? 1.18 : 1) * (oath("jilpung2") ? 1.25 : 1);
 const strikeWin = () => STRIKE_WIN * (has("siman") ? 2.3 : has("eot") ? 1.6 : 1) * (upOn("narrow") ? .7 : 1);
 const PINE_N = 5, DEATH_SEAL = 5;   // pines sheet: five misty pines, then the 絶命 seal
 const P2 = { plank: 0, ledge: 1, board: 2, rack: 3, haetae: 4, gate: 5, brazier: 6, lanterns: 7, sacks: 8 };
@@ -884,7 +889,7 @@ function madangClear() {
   Music.sfx("seal");
   if (mode === "tutorial") { toast("수련을 마쳤다"); setTimeout(toMenu, 900); state = "result"; return; }
   if (run.m >= LAST_M) { endRun(true); return; }
-  run.m++; run.cp = -1; run.dead = []; run.cutDrums = []; if (!upOn("noheal")) run.breath = Math.min(breathCap(), has("saenggi") ? 5 : Math.max(run.breath, 3) + (has("josik") ? 1 : 0));   // breath refills each 마당
+  run.m++; run.cp = -1; run.dead = []; run.cutDrums = []; if (!upOn("noheal") && !oath("godok")) run.breath = Math.min(breathCap(), has("saenggi") ? 5 : Math.max(run.breath, 3) + (has("josik") ? 1 : 0));   // breath refills each 마당
   run.choosing = "madang"; saveRun();   // every cleared 마당 grants a 초식
   state = "result";
   setTimeout(() => showChoice("madang"), 700);
@@ -899,10 +904,10 @@ function showChoice(kind) {   // kind: "madang" after a cleared 마당, "cycle" 
     saveRun(); Music.stop(); showInterlude();
   };
   const owned = id => (run.perks || []).includes(id) || (id === "sunbo" && run.char === "shadowc");
-  const rnd = mulberry((run.seed ^ (run.m * 7919) ^ ((run.cycle || 0) * 104729) ^ ((run.perks || []).length * 31337)) >>> 0), pool = CHOSIK.filter(c => !c.combo && (c.repeat ? run.breath < breathCap() : !owned(c.id)) && (!c.tf || (META.tfs.includes(c.id) && !CHOSIK.some(o => o.tf === c.tf && owned(o.id)))));
+  const rnd = mulberry((run.seed ^ (run.m * 7919) ^ ((run.cycle || 0) * 104729) ^ ((run.perks || []).length * 31337)) >>> 0), pool = CHOSIK.filter(c => !c.combo && (c.repeat ? run.breath < breathCap() && !oath("godok") : !owned(c.id)) && (!c.tf || (META.tfs.includes(c.id) && !CHOSIK.some(o => o.tf === c.tf && owned(o.id)))));
   const combos = CHOSIK.filter(c => c.combo && !owned(c.id) && c.combo.every(owned));
   const picks = []; if (combos.length) picks.push(combos[(rnd() * combos.length) | 0]);   // a ready combination always shows up first
-  const nCards = META.bld.sadang >= 3 && !run.daily ? 4 : 3;
+  const nCards = (META.bld.sadang >= 3 && !run.daily ? 4 : 3) + (oath("godok") ? 1 : 0);
   for (let r = 0; r < (run.reroll || 0); r++) rnd();   // a reroll shifts the draw
   while (picks.length < nCards && pool.length) picks.push(pool.splice((rnd() * pool.length) | 0, 1)[0]);
   if (!picks.length) { toast("익힐 비급이 더 없다"); done(); return; }   // every 비급 learned and breath full
@@ -1032,6 +1037,7 @@ function doSlash(req) {
   let strike = onBeat || (has("samyeon") && (P.chainT || 0) > 0) || (oath("gonggung") && !P.onGround);
   if (onBeat && has("samyeon")) P.chainT = .45;
   P.whiff = oath("jangdan") && !onBeat;   // 장단의 서약: off the beat, the blade finds nothing
+  if (oath("geommu")) { const gap = songPos - (P.danceAt ?? -9); P.dance = gap < .7 ? Math.min(5, (P.dance || 0) + 1) : 0; P.danceAt = songPos; P.danceRest = gap > 1; }
   if (wpn() === "ssang") { P.combo = songPos - (P.lastCut || -9) < .5 ? (P.combo || 0) + 1 : 1; P.lastCut = songPos; if (P.combo >= 5) { strike = true; P.combo = 0; } }
   if (wpn() === "baldo" && req.iai != null) {   // 발도: a long held draw released on the beat becomes a lunging 일격
     if (req.iai >= .16 && onBeat) { strike = true; P.iaiCut = true; P.dashCd = 0; P.slashDir = d; startDash({ x: Math.abs(d.x) > .2 ? Math.sign(d.x) : P.face, y: 0 }, true); P.dashT = .2; }
@@ -1068,7 +1074,9 @@ function stepGuards(dt) { // 비검's orbiting swords and 흑룡's coil: both cu
       if (has("yuseong")) P.airDash = Math.max(P.airDash, baseAir());
       if (has("noegeom")) { const n = nearestFoes(sx, sy, 2, 150).find(q => q !== e); if (n) { beams.push({ x0: sx, y0: sy, x1: n.x + n.w / 2, y1: n.y + n.h / 2, t: 0, life: .2 }); hurtEnemy(n, false); } } } } }
   if (P.coil) { const c = P.coil; c.t -= dt; c.a += dt * 11; if (c.t <= 0) P.coil = null; else {
-    for (const e of enemies) if (e.alive && !ghostly(e) && !c.hit.has(e.id) && Math.hypot(e.x + e.w / 2 - cx, e.y + e.h / 2 - cy) < c.r + Math.max(e.w, e.h) / 2) { c.hit.add(e.id); hurtEnemy(e, false); if (has("biryong")) P.airDash = Math.max(P.airDash, baseAir()); }
+    for (const e of enemies) if (e.alive && !ghostly(e) && !(c.hit.get(e.id) > songPos) && Math.hypot(e.x + e.w / 2 - cx, e.y + e.h / 2 - cy) < c.r + Math.max(e.w, e.h) / 2) { c.hit.set(e.id, songPos + .3); hurtEnemy(e, false); addFx("perkfx", PF.splash, e.x + e.w / 2, e.y + e.h / 2, 34, { life: .2 }); if (has("biryong")) P.airDash = Math.max(P.airDash, baseAir()); }
+    for (const b of bullets) if (!b.friendly && Math.hypot(b.x - cx, b.y - cy) < c.r) { b.life = 0; addFx("hud", HUD.spark, b.x, b.y, 18, { life: .2 }); }   // shots break on its coils
+    if (Math.random() < dt * 40) { const a = c.a + (Math.random() - .5) * .6, rr = c.r * (.7 + Math.random() * .3); parts.push({ x: cx + Math.cos(a) * rr, y: cy + Math.sin(a) * rr * .8, vx: -Math.sin(a) * 90, vy: Math.cos(a) * 90 - 20, life: .45, max: .45, c: Math.random() < .2 ? SEAL : LV.pal.fig, s: 2 + Math.random() * 3 }); }
     if (has("yeomryong2") && (c.fd = (c.fd || 0) + Math.hypot(P.vx, P.vy) * dt) > 46) { c.fd = 0; bullets.push({ x: cx, y: P.y + P.h - 8, vx: 0, vy: 0, friendly: true, fire: true, pierce: true, r: 8, life: .8, owner: null }); } } }
 }
 function nearestFoes(x, y, n, r) { return enemies.filter(e => e.alive && !ghostly(e) && Math.hypot(e.x + e.w / 2 - x, e.y + e.h / 2 - y) < r).sort((a, b) => Math.hypot(a.x + a.w / 2 - x, a.y + a.h / 2 - y) - Math.hypot(b.x + b.w / 2 - x, b.y + b.h / 2 - y)).slice(0, n); }
@@ -1126,7 +1134,10 @@ function stepPlayer(dt) {
   if (P.hook) {
     const cx = P.x + P.w / 2, cy = P.y + P.h / 2, dx = P.hook.x - cx, dy = P.hook.y - cy, d = Math.hypot(dx, dy);
     if (d < 30) { const lb = (has("baram") ? 1.25 : 1) * (has("deungun") ? 1.2 : 1); if (has("deungun")) P.djN = 0; P.vx = dx / d * 700 * lb; P.vy = dy / d * 700 * lb - 260 * lb; P.hook = null; P.hookCd = 0.25; P.airDash = has("yeonsa") ? 2 : baseAir(); if (has("yeonbi")) { P.invT = Math.max(P.invT || 0, .5); P.dashCd = 0; }
-      if (has("heukryong")) P.coil = { t: has("ssangryong2") ? 1.1 : .6, n: has("ssangryong2") ? 2 : 1, r: has("ssangryong2") ? 70 : 54, a: 0, hit: new Set() }; if (Math.abs(P.vx) > 40) P.face = Math.sign(P.vx); }
+      if (has("heukryong")) { const big = has("ssangryong2");   // 흑룡 bursts out as the kite lets go, then coils
+        P.coil = { t: big ? 2 : 1.3, max: big ? 2 : 1.3, n: big ? 2 : 1, r: big ? 118 : 88, a: 0, hit: new Map() };
+        addFx("perkfx", PF.spin, P.x + P.w / 2, P.y + P.h / 2, P.coil.r * 2.2, { life: .4, grow: .4, a: .8 }); shake = Math.max(shake, 5);
+        for (const e of nearestFoes(P.x + P.w / 2, P.y + P.h / 2, 9, P.coil.r * 1.3)) { hurtEnemy(e, false); e.stunT = Math.max(e.stunT || 0, e.type === "b" ? .15 : .5); addFx("perkfx", PF.splash, e.x + e.w / 2, e.y + e.h / 2, 44, { life: .25 }); } } if (Math.abs(P.vx) > 40) P.face = Math.sign(P.vx); }
     else {
       P.vx = dx / d * 1050; P.vy = dy / d * 1050;
       if (moveX(P, P.vx * dt) | moveY(P, P.vy * dt)) { P.hook = null; P.vx *= 0.3; P.vy *= 0.3; }
@@ -1347,7 +1358,7 @@ function dashThrough(e) { if (state === "play" && P.dashT > 0 && overlap(e, P) &
 function dashHurt(e) { // what a dash does to whatever it passes through
   if (P.ram && e.type !== "b") { e.stunT = Math.max(e.stunT || 0, .6); moveX(e, P.dashDir.x * 40); }
   if (P.iaiCut) seals.push({ x: e.x + e.w / 2, y: e.y + 6, t: 0, rot: (Math.random() - .5) * .4 });
-  hurtEnemy(e, P.iaiCut || (has("nodo") && e.type !== "b"));
+  hurtEnemy(e, P.iaiCut || oath("jilpung2") || (has("nodo") && e.type !== "b"));
 }
 // 무당: every fourth beat she lays a talisman ward on the two nearest soldiers; it eats one plain cut
 function stepMudang(e, dt, pcx, dist, live) {
@@ -1620,6 +1631,7 @@ function slashHits() {
   if (P.whiff) return;
   let R = (P.strike ? 54 * (has("gangta") ? 1.5 : 1) : 40) * (has("ssang") ? 1.35 : 1) * (has("seomil") && P.dashT > 0 ? 1.6 : 1) + (has("ilseom") ? 12 : 0); let reach = (P.strike ? 30 : 26) + (has("ilseom") ? 14 : 0);
   R *= WP.R * (has("heup") ? .7 : 1) * (oath("hyeon") ? 1.2 : 1) * (P.strike && oath("goyo2") ? 2.5 : 1); reach += WP.reach + (has("heup") ? 30 : 0);
+  if (oath("jilpung2")) R *= .7; if (oath("geommu")) R *= P.danceRest ? .5 : 1 + .2 * (P.dance || 0);
   if (chr("munyeo")) R *= .85; if (chr("posu")) { R *= .75; reach += 24; }
   if (has("geommak")) for (const b of bullets) if (!b.friendly && Math.hypot(b.x - P.x - P.w / 2, b.y - P.y - P.h / 2) < 95) { b.life = 0; addFx("hud", HUD.spark, b.x, b.y, 18, { life: .2 }); }
   const spin = has("hoeseon") && !P.onGround, cx = P.x + P.w / 2 + (spin ? 0 : P.slashDir.x * reach), cy = P.y + P.h / 2 + (spin ? 0 : P.slashDir.y * reach);
@@ -2289,7 +2301,11 @@ function drawPlayer(pal) {
   if (P.orbit && SPR.slashfx && state !== "dead") for (let i = 0; i < P.orbit.n; i++) { const a = P.orbit.a + i * Math.PI * 2 / P.orbit.n, f = SPR.slashfx.f[SF.sword];
     ctx.save(); ctx.translate(cx + Math.cos(a) * 46, P.y + P.h / 2 + Math.sin(a) * 40); ctx.rotate(a + Math.PI / 2); ctx.globalAlpha = Math.min(1, P.orbit.t * 3); drawSprite("slashfx", SF.sword, 0, 0, 13 / f.h, false, .5, pal.night, .5); ctx.restore(); ctx.globalAlpha = 1; }
   if (P.coil && SPR.perkfx && state !== "dead") for (let i = 0; i < P.coil.n; i++) { const a = P.coil.a + i * Math.PI, f = SPR.perkfx.f[PF.dragon];
-    ctx.save(); ctx.translate(cx + Math.cos(a) * P.coil.r * .7, P.y + P.h / 2 + Math.sin(a) * P.coil.r * .55); ctx.rotate(a + Math.PI / 2); ctx.globalAlpha = Math.min(1, P.coil.t * 4) * .9; drawSprite("perkfx", PF.dragon, 0, 0, 34 / f.h, false, .5, false, .5); ctx.restore(); ctx.globalAlpha = 1; }
+    const fade = Math.min(1, P.coil.t * 4, (P.coil.max - P.coil.t) * 8 + .3), sz = P.coil.r * .95;
+    for (let j = 3; j >= 0; j--) { const aj = a - j * .32;   // the body trails behind the head in fading ink
+      ctx.save(); ctx.translate(cx + Math.cos(aj) * P.coil.r * .78, P.y + P.h / 2 + Math.sin(aj) * P.coil.r * .6); ctx.rotate(aj + Math.PI / 2); ctx.globalAlpha = fade * (j ? .22 / j : .95); drawSprite("perkfx", PF.dragon, 0, 0, sz * (1 - j * .1) / f.h, false, .5, false, .5); ctx.restore(); }
+    ctx.globalAlpha = 1; }
+  if (P.coil && state !== "dead") { ctx.strokeStyle = `rgba(23,22,26,${.25 * Math.min(1, P.coil.t * 3)})`; ctx.lineWidth = 3; ctx.beginPath(); ctx.ellipse(cx, P.y + P.h / 2, P.coil.r * .78, P.coil.r * .6, 0, P.coil.a - 2.2, P.coil.a); ctx.stroke(); }   // the sweep of its coil
   if (P.ward && SPR.slashfx && state !== "dead") { ctx.globalAlpha = .55 + .15 * Math.sin(performance.now() / 160); drawSprite("slashfx", SF.guard, cx, P.y + P.h / 2, 64 / SPR.slashfx.f[SF.guard].h, false, .5, false, .5); ctx.globalAlpha = 1; }
   if (P.slashT > 0 && state !== "dead" && SPR.slashfx) { // one clean crescent: black ink, or a thin vermilion line for 일격
     const d = P.slashDir, dur = P.slashDur || .14, prog = 1 - Math.min(1, P.slashT / dur), i = P.strike ? SF.arcRed : SF.arc, f = SPR.slashfx.f[i];
@@ -2565,7 +2581,7 @@ function codexBoss(e) {
 // ---------- 암자: buildings that widen what a run can be ----------
 const BUILDINGS = [
   { id: "seogo", name: "서고", han: "書庫", pic: 3, lv: [
-    { hon: 60, desc: "변형 해금 · 돌격, 연사슬", give: () => unlockList("tfs", ["dolgyeok", "yeonsasl"]) },
+    { hon: 60, desc: "변형 해금 · 돌격, 연사슬 / 서약 해금 · 고독의 서약", give: () => { unlockList("tfs", ["dolgyeok", "yeonsasl"]); unlockList("oaths", ["godok"]); } },
     { hon: 130, desc: "변형 해금 · 비상, 처형 / 서약 해금 · 피의 서약", give: () => { unlockList("tfs", ["bisang2", "cheohyeong"]); unlockList("oaths", ["pi"]); } },
     { hon: 220, desc: "변형 해금 · 검막 / 서약 해금 · 현의 서약", give: () => { unlockList("tfs", ["geommak"]); unlockList("oaths", ["hyeon"]); } }] },
   { id: "daejang", name: "대장간", han: "鍛冶間", pic: 4, lv: [
