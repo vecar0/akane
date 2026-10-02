@@ -344,7 +344,7 @@ const CAL = { title: 0, death: 1, madang: [2, 3, 4, 5, 6], end: 7, clear: 8 };  
 const PROP = { rope: 0, aim: 1, reticle: 2, pine: 3, stoneLantern: 4, jars: 5, banner: 6, sotdae: 7, palisade: 8 };
 const DRESS = [[PROP.pine, 74, 3], [PROP.stoneLantern, 34, 2], [PROP.jars, 26, 1], [PROP.banner, 80, 3], [PROP.sotdae, 84, 3], [PROP.palisade, 28, 1]]; // [frame, world height, headroom tiles]
 const OBJ = { lanternOn: 0, lanternOff: 1, kite: 2, thorns: 3, seal: 4, emitter: 5, slash: 6, slashRed: 7, splat: 8 };
-for (const n of ["hero", "hero2", "foes", "objects", "ui", "fx", "hud", "hudsolid", "props", "props2", "rocks", "pines", "slabs", "pillars", "rogue", "roguea", "rogue2", "rogue3", "rogue4", "foes2", "bossA", "bossB", "bossfx", "bossC", "bossD", "bossE", "bossF", "hero3", "herofx", "slashfx", "perkfx", "weapons", "chars", "misc", "arms", "ic0", "ic1", "ic2", "ic3", "ic4", "ic5", "ic6", "ic7", "ic8", "ic9", "ic10", "ic11", "ic12", "ic13", "ic14", "ic15", "mu", "po", "mfx", "pfx", "vis", "guide", "mv0", "mv1", "mv2", "bcal", "bvfx", "bname"]) {
+for (const n of ["hero", "hero2", "foes", "objects", "ui", "fx", "hud", "hudsolid", "props", "props2", "rocks", "pines", "slabs", "pillars", "rogue", "roguea", "rogue2", "rogue3", "rogue4", "foes2", "bossA", "bossB", "bossfx", "bossC", "bossD", "bossE", "bossF", "hero3", "herofx", "slashfx", "perkfx", "weapons", "chars", "misc", "arms", "ic0", "ic1", "ic2", "ic3", "ic4", "ic5", "ic6", "ic7", "ic8", "ic9", "ic10", "ic11", "ic12", "ic13", "ic14", "ic15", "mu", "po", "mfx", "pfx", "vis", "guide", "mv0", "mv1", "mv2", "bcal", "bvfx", "bname", "mvrun"]) {
   Promise.all([
     fetch(`assets/sprites/${n}.json`).then(r => r.json()),
     new Promise((res, rej) => { const im = new Image(); im.onload = () => res(im); im.onerror = rej; im.src = `assets/sprites/${n}.webp`; })
@@ -388,7 +388,7 @@ function applyUiSprites() { // brush-painted UI pieces become CSS images
   if (SPR.rogue2 && !root.getPropertyValue("--chosik-100")) {
     for (let i = 0; i < 9; i++) root.setProperty("--chosik-" + (100 + i), url("rogue2", i));
   }
-  if (SPR.hero3 && SPR.weapons && META.sash && META.sash !== "red" && !SPR.hero3.orig) recolorSash();
+  if (META.sash && META.sash !== "red" && SASH_SHEETS.some(n => SPR[n] && !SPR[n].orig)) recolorSash();   // every sheet the sash appears on, as each one arrives
   if (SPR.vis && !root.getPropertyValue("--vis-seal")) root.setProperty("--vis-seal", url("vis", VIS.seal));   // the carved stamp frame for the result seal
   if (SPR.misc && !root.getPropertyValue("--ui-hon")) { root.setProperty("--ui-hon", url("misc", 8)); for (let i = 0; i < 9; i++) root.setProperty("--misc-" + i, url("misc", i)); }
   for (const k in BOSSES) { const B = BOSSES[k]; if (B.sheet !== "hero3" && SPR[B.sheet] && !root.getPropertyValue("--boss-" + k)) root.setProperty("--boss-" + k, url(B.sheet, B.idle)); }   // 도감 portraits
@@ -2818,12 +2818,12 @@ function drawRunner(x, y, face, col, pl) {
   ctx.lineCap = "butt";
 }
 // mv0-2 (무명·무녀·포수): an 8-step run with the legs crossing, a 4-step cut and a 4-step dashing cut
-const MV_BASE = { mv0: "hero3", mv1: "mu", mv2: "po" };
+const MV_BASE = { mv0: "hero3", mv1: "mu", mv2: "po", mvrun: "hero3" };
 function movePose(mv) {
   if (!SPR[mv]) return null;
   if (P.slashT > 0 && Math.abs(P.slashDir.y) <= .5) { const pr = 1 - Math.min(1, P.slashT / (P.slashDur || .14)); return [mv, (P.dashT > 0 ? 12 : 8) + Math.min(3, Math.floor(pr * 4))]; }
   if (P.dashT > 0 && !P.hook && P.slashT <= 0) return [mv, 14];
-  if (P.onGround && Math.abs(P.vx) > 40 && !(P.landT > 0) && P.slashT <= 0) return [mv, Math.floor(P.run / 1.05) % 8];
+  if (P.onGround && Math.abs(P.vx) > 40 && !(P.landT > 0) && P.slashT <= 0) return [mv === "mv0" && SPR.mvrun ? "mvrun" : mv, Math.floor(P.run / 1.05) % 8];
   return null;
 }
 function heroPose() { // [sheet, frame]
@@ -2904,7 +2904,7 @@ function drawPlayer(pal) {
     ctx.fillStyle = g; ctx.fillRect(cx - 46, P.y + P.h / 2 - 46, 92, 92);
   }
   const h3wall = (sheet === "hero3" || sheet === "mu" || sheet === "po") && fr === H3.wall, f3 = h3wall ? P.wall : face, breathe = (sheet === "hero3" || sheet === "mu" || sheet === "po") && fr === H3.idle ? 1 + Math.sin(performance.now() / 380) * .012 : 1;
-  ctx.save(); ctx.translate(cx, P.y + P.h + 1); ctx.scale(1, breathe);
+  ctx.save(); ctx.translate(cx, P.y + P.h + 1 + (sheet === "mvrun" ? RUN_BOB[fr] : 0)); ctx.scale(1, breathe);
   drawSprite(sheet, fr, 0, 0, k, f3 < 0, MV_BASE[sheet] ? (MV_AX[sheet][fr] ?? .5) : sheet === "mu" ? MU_AX[fr] : sheet === "po" ? PO_AX[fr] : sheet === "arms" ? AF_AX[fr] : sheet === "chars" ? CF_AX[fr] : sheet === "weapons" ? WF_AX[fr] : sheet === "slashfx" ? SF_AX[fr] : sheet === "hero3" ? H3_AX[fr] : sheet === "hero" ? (HERO_AX[fr] ?? .55) : (wallPose ? .62 : .5), !!LV.pal.night);
   ctx.restore();
   ctx.globalAlpha = 1;
@@ -3347,9 +3347,11 @@ function hermitScreen() {
   board("암자", "산중 암자 · 건물을 올려 새 길을 연다", rows, [["돌아가기", toMenu]]);
 }
 // 의방: repaint the vermilion sash pixels of the hero's sheets in the chosen hue
+const RUN_BOB = [0, 1.5, .5, -3, 0, 1.5, .5, -3];   // contact · down · passing · up, twice: the body dips and lifts with each stride
+const SASH_SHEETS = ["hero3", "weapons", "mv0", "mvrun"];   // the swordsman's own sheets (the run, the cuts, the stances)
 function recolorSash() {
   const hue = SASH[META.sash || "red"][1];
-  for (const n of ["hero3", "weapons"]) { const s = SPR[n]; if (!s) continue; if (!s.orig) s.orig = s.img; if (hue == null) { s.img = s.orig; continue; }
+  for (const n of SASH_SHEETS) { const s = SPR[n]; if (!s) continue; if (!s.orig) s.orig = s.img; if (hue == null) { s.img = s.orig; continue; }
     const c = document.createElement("canvas"); c.width = s.orig.width; c.height = s.orig.height; const g = c.getContext("2d"); g.drawImage(s.orig, 0, 0);
     const id = g.getImageData(0, 0, c.width, c.height), d = id.data;
     for (let i = 0; i < d.length; i += 4) { const r = d[i], gg = d[i + 1], b = d[i + 2]; if (!(r > gg + 60 && r > b + 60)) continue;
@@ -3492,7 +3494,8 @@ const CHARS = [
   { id: "munyeo", name: "무녀", han: "巫女", desc: "조준 대시가 스친 탄을 쏜 적에게 되받아친다. 공중에서 한 번 더 뛰고, 베는 범위는 좁다" },
   { id: "posu", name: "포수", han: "砲手", desc: "조준을 놓으면 화승총을 쏘고 반동으로 튕겨 난다(두 박자 장전, 장전 중엔 총검 돌진). 박자 베기도 한 발, 보통 베기는 총검 찌르기" }];
 const chr = id => !!(run && run.char === id);
-const MV_AX = { mv0: [.52, .6, .64, .62, .61, .61, .55, .61, .54, .48, .44, .59, .58, .61, .43, .45],   // body axis of each frame, so the feet stay put
+const MV_AX = { mvrun: [.566, .631, .634, .635, .544, .63, .62, .639],   // the run sheet, aligned on the hat so the head rides level
+  mv0: [.52, .6, .64, .62, .61, .61, .55, .61, .54, .48, .44, .59, .58, .61, .43, .45],   // body axis of each frame, so the feet stay put
   mv1: [.53, .62, .62, .62, .57, .6, .57, .59, .63, .57, .44, .53, .54, .64, .46, .44], mv2: [.46, .5, .52, .49, .48, .5, .49, .46, .52, .41, .41, .44, .39, .45, .42, .42] };
 const VIS = { cut: 0, splat: 1, ring: 2, drum: 3, bigDrum: 4, burst: 5, stroke: 6, seal: 7, drops: 8 };   // blood, stamps and the beat bar, painted to read at a glance
 const MU_AX = [.57, .63, .61, .61, .54, .57, .57, .59, .58, .55, .62, .6, .44, .46, .49, .53], PO_AX = [.48, .5, .49, .47, .48, .47, .46, .51, .46, .42, .51, .43, .42, .47, .53, .39];   // 무녀·포수: same 16 moves as the swordsman's hero3
