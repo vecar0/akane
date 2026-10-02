@@ -5,8 +5,11 @@ const T = 32;
 const $ = id => document.getElementById(id);
 const cv = $("cv"), ctx = cv.getContext("2d");
 let W = 0, H = 0, DPR = 1, SCALE = 1;
+const MOBILE = matchMedia("(pointer:coarse)").matches || /Android|iPhone|iPad/i.test(navigator.userAgent);
+let dprCap = MOBILE ? 1.5 : 2;   // phones: 1.5x is sharp enough and much lighter on the GPU; lowered further if frames run long
 function resize() {
-  DPR = Math.min(2, window.devicePixelRatio || 1);
+  DPR = Math.min(dprCap, window.devicePixelRatio || 1);
+  for (const k in PAT) delete PAT[k];   // patterns carry the old pixel scale
   W = window.innerWidth; H = window.innerHeight;
   cv.width = Math.round(W * DPR); cv.height = Math.round(H * DPR);
   SCALE = Math.max(0.5, Math.min(W / (T * 13), H / (T * 11)));
@@ -69,7 +72,13 @@ const SEAL = "#c3161c", JJOK = "#27466a", JJOK_L = "#5f86b5";
 // ---------- images (optional; drawn procedurally when missing) ----------
 // far/mid: Higgsfield ink-wash panoramas with alpha. tex-*: seamless tiles (seam ratio checked <= 1.3).
 const IMG = {}, PAT = {};
+let perfT = 0, perfN = 0, perfSlow = 0;   // frame-time watch for the automatic quality drop
 for (const k of ["tex-paper", "tex-stone", "tex-giwa", "tex-granite", "tex-slab"]) { const im = new Image(); im.onload = () => { IMG[k] = im; PAT[k] = null; }; im.src = "assets/" + k + ".webp"; }
+function tintedPaper(ssn) { // paper texture with the season's colour multiplied in once
+  const key = "tex-paper-" + ssn; if (PAT[key]) return PAT[key]; const im = IMG["tex-paper"]; if (!im) return null;
+  if (!IMG[key]) { const c = document.createElement("canvas"); c.width = im.width; c.height = im.height; const g = c.getContext("2d"); g.drawImage(im, 0, 0); g.globalCompositeOperation = "multiply"; g.fillStyle = SEASON_TINT[ssn]; g.fillRect(0, 0, c.width, c.height); IMG[key] = c; }
+  return pattern(key, DPR * 0.9);
+}
 function pattern(key, scale) { // world- or screen-anchored repeating pattern, built once per image
   if (!IMG[key]) return null;
   if (!PAT[key]) { PAT[key] = ctx.createPattern(IMG[key], "repeat"); PAT[key].setTransform(new DOMMatrix().scale(scale)); }
@@ -530,18 +539,25 @@ function buildScenery() {
   if (P) for (const c of skins) if (c.w >= 3 * T && rnd() < .2 && !pillars.some(q => Math.abs(q.x - c.x) < c.w / 2 + 160)) { const right = rnd() < .5; front.push({ i: (rnd() * Math.min(PINE_N, P.f.length)) | 0, x: c.x + (right ? 1 : -1) * (c.w / 2 - 14), y: c.y - 2, h: 150 + rnd() * 70, flip: right }); }
   LV.scenery = { skins, back, pines, front, slabs, pillars };
 }
+const baked = new Map();   // brightness/contrast done once per image, never with ctx.filter in the frame loop (slow on Android)
+function bake(img, br, ct) {
+  if (!img) return img; const key = img; let m = baked.get(key); if (!m) baked.set(key, m = {});
+  const id = br + "/" + ct; if (m[id]) return m[id];
+  const c = document.createElement("canvas"); c.width = img.width; c.height = img.height; const g = c.getContext("2d"); g.drawImage(img, 0, 0);
+  try { const d = g.getImageData(0, 0, c.width, c.height), a = d.data; for (let i = 0; i < a.length; i += 4) for (let k = 0; k < 3; k++) a[i + k] = Math.max(0, Math.min(255, ((a[i + k] * br / 255) - .5) * ct * 255 + 127.5)); g.putImageData(d, 0, 0); } catch (_) {}
+  return m[id] = c;
+}
 function drawPillar(c, pal) { // stacked rock segments; a grounded pillar fades into the ground over its last 56px
-  const f = SPR.pillars.f[c.i], segH = c.w * f.h / f.w, img = pal.night ? SPR.pillars.inv : SPR.pillars.img, base = pal.night ? .45 : .88;
+  const f = SPR.pillars.f[c.i], segH = c.w * f.h / f.w, img = bake(pal.night ? SPR.pillars.inv : SPR.pillars.img, .72, 1.15), base = pal.night ? .45 : .88;
   const solidEnd = c.g ? c.g : c.y1, fade = c.g ? 56 : 0;
   const bands = [[c.y0, c.g ? solidEnd : solidEnd + 4, base]];
   for (let k = 1; k <= 7 && fade; k++) bands.push([solidEnd, solidEnd + k * 8, .26]);   // nested translucent layers sum to a smooth fade with no band edges
-  ctx.filter = "brightness(.72) contrast(1.15)";
   for (const [a, b, al] of bands) {
     ctx.save(); ctx.beginPath(); ctx.rect(c.x - c.w, a, c.w * 2, b - a); ctx.clip(); ctx.globalAlpha = al;
     for (let y = c.y0, k = 0; y < b; y += segH - 10, k++) { if (y + segH < a) continue; ctx.save(); ctx.translate(c.x, y); if ((k + (c.flip ? 1 : 0)) % 2) ctx.scale(-1, 1); ctx.drawImage(img, f.x, f.y, f.w, f.h, -c.w / 2, 0, c.w, segH); ctx.restore(); }
     ctx.restore();
   }
-  ctx.filter = "none"; ctx.globalAlpha = 1;
+  ctx.globalAlpha = 1;
 }
 function drawCliff(c, img, alpha) {
   const f = SPR.rocks.f[c.i], w = f.w * c.h / f.h;   // height fixed, width follows the art
@@ -1553,7 +1569,7 @@ function stepPlayer(dt) {
 }
 function ghost(gap) { const l = ghosts[ghosts.length - 1]; if (!l || l.age > gap) ghosts.push({ x: P.x, y: P.y, face: P.face, age: 0, life: 0.22 }); for (const g of ghosts) g.age += 0.004; }
 // one-shot painted effects: grow and fade
-function addFx(sheet, i, x, y, h, o = {}) { vfx.push({ sheet, i, x, y, h, t: 0, life: o.life || .5, rot: o.rot || 0, grow: o.grow ?? .35, flip: !!o.flip, ay: o.ay ?? .5, a: o.a ?? 1 }); }
+function addFx(sheet, i, x, y, h, o = {}) { if (vfx.length > (MOBILE ? 60 : 120)) vfx.shift(); vfx.push({ sheet, i, x, y, h, t: 0, life: o.life || .5, rot: o.rot || 0, grow: o.grow ?? .35, flip: !!o.flip, ay: o.ay ?? .5, a: o.a ?? 1 }); }
 // the hero's painted effects; dir/angle orient the ones that point somewhere
 function heroFx(kind, x, y, dir = 1, ang = 0) {
   if (!SPR.herofx) return;
@@ -2068,7 +2084,9 @@ function stepBullets(dt) {
 // ---------- loop ----------
 let last = performance.now(), cvInverted = false;
 function frame(now) {
-  const rdt = Math.min(0.05, (now - last) / 1000); last = now;
+  const raw = (now - last) / 1000, rdt = Math.min(0.05, raw); last = now;
+  if (state === "play" && raw < .5) { perfT += raw; perfN++; if (perfN >= 90) { const avg = perfT / perfN; perfT = perfN = 0;   // three seconds of slow frames: draw at a lower resolution
+    if (avg > 1 / 45 && dprCap > 1) { dprCap = Math.max(1, +(dprCap - .25).toFixed(2)); resize(); } } }
   if (state === "play" || state === "dead") {
     songPos = Music.pos();
     if (state === "play") frameInput(rdt);
@@ -2087,7 +2105,7 @@ function frame(now) {
     updateHud();
   } else slashReq = null;
   for (const p of parts) { p.x += p.vx * rdt; p.y += p.vy * rdt; p.vy += 600 * rdt; p.life -= rdt; }
-  parts = parts.filter(p => p.life > 0);
+  parts = parts.filter(p => p.life > 0); if (parts.length > (MOBILE ? 220 : 400)) parts.splice(0, parts.length - (MOBILE ? 220 : 400));   // oldest drops go first
   for (const g of ghosts) g.age += rdt; ghosts = ghosts.filter(g => g.age < g.life);
   for (const s of seals) s.t += rdt; seals = seals.filter(s => s.t < (s.ch ? 1.1 : 0.7));
   for (const v of vfx) v.t += rdt; vfx = vfx.filter(v => v.t < v.life);
@@ -2154,12 +2172,13 @@ function render(rdt) {
   ctx.fillStyle = pal.bg; ctx.fillRect(0, 0, cv.width, cv.height);
   drawBackdrop(pal);
   ctx.setTransform(1, 0, 0, 1, 0, 0);
-  const paperTex = pattern("tex-paper", DPR * 0.9);
+  const ssn0 = LV && state !== "menu" && !pal.night ? season() : 0;   // the season's tint is baked into the paper, so the screen is washed once, not twice
+  const paperTex = ssn0 ? tintedPaper(ssn0) : pattern("tex-paper", DPR * 0.9);
   if (paperTex) { ctx.globalCompositeOperation = "multiply"; ctx.globalAlpha = pal.rim ? .35 : .9; ctx.fillStyle = paperTex; ctx.fillRect(0, 0, cv.width, cv.height); ctx.globalCompositeOperation = "source-over"; ctx.globalAlpha = 1; }
   else { ctx.fillStyle = paperPat; ctx.fillRect(0, 0, cv.width, cv.height); }
   if (!LV || state === "menu") return;
   const ssn = season(), tt = performance.now() / 1000;
-  if (ssn && !pal.night) { ctx.globalCompositeOperation = "multiply"; ctx.fillStyle = SEASON_TINT[ssn]; ctx.fillRect(0, 0, cv.width, cv.height); ctx.globalCompositeOperation = "source-over"; }
+  if (ssn && !pal.night && !IMG["tex-paper"]) { ctx.globalCompositeOperation = "multiply"; ctx.fillStyle = SEASON_TINT[ssn]; ctx.fillRect(0, 0, cv.width, cv.height); ctx.globalCompositeOperation = "source-over"; }
   drawWeather(ssn, tt, pal);
 
   ctx.setTransform(k, 0, 0, k, Math.round((W / 2 + sx) * DPR - cam.x * k), Math.round((H / 2 + sy) * DPR - cam.y * k));
@@ -2217,8 +2236,8 @@ function render(rdt) {
   const granite = pattern("tex-slab", 0.45);
   ctx.fillStyle = pal.tile; ctx.fill(rock);
   if (SPR.pillars) { // ground built from the same painted rock columns as the pillars, so both read as one cliff
-    const pf = SPR.pillars.f, colW = 70, img = pal.night ? SPR.pillars.inv : SPR.pillars.img;
-    ctx.save(); ctx.clip(rock); ctx.filter = "brightness(.8) contrast(1.15)"; if (pal.night) ctx.globalAlpha = .45;
+    const pf = SPR.pillars.f, colW = 70, img = bake(pal.night ? SPR.pillars.inv : SPR.pillars.img, .8, 1.15);
+    ctx.save(); ctx.clip(rock); if (pal.night) ctx.globalAlpha = .45;
     const cx0 = Math.floor((cam.x - vw / 2) / colW) - 1, cx1 = Math.ceil((cam.x + vw / 2) / colW) + 1;
     for (let c = cx0; c <= cx1; c++) {
       const hsh = (c * 2654435761) >>> 0, i = hsh % 3, f = pf[i], w = colW * 1.35, segH = w * f.h / f.w, off = (hsh >>> 8) % 97;
@@ -2227,7 +2246,7 @@ function render(rdt) {
         ctx.save(); ctx.translate(c * colW + colW / 2, y); if ((hsh >>> 3) & 1) ctx.scale(-1, 1); ctx.drawImage(img, f.x, f.y, f.w, f.h, -w / 2, 0, w, segH); ctx.restore();
       }
     }
-    ctx.restore(); ctx.filter = "none"; ctx.globalAlpha = 1;
+    ctx.restore(); ctx.globalAlpha = 1;
     const sh = ctx.createLinearGradient(0, cam.y - vh / 2, 0, cam.y + vh / 2); sh.addColorStop(0, "rgba(20,18,16,0)"); sh.addColorStop(1, "rgba(20,18,16,.3)");
     ctx.fillStyle = sh; ctx.fill(rock);
   } else if (granite) { // painted granite face, darkening with depth; night keeps it dim
