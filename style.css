@@ -236,3 +236,10 @@ body.padEdit #stickZone, body.padEdit #swipeZone { pointer-events: none; }
 /* scroll areas without the bright system scrollbar */
 .scr, .panel, .pbuild, #bdBody { scrollbar-width: none; }
 .scr::-webkit-scrollbar, .panel::-webkit-scrollbar, .pbuild::-webkit-scrollbar, #bdBody::-webkit-scrollbar { display: none; }
+/* 비급 고르기: what is already held, and what kind each card is */
+.ch-held { display: flex; flex-wrap: wrap; gap: 6px 10px; justify-content: center; align-items: baseline; font-size: 13px; margin-top: 4px; }
+.ch-held b { font-family: var(--f-head); font-weight: 400; }
+.ch-held span { padding: 1px 8px; border: 1px solid rgba(23,22,26,.25); border-radius: 2px; }
+.ch-held small { flex-basis: 100%; text-align: center; color: var(--seal); }
+.card .tag.kind { background: var(--jjok); }
+.card .ds { font-size: 13px; color: var(--ink); }
