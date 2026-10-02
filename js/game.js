@@ -190,7 +190,7 @@ const CAL = { title: 0, death: 1, madang: [2, 3, 4, 5, 6], end: 7, clear: 8 };  
 const PROP = { rope: 0, aim: 1, reticle: 2, pine: 3, stoneLantern: 4, jars: 5, banner: 6, sotdae: 7, palisade: 8 };
 const DRESS = [[PROP.pine, 74, 3], [PROP.stoneLantern, 34, 2], [PROP.jars, 26, 1], [PROP.banner, 80, 3], [PROP.sotdae, 84, 3], [PROP.palisade, 28, 1]]; // [frame, world height, headroom tiles]
 const OBJ = { lanternOn: 0, lanternOff: 1, kite: 2, thorns: 3, seal: 4, emitter: 5, slash: 6, slashRed: 7, splat: 8 };
-for (const n of ["hero", "hero2", "foes", "objects", "ui", "fx", "hud", "hudsolid", "props", "props2", "rocks", "pines", "slabs", "pillars", "rogue", "roguea", "rogue2", "rogue3", "rogue4", "foes2", "bossA", "bossB", "bossfx", "bossC", "bossD"]) {
+for (const n of ["hero", "hero2", "foes", "objects", "ui", "fx", "hud", "hudsolid", "props", "props2", "rocks", "pines", "slabs", "pillars", "rogue", "roguea", "rogue2", "rogue3", "rogue4", "foes2", "bossA", "bossB", "bossfx", "bossC", "bossD", "bossE", "bossF"]) {
   Promise.all([
     fetch(`assets/sprites/${n}.json`).then(r => r.json()),
     new Promise((res, rej) => { const im = new Image(); im.onload = () => res(im); im.onerror = rej; im.src = `assets/sprites/${n}.webp`; })
@@ -637,7 +637,7 @@ function spawnEnemies() {
     if (d.type === "r") return { hp, maxHp: hp, id: d.id, type: "r", x: d.tx * T + 5, y: (d.ty + 1) * T - 46, w: 22, h: 46, face: -1, ph: "idle", nextAt: songPos + 1.5 + Math.random(), fade: 1, alive: true };
     if (d.type === "b") {
       const kind = window.__forceBoss || (run && mode !== "tutorial" ? bossFor(run.seed, cyc(), run.m) : "sumun"), B = BOSSES[kind], bh = B.hp + 3 * cyc(), floor = (d.ty + 1) * T;
-      return { hp: bh, maxHp: bh, id: d.id, type: "b", kind, x: d.tx * T + 16 - B.w / 2, y: (B.fly ? floor - 115 - B.h / 2 : floor - B.h), w: B.w, h: B.h, floor, face: -1, vx: 0, vy: 0, act: null, nextAt: 0, n: (run && run.seed || 0) % 4, mask: 0, alive: true };
+      return { hp: bh, maxHp: bh, id: d.id, type: "b", kind, x: d.tx * T + 16 - B.w / 2, y: (B.fly ? floor - 95 - B.h / 2 : floor - B.h), w: B.w, h: B.h, floor, face: -1, vx: 0, vy: 0, act: null, nextAt: 0, n: (run && run.seed || 0) % 4, mask: 0, alive: true };
     }
     return { hp, maxHp: hp, id: d.id, type: d.type, x: d.tx * T + 5, y: (d.ty + 1) * T - 42, w: 22, h: 42, face: -1, fireAt: null, aimFrom: 0, readyAt: songPos + 0.6 + Math.random() * 0.8, tx: 0, ty: 0, alive: true };
   });
@@ -1148,6 +1148,16 @@ const BOSS_POSE = {
   baekho: { hurt: ["bossD", 6], spec: ["bossD", 5] },
   talchum: { hurt: ["bossD", 8], spec: ["bossD", 7] }
 };
+// 4-frame loops (bossE/bossF, one boss per row): walk/run cycles advance with distance, 원귀's drift with time
+const cyc4 = (sh, r) => [0, 1, 2, 3].map(i => [sh, r * 4 + i]);
+const BOSS_ANIM = { gumiho: cyc4("bossE", 0), dokkaebi: cyc4("bossE", 1), haetae: cyc4("bossE", 2), bulgasari: cyc4("bossE", 3), baekho: cyc4("bossF", 0), talchum: cyc4("bossF", 1), sumun: cyc4("bossF", 2), wongwi: cyc4("bossF", 3) };
+const animK = {};
+function animScale(kind) { // size a loop so its frames match the boss's idle painting (by area, since gaits stretch the outline)
+  if (animK[kind]) return animK[kind];
+  const B = BOSSES[kind], fr = BOSS_ANIM[kind], s0 = SPR[B.sheet]; if (!s0 || !fr.every(([sh]) => SPR[sh])) return 0;
+  const i0 = s0.f[B.idle], a0 = Math.sqrt(i0.w * i0.h), a1 = fr.reduce((t, [sh, i]) => t + Math.sqrt(SPR[sh].f[i].w * SPR[sh].f[i].h), 0) / fr.length;
+  return (animK[kind] = kOf(B.sheet, B.idle, B.draw) * a0 / a1 * (kind === "wongwi" ? 1 : .95));
+}
 const SHEET_SC = { bossA: 1.0241, bossB: .88235, bossC: 1, bossD: 1 };   // slicer scale per sheet, so poses from different sheets keep one size
 const BOSS_ORDER = ["gumiho", "dokkaebi", "imugi", "wongwi", "jangseung", "haetae", "bulgasari", "baekho", "talchum"];
 const MASKS = ["양반탈", "각시탈", "말뚝이탈"];
@@ -1222,7 +1232,7 @@ function bossPerform(e, a, I) {
     case "burst": case "burst2": e.hidden = false; e.emergeT = .6; e.x = e.tx - e.w / 2; e.y = f - e.h; e.face = Math.sign(pcx - e.tx) || e.face; shake = 10; Music.sfx("kill"); addFx("hud", HUD.dust, e.tx, f, 110, { life: .5, ay: 1 }); break;
     case "spit": for (const dx of [-70, 0, 70]) lob(e, ecx + e.face * 20, e.y + 16, pcx + dx, pcy, .9, { orb: true, water: true }); Music.sfx("shoot"); break;
     case "scream": haz.push({ kind: "ring", x: ecx, y: e.y + e.h / 2, at: songPos, speed: 300, max: 560 }); if (c >= 2) haz.push({ kind: "ring", x: ecx, y: e.y + e.h / 2, at: songPos + bl * .5, speed: 300, max: 560 }); shake = 6; Music.sfx("die"); break;
-    case "blink": { const side = Math.random() < .5 ? -1 : 1; e.x = pcx + side * 190 - e.w / 2; e.y = f - 115 - e.h / 2; e.face = -side; addFx("hud", HUD.smoke, e.x + e.w / 2, e.y + e.h / 2, 70, { life: .6 });
+    case "blink": { const side = Math.random() < .5 ? -1 : 1; e.x = pcx + side * 190 - e.w / 2; e.y = f - 95 - e.h / 2; e.face = -side; addFx("hud", HUD.smoke, e.x + e.w / 2, e.y + e.h / 2, 70, { life: .6 });
       const dx = pcx - (e.x + e.w / 2), dy = pcy - (e.y + e.h / 2), d = Math.hypot(dx, dy) || 1; e.swoopT = .55; e.svx = dx / d * 480; e.svy = dy / d * 480; Music.sfx("dash"); break; }
     case "low": case "high": case "lowhigh": case "highlow": case "hair": Music.sfx("strike"); shake = 5; break;
     case "breath": Music.sfx("snipe"); if (c >= 1) addHaz("fire", e.face > 0 ? e.x + e.w + 150 : e.x - 230, f - 22, 80, 22, songPos + bl, songPos + bl * 3); break;
@@ -1266,11 +1276,11 @@ function stepBoss(e, dt, pcx, pcy, dist, live) {
   } else if (!e.act) {
     if (e.stagT <= 0 && !e.hidden) e.face = Math.sign(pcx - ecx) || e.face;
     if (B.fly && !e.hidden) { // hover a little way off, bobbing
-      const tx = pcx - e.face * 200, ty = e.floor - 115 - e.h / 2 + Math.sin(songPos * 2) * 14;
+      const tx = pcx - e.face * 200, ty = e.floor - 95 - e.h / 2 + Math.sin(songPos * 2) * 14;
       e.x += Math.max(-140 * dt, Math.min(140 * dt, tx - ecx)); e.y += Math.max(-120 * dt, Math.min(120 * dt, ty - (e.y + e.h / 2)));
     } else if (!B.still && dist > 110 && e.stagT <= 0) {
       const ahead = ecx + e.face * (e.w / 2 + 4), sp = (B.speed || 55) * (e.invisT > 0 ? 2 : 1) * (e.mask === 1 ? 1.6 : 1) + 10 * c;
-      if (groundPt(ahead, e.y + e.h + 4) && !solidPt(ahead, e.y + e.h - 10)) { moveX(e, e.face * sp * dt); e.walkT = .12; }
+      if (groundPt(ahead, e.y + e.h + 4) && !solidPt(ahead, e.y + e.h - 10)) { moveX(e, e.face * sp * dt); e.walkT = .12; e.wph = (e.wph || 0) + sp * dt / Math.max(22, e.w * .55); }
     }
     if (live && songPos >= e.nextAt && e.stagT <= 0) {
       const pool = B.pool(c); let a = pool[(e.n = (e.n || 0) + 1) % pool.length];
@@ -2010,8 +2020,8 @@ function drawNewFoe(e, pal, cx) {
   }
   if (e.type === "i") { // 구미호's illusion: a pale, flickering copy
     const B = BOSSES.gumiho; ctx.globalAlpha *= .45 + .2 * Math.sin(performance.now() / 60);
-    const [is, ifr] = SPR.bossC ? BOSS_POSE.gumiho.move : [B.sheet, B.atk];
-    if (!drawSprite(is, ifr, cx, feet, kOf(B.sheet, B.idle, B.draw * .8) * SHEET_SC[B.sheet] / SHEET_SC[is], e.face < 0, .5, pal.night)) { ctx.fillStyle = "#ddd"; ctx.fillRect(e.x, e.y, e.w, e.h); }
+    const ak = animScale("gumiho"), [is, ifr] = ak ? BOSS_ANIM.gumiho[Math.floor(performance.now() / 90 + e.id) % 4] : SPR.bossC ? BOSS_POSE.gumiho.move : [B.sheet, B.atk];
+    if (!drawSprite(is, ifr, cx, feet, ak ? ak * .8 : kOf(B.sheet, B.idle, B.draw * .8) * SHEET_SC[B.sheet] / SHEET_SC[is], e.face < 0, .5, pal.night)) { ctx.fillStyle = "#ddd"; ctx.fillRect(e.x, e.y, e.w, e.h); }
     return;
   }
   drawBoss(e, pal, cx, feet);
@@ -2032,14 +2042,17 @@ function drawBoss(e, pal, cx, feet) {
   if (e.invisT > 0) ctx.globalAlpha *= .12;   // 도깨비 감투
   const atk = e.act || e.swingT > 0 || e.chargeT > 0 || e.air || e.swoopT > 0 || e.danceT > 0 || e.suck;
   const PO = BOSS_POSE[e.kind] || {}, now = performance.now();
-  let sheet = B.sheet, fr = e.kind === "sumun" && (e.chargeT > 0 || (!e.act && e.swingT > 0)) ? B.hit : atk ? B.atk : B.idle;
+  let kAnim = 0, sheet = B.sheet, fr = e.kind === "sumun" && (e.chargeT > 0 || (!e.act && e.swingT > 0)) ? B.hit : atk ? B.atk : B.idle;
   const spec = { imugi: e.emergeT > 0, wongwi: e.swoopT > 0, jangseung: !!e.act || e.swingT > 0, haetae: e.chargeT > 0, bulgasari: e.suck, baekho: e.act === "roar" || (e.lastAct === "roar" && e.swingT > 0), talchum: e.danceT > 0 }[e.kind];
   if (e.stagT > 0 || e.hitT > 0) { if (PO.hurt) [sheet, fr] = PO.hurt; else fr = B.stag ?? B.atk; }
   else if (spec && PO.spec) [sheet, fr] = PO.spec;
+  else if (!atk && BOSS_ANIM[e.kind] && animScale(e.kind) && (e.walkT > 0 || e.kind === "wongwi")) { // walking (or drifting) loop
+    const n = e.kind === "wongwi" ? Math.floor(now / 200 + e.id) : Math.floor(e.wph || 0); [sheet, fr] = BOSS_ANIM[e.kind][((n % 4) + 4) % 4]; kAnim = animScale(e.kind);
+  }
   else if (!atk && e.walkT > 0 && PO.move) [sheet, fr] = PO.move;
-  if (!SPR[sheet]) { sheet = B.sheet; fr = atk ? B.atk : B.idle; }
-  const k = kOf(B.sheet, B.idle, B.draw) * (SHEET_SC[B.sheet] || 1) / (SHEET_SC[sheet] || 1), spin = e.danceT > 0 && !PO.spec ? Math.sin(now / 50) : 1;
-  const breathe = !atk && !(e.stagT > 0) ? 1 + Math.sin(now / 420 + e.id) * .015 : 1;   // idle: a slow breath so it never stands frozen
+  if (!SPR[sheet]) { sheet = B.sheet; fr = atk ? B.atk : B.idle; kAnim = 0; }
+  const k = kAnim || kOf(B.sheet, B.idle, B.draw) * (SHEET_SC[B.sheet] || 1) / (SHEET_SC[sheet] || 1), spin = e.danceT > 0 && !PO.spec ? Math.sin(now / 50) : 1;
+  const breathe = !atk && !(e.stagT > 0) && !kAnim ? 1 + Math.sin(now / 420 + e.id) * .015 : 1;   // idle: a slow breath so it never stands frozen
   ctx.save(); ctx.translate(cx, feet); ctx.scale(1, breathe); if (e.stagT > 0 && B.stag == null && !PO.hurt) ctx.rotate(-.12 * e.face); if (e.kind === "jangseung" && e.act) ctx.translate(Math.sin(now / 30) * 1.5, 0);
   if (!drawSprite(sheet, fr, 0, 0, k, (e.face < 0) !== (spin < 0), .5, pal.night)) { ctx.fillStyle = "#222"; ctx.fillRect(-e.w / 2, -e.h, e.w, e.h); }
   ctx.restore();
