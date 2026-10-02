@@ -28,8 +28,16 @@ const ORD = ["첫째", "둘째", "셋째", "넷째", "다섯째"];
 // a turn of the tower is three 마당; each draws on one of the five tiers below (진양조 → 자진모리 → 단모리)
 const LAST_M = 2, MD = m => [0, 2, 4][Math.min(LAST_M, m)];
 // the three 관문 of a turn, named in hanja: into the mountain, up the cloud ladder, the terrace of 천고 itself
-const STAGE = [{ han: "入山", ko: "입산" }, { han: "雲梯", ko: "운제" }, { han: "天鼓臺", ko: "천고대" }];
-const stageName = m => `${STAGE[Math.min(LAST_M, m)].han} ${STAGE[Math.min(LAST_M, m)].ko}`;
+const STAGE = [{ han: "破曉關", ko: "파효관" }, { han: "雲梯", ko: "운제" }, { han: "天鼓臺", ko: "천고대" }];
+// the last 관문 is named for the guardian waiting in it
+const LAIR = { sumun: ["鐵門關", "철문관"], gumiho: ["狐月谷", "호월곡"], dokkaebi: ["鬼火林", "귀화림"], imugi: ["潛龍淵", "잠룡연"], wongwi: ["冤魂閣", "원혼각"],
+  jangseung: ["大將壇", "대장단"], haetae: ["鎭火臺", "진화대"], bulgasari: ["食鐵窟", "식철굴"], baekho: ["白虎嶺", "백호령"], talchum: ["假面臺", "가면대"] };
+function stageOf(m, r = run) {
+  m = Math.min(LAST_M, m);
+  if (m === LAST_M && r && r.seed != null) { const l = LAIR[bossFor(r.seed, r.cycle || 0, m)]; if (l) return { han: l[0], ko: l[1] }; }
+  return STAGE[m];
+}
+const stageName = (m, r) => { const s = stageOf(m, r); return `${s.han} ${s.ko}`; };
 const MNAME = ["초입", "연비", "망루", "승천", "결전"];   // 初入 鳶飛 望樓 昇天 決戰
 const MADANG = [
   // "w" entries draw from wall chunks (climb / wall-jump), so every 마당 has walls to run
@@ -670,11 +678,11 @@ function saveRun() { if (run && mode !== "tutorial") store.set("run", run); }
 function showInterlude() {
   state = "interlude";
   const md = MADANG[MD(run.m)], jd = Music.JANGDAN[md.jd];
-  $("iOrd").textContent = STAGE[run.m].han; $("iOrd").dataset.ko = STAGE[run.m].ko;
+  const sg = stageOf(run.m); $("iOrd").textContent = sg.han; $("iOrd").dataset.ko = sg.ko;
   const om = OMENS.find(o => o.id === run.omen);
   const bk = run.m === LAST_M && BOSSES[bossFor(run.seed, run.cycle || 0, run.m)];
   $("iLine").textContent = run.m === 0 && run.cycle ? SEASON[season()].line : bk ? `${bk.line} ${josa(bk.name, "을", "를")} 베면 그 뒤에 천고가 있다.` : md.line;
-  $("iMeta").textContent = ((run.cycle || 0) ? `${run.cycle + 1}번째 판 · ${SEASON[season()].name} · ` : "") + `${STAGE[run.m].ko} (${ORD[run.m]} 관문) · ` + jd.name + " · " + "●".repeat(run.breath) + "○".repeat(Math.max(0, 3 - run.breath)) + (om && !om.calm ? " · 징조 " + om.name : "") + (run.daily ? " · 오늘의 판" : "");
+  $("iMeta").textContent = ((run.cycle || 0) ? `${run.cycle + 1}번째 판 · ${SEASON[season()].name} · ` : "") + `${sg.ko} (${ORD[run.m]} 관문) · ` + jd.name + " · " + "●".repeat(run.breath) + "○".repeat(Math.max(0, 3 - run.breath)) + (om && !om.calm ? " · 징조 " + om.name : "") + (run.daily ? " · 오늘의 판" : "");
   $("interlude").classList.remove("night");
   loadMap(buildMadangMap(run.seed, MD(run.m), run.cycle || 0, run.omen), PAL[MD(run.m)]); LV.ledgeStone = MD(run.m) >= 3;
   if (run.m === LAST_M && LV.exit) { // the last 마당 ends at 천고 itself instead of a seal
@@ -2142,7 +2150,7 @@ function saveSettings() { store.set("settings", settings); Music.setVolume(setti
 function buildMenu() {
   const s = store.get("run", null);
   $("bContinue").hidden = !s;
-  if (s) $("bContinue").innerHTML = `<span>이어하기</span><small style="color:inherit">${stageName(s.m)} · 숨 ${s.breath}${s.daily ? " · 오늘의 판" : ""}</small>`;
+  if (s) $("bContinue").innerHTML = `<span>이어하기</span><small style="color:inherit">${stageName(s.m, s)} · 숨 ${s.breath}${s.daily ? " · 오늘의 판" : ""}</small>`;
   const d = store.get("daily." + todayKey(), null), dt = new Date();
   $("dailyInfo").textContent = `${dt.getMonth() + 1}월 ${dt.getDate()}일` + (d ? ` · 관문 ${d.reached} ${fmt(d.time)}` : "");
 }
