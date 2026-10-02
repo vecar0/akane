@@ -27,6 +27,9 @@ Music.setVolume(settings.sound ? 1 : 0); Music.setOffset(settings.offset);
 const ORD = ["첫째", "둘째", "셋째", "넷째", "다섯째"];
 // a turn of the tower is three 마당; each draws on one of the five tiers below (진양조 → 자진모리 → 단모리)
 const LAST_M = 2, MD = m => [0, 2, 4][Math.min(LAST_M, m)];
+// the three 관문 of a turn, named in hanja: into the mountain, up the cloud ladder, the terrace of 천고 itself
+const STAGE = [{ han: "入山", ko: "입산" }, { han: "雲梯", ko: "운제" }, { han: "天鼓臺", ko: "천고대" }];
+const stageName = m => `${STAGE[Math.min(LAST_M, m)].han} ${STAGE[Math.min(LAST_M, m)].ko}`;
 const MNAME = ["초입", "연비", "망루", "승천", "결전"];   // 初入 鳶飛 望樓 昇天 決戰
 const MADANG = [
   // "w" entries draw from wall chunks (climb / wall-jump), so every 마당 has walls to run
@@ -99,7 +102,7 @@ const CHOSIK = [
   { id: "ssang", name: "쌍검", han: "雙劍", desc: "베는 범위가 넓어진다", icon: 2 },
   { id: "eot", name: "엇박", han: "엇拍", desc: "일격 판정이 너그러워진다", icon: 3 },
   { id: "yeon", name: "연환", han: "連環", desc: "적을 베면 공중 대시 2회", icon: 4 },
-  { id: "hosin", name: "호신부", han: "護身符", desc: "마당마다 한 번, 치명상을 막는다", icon: 5 },
+  { id: "hosin", name: "호신부", han: "護身符", desc: "관문마다 한 번, 치명상을 막는다", icon: 5 },
   { id: "baram", name: "바람길", han: "風路", desc: "연을 더 멀리서 잡고 더 높이 난다", icon: 6 },
   { id: "janyeong", name: "잔영", han: "殘影", desc: "대시가 길어지고 닿은 적을 벤다", icon: 7 },
   { id: "sum", name: "숨", han: "息", desc: "숨 하나를 되찾는다 (최대 5)", icon: 8, repeat: true },
@@ -116,7 +119,7 @@ const CHOSIK = [
   { id: "ilseom", name: "일섬", han: "一閃", desc: "베기가 더 멀리 닿는다", icon: 201 },
   { id: "yeongyeok", name: "연격", han: "連擊", desc: "더 빠르게 이어 벤다", icon: 202 },
   { id: "gwigeom", name: "귀검", han: "鬼劍", desc: "일격의 기운이 둘레의 적도 벤다", icon: 203 },
-  { id: "josik", name: "조식", han: "調息", desc: "마당을 넘을 때 숨이 하나 더 찬다", icon: 204 },
+  { id: "josik", name: "조식", han: "調息", desc: "관문을 넘을 때 숨이 하나 더 찬다", icon: 204 },
   { id: "gyeonggong", name: "경공", han: "輕功", desc: "더 높이 뛴다", icon: 205 },
   { id: "byeokho", name: "벽호공", han: "壁虎功", desc: "벽을 두 배 오래 탄다", icon: 206 },
   { id: "biyeon", name: "비연", han: "飛燕", desc: "공중 대시가 하나 더 생긴다", icon: 207 },
@@ -136,7 +139,7 @@ const CHOSIK = [
   { id: "cheonra", name: "천라지망", han: "天羅地網", desc: "조준하는 동안 날아든 탄은 쏜 자에게 돌아간다", combo: ["bantan", "jangmak"] },
   { id: "pilsal", name: "일격필살", han: "一擊必殺", desc: "일격 때 둘레의 탄이 모두 흩어진다", combo: ["eot", "gangta"] },
   { id: "bicheon", name: "비천", han: "飛天", desc: "공중 대시를 쓰면 공중 도약이 되살아난다", combo: ["biyeon", "idan"] },
-  { id: "bulmyeol", name: "불멸", han: "不滅", desc: "호신부가 마당마다 두 번 탄다", combo: ["bulsa", "hosin"] },
+  { id: "bulmyeol", name: "불멸", han: "不滅", desc: "호신부가 관문마다 두 번 탄다", combo: ["bulsa", "hosin"] },
   { id: "hyeolpung", name: "혈풍", han: "血風", desc: "혈로가 다섯 명마다 숨을 준다", combo: ["hyeol", "heuphon"] },
   { id: "yeonbi", name: "연비어약", han: "鳶飛魚躍", desc: "연을 놓으면 잠시 무적, 대시가 바로 찬다", combo: ["baram", "yeonsa"] },
   { id: "gwisin", name: "귀신검", han: "鬼神劍", desc: "일격으로 날린 검풍은 적을 단번에 꿰뚫는다", combo: ["gwigeom", "geompung"] },
@@ -163,7 +166,7 @@ const CHOSIK = [
   { id: "dansung", name: "단승", han: "斷繩", desc: "대시로 금줄을 지나면 금줄이 끊어진다", combo: ["geum", "janyeong"] },
   { id: "seomil", name: "섬광일섬", han: "閃光一閃", desc: "돌진베기의 범위가 크게 넓어진다", combo: ["ilseom", "seomgwang"] },
   { id: "yeoncham", name: "연참", han: "鳶斬", desc: "연을 잡는 순간 둘레의 적을 벤다", combo: ["yeonsa", "yeon"] },
-  { id: "saenggi", name: "생기", han: "生氣", desc: "마당을 넘으면 숨이 가득 찬다", combo: ["hyeol", "josik"] },
+  { id: "saenggi", name: "생기", han: "生氣", desc: "관문을 넘으면 숨이 가득 찬다", combo: ["hyeol", "josik"] },
   { id: "jiljoo", name: "질주", han: "疾走", desc: "힘껏 달리는 동안 앞에서 오는 탄을 튕겨낸다", combo: ["jilpung", "janyeong"] },
   { id: "cheollyeon", name: "천리연", han: "千里鳶", desc: "연을 두 배 멀리서 잡는다", combo: ["baram", "biyeon"] }
 ];
@@ -509,7 +512,7 @@ function buildMadangMap(seed, m, cy = 0, om = null) {
     }
     for (let y = 0; y < 16; y++) rows[y] += c[y].join("");
   }
-  if (m === 4 || m === 2) for (let y = 0; y < 16; y++) rows[y] += ARENA_PIECE[y];
+  if (m === 4) for (let y = 0; y < 16; y++) rows[y] += ARENA_PIECE[y];   // only 天鼓臺 (tier 4) has a guardian, 천고 right behind it
   for (let y = 0; y < 16; y++) rows[y] += END_PIECE[y];
   // scatter extra kites through open sky so the 연 line can carry you across most of the 마당
   const W = rows[0].length, grid = rows.map(r => r.split(""));
@@ -642,7 +645,7 @@ function spawnEnemies() {
     if (d.type === "m") return { hp, maxHp: hp, id: d.id, type: "m", x: d.tx * T + 5, y: (d.ty + 1) * T - 44, w: 22, h: 44, face: -1, castAt: songPos + 1 + Math.random(), castT: 0, alive: true };
     if (d.type === "r") return { hp, maxHp: hp, id: d.id, type: "r", x: d.tx * T + 5, y: (d.ty + 1) * T - 46, w: 22, h: 46, face: -1, ph: "idle", nextAt: songPos + 1.5 + Math.random(), fade: 1, alive: true };
     if (d.type === "b") {
-      const kind = window.__forceBoss || (run && mode !== "tutorial" ? bossFor(run.seed, cyc(), run.m) : "sumun"), B = BOSSES[kind], bh = B.hp + 3 * cyc(), floor = (d.ty + 1) * T;
+      const kind = window.__forceBoss || (run && mode !== "tutorial" ? bossFor(run.seed, cyc(), run.m) : "sumun"), B = BOSSES[kind], bh = Math.round(B.hp * 1.6) + 4 * cyc(), floor = (d.ty + 1) * T;
       return { hp: bh, maxHp: bh, id: d.id, type: "b", kind, x: d.tx * T + 16 - B.w / 2, y: (B.fly ? floor - 95 - B.h / 2 : floor - B.h), w: B.w, h: B.h, floor, face: -1, vx: 0, vy: 0, act: null, nextAt: 0, n: (run && run.seed || 0) % 4, mask: 0, alive: true };
     }
     return { hp, maxHp: hp, id: d.id, type: d.type, x: d.tx * T + 5, y: (d.ty + 1) * T - 42, w: 22, h: 42, face: -1, fireAt: null, aimFrom: 0, readyAt: songPos + 0.6 + Math.random() * 0.8, tx: 0, ty: 0, alive: true };
@@ -667,11 +670,11 @@ function saveRun() { if (run && mode !== "tutorial") store.set("run", run); }
 function showInterlude() {
   state = "interlude";
   const md = MADANG[MD(run.m)], jd = Music.JANGDAN[md.jd];
-  $("iOrd").textContent = MNAME[MD(run.m)];
+  $("iOrd").textContent = STAGE[run.m].han; $("iOrd").dataset.ko = STAGE[run.m].ko;
   const om = OMENS.find(o => o.id === run.omen);
-  const bk = run.m >= 1 && BOSSES[bossFor(run.seed, run.cycle || 0, run.m)];
-  $("iLine").textContent = run.m === 0 && run.cycle ? SEASON[season()].line : bk ? `${bk.line} ${josa(bk.name, "을", "를")} 넘어 ${run.m === LAST_M ? "천고를 베어라." : "다음 마당으로."}` : md.line;
-  $("iMeta").textContent = ((run.cycle || 0) ? `${run.cycle + 1}번째 판 · ${SEASON[season()].name} · ` : "") + ORD[run.m] + " 마당 · " + jd.name + " · " + "●".repeat(run.breath) + "○".repeat(Math.max(0, 3 - run.breath)) + (om && !om.calm ? " · 징조 " + om.name : "") + (run.daily ? " · 오늘의 판" : "");
+  const bk = run.m === LAST_M && BOSSES[bossFor(run.seed, run.cycle || 0, run.m)];
+  $("iLine").textContent = run.m === 0 && run.cycle ? SEASON[season()].line : bk ? `${bk.line} ${josa(bk.name, "을", "를")} 베면 그 뒤에 천고가 있다.` : md.line;
+  $("iMeta").textContent = ((run.cycle || 0) ? `${run.cycle + 1}번째 판 · ${SEASON[season()].name} · ` : "") + `${STAGE[run.m].ko} (${ORD[run.m]} 관문) · ` + jd.name + " · " + "●".repeat(run.breath) + "○".repeat(Math.max(0, 3 - run.breath)) + (om && !om.calm ? " · 징조 " + om.name : "") + (run.daily ? " · 오늘의 판" : "");
   $("interlude").classList.remove("night");
   loadMap(buildMadangMap(run.seed, MD(run.m), run.cycle || 0, run.omen), PAL[MD(run.m)]); LV.ledgeStone = MD(run.m) >= 3;
   if (run.m === LAST_M && LV.exit) { // the last 마당 ends at 천고 itself instead of a seal
@@ -775,7 +778,7 @@ function showChoice(kind) {   // kind: "madang" after a cleared 마당, "cycle" 
     });
     box.appendChild(b);
   }
-  $("chMadang").textContent = kind === "cycle" ? `천고를 베었다 · ${(run.cycle || 0) + 1}번째` : kind === "bonus" ? "징조의 대가" : `${ORD[run.m - 1]} 마당을 넘었다`;
+  $("chMadang").textContent = kind === "cycle" ? `천고를 베었다 · ${(run.cycle || 0) + 1}번째` : kind === "bonus" ? "징조의 대가" : `${josa(stageName(run.m - 1), "을", "를")} 넘었다`;
   state = "choice"; Music.pause(); if (P) P.focus = false; for (const k in held) held[k] = 0; showScreen("choice");
 }
 function showOmen() {   // the rule for the coming turn: two omens drawn at random, or a calm one
@@ -806,9 +809,9 @@ function endRun(won) {
   const rate = run.slashes ? Math.round(run.strikes / run.slashes * 100) : 0;
   $("rSeal").textContent = won ? "登" : "終";
   $("rTitle").textContent = won ? "등천" : "절명";
-  $("rSub").textContent = won ? "천고는 아직 위에서 울린다." : ORD[run.m] + " 마당에서 숨이 다했다.";
+  $("rSub").textContent = won ? "천고는 아직 위에서 울린다." : stageName(run.m) + "에서 숨이 다했다.";
   $("rStats").innerHTML = "";
-  for (const [k, v] of [["넘은 마당", reached + ((run.cycle || 0) ? ` · ${run.cycle}번 천고를 벰` : "")], ["시간", fmt(run.time)], ["일격", run.strikes + "회 · " + rate + "%"], ["벤 적", run.kills], ["베인 횟수", run.deaths]]) {
+  for (const [k, v] of [["넘은 관문", reached + ((run.cycle || 0) ? ` · ${run.cycle}번 천고를 벰` : "")], ["시간", fmt(run.time)], ["일격", run.strikes + "회 · " + rate + "%"], ["벤 적", run.kills], ["베인 횟수", run.deaths]]) {
     const a = document.createElement("span"), b = document.createElement("b"); a.textContent = k; b.textContent = v; $("rStats").append(a, b);
   }
   let rec = "";
@@ -828,8 +831,8 @@ let lastResult = null;
 function shareText() {
   const r = lastResult; if (!r) return "";
   const head = r.daily ? `천고 · 오늘의 판 ${r.dateKey.slice(5).replace("-", ".")}` : "천고";
-  const cyc = Math.floor(r.reached / 5), m = r.reached % 5;
-  return `${head}\n${r.reached}마당 넘음${cyc ? ` · 천고 ${cyc}번 벰` : ""} · ${fmt(r.time)} · 일격 ${r.rate}%\n` + "●".repeat(cyc) + "▮".repeat(m) + "▯".repeat(5 - m);
+  const n = LAST_M + 1, cyc = Math.floor(r.reached / n), m = r.reached % n;
+  return `${head}\n관문 ${r.reached}개 넘음${cyc ? ` · 천고 ${cyc}번 벰` : ""} · ${fmt(r.time)} · 일격 ${r.rate}%\n` + "●".repeat(cyc) + "▮".repeat(m) + "▯".repeat(n - m);
 }
 
 // ---------- player ----------
@@ -921,7 +924,8 @@ function stepPlayer(dt) {
     }
     if (P.jumpBuf > 0) {
       if (P.onGround || P.coyote > 0) { P.vy = -JUMPV * (has("gyeonggong") ? 1.12 : 1); if (has("bisang") && Math.abs(P.vx) > maxv() * .8) P.vx *= 1.3; heroFx("jump", P.x + P.w / 2, P.y + P.h + 2, P.face); P.onGround = false; P.coyote = 0; P.jumpBuf = 0; Music.sfx("jump"); }
-      else if (P.wall || P.wallT > 0) { const wd = P.wall || P.wallMem; P.wallT = 0; P.vy = -600; P.vx = -wd * 380; P.face = -wd; P.wallLock = 0.15; P.jumpBuf = 0; P.climbT = Math.max(P.climbT, 0.35); if (has("byeokryeok")) P.airDash = Math.max(P.airDash, baseAir() + 1); Music.sfx("jump"); puff(wd > 0 ? P.x + P.w : P.x, P.y + P.h - 6, 6); heroFx("wall", P.x + P.w / 2 + wd * 10, P.y + P.h / 2, wd); }
+      else if (P.wall || P.wallT > 0) { const wd = P.wall || P.wallMem; P.wallT = 0; P.vy = -600; P.vx = -wd * 380; P.face = -wd; P.wallLock = 0.15; P.jumpBuf = 0; P.wallBonus = 1; P.climbT = Math.max(P.climbT, 0.35); if (has("byeokryeok")) P.airDash = Math.max(P.airDash, baseAir() + 1); Music.sfx("jump"); puff(wd > 0 ? P.x + P.w : P.x, P.y + P.h - 6, 6); heroFx("wall", P.x + P.w / 2 + wd * 10, P.y + P.h / 2, wd); }
+      else if (P.wallBonus > 0) { P.wallBonus = 0; P.vy = -JUMPV * .92; P.jumpBuf = 0; Music.sfx("jump"); heroFx("air", P.x + P.w / 2, P.y + P.h + 4, P.face); }   // a wall kick buys one more jump
       else if (has("idan") && (P.djN || 0) < (has("neunggong") ? 3 : 1)) { P.vy = -JUMPV * .9; P.djN = (P.djN || 0) + 1; heroFx("air", P.x + P.w / 2, P.y + P.h + 4, P.face); P.jumpBuf = 0; Music.sfx("jump"); addFx("hud", HUD.dust, P.x + P.w / 2, P.y + P.h, 26, { life: .35, a: .7 }); }
     }
     let g = GRAV; if (P.vy < 0 && !held.jump && !P.wallLock && !P.climbing) g *= 2.1;
@@ -945,6 +949,7 @@ function stepPlayer(dt) {
   P.wall = P.onGround ? 0 : wr ? 1 : wl ? -1 : 0;
   if (P.wall) { P.wallMem = P.wall; P.wallT = .12; } else P.wallT = Math.max(0, (P.wallT || 0) - dt);   // wall jump still works a moment after slipping off
   if (P.onGround || P.wall) P.djN = 0;
+  if (P.onGround) P.wallBonus = 0;
   P.chainT = Math.max(0, (P.chainT || 0) - dt);
   if (P.wall) P.airDash = Math.max(P.airDash, baseAir());
   if (P.onGround && Math.abs(P.vx) > 20) P.run += dt * Math.abs(P.vx) * 0.045;
@@ -1002,7 +1007,7 @@ function hurtEnemy(e, strike) {
   if (e.type === "b") { // a plain cut takes one, an 일격 three (four with 파천) and staggers it out of its wind-up
     if (!strike && (BOSSES[e.kind].armored || (e.kind === "talchum" && e.mask === 0))) { e.hitT = .1; Music.sfx("clang"); addFx("hud", HUD.spark, e.x + e.w / 2, e.y + 20, 34, { life: .25 }); return; }
     e.hp -= strike ? (has("pacheon") ? 4 : 3) : has("ssangryong") ? 2 : 1; e.hitT = .22;
-    if (strike) { e.stagT = .6; e.act = null; e.suck = false; e.chargeT = 0; e.danceT = 0; e.swoopT = 0; e.nextAt = songPos + 2 * Music.beatLen; if (e.hidden) { e.hidden = false; e.x = e.tx - e.w / 2; } }
+    if (strike) { e.stagT = .4; e.act = null; e.suck = false; e.chargeT = 0; e.danceT = 0; e.swoopT = 0; e.nextAt = songPos + 2 * Music.beatLen; if (e.hidden) { e.hidden = false; e.x = e.tx - e.w / 2; } }
     addFx("fx", FX.drops, e.x + e.w / 2, e.y + 30, 30, { life: .4, rot: Math.random() * 6.28 });
     hitstop = Math.max(hitstop, .05); Music.sfx("clang"); shake = Math.max(shake, 4);
     if (e.hp <= 0) killEnemy(e); return;
@@ -1131,7 +1136,7 @@ function stepReaper(e, dt, pcx, pcy, dist, live) {
   if (e.ph !== "gone") dashThrough(e);
 }
 // ---------- bosses ----------
-// one waits at the end of the 둘째 and 셋째 마당. All act on the beat: an act is chosen, wound up (telegraphed) until
+// one guards 천고 at the end of 天鼓臺. All act on the beat: an act is chosen, wound up (telegraphed) until
 // the next beat, then performed. A plain cut takes 1, an 일격 3 and staggers the boss out of its wind-up.
 const BOSSES = {
   sumun: { name: "수문장", han: "守門將", hp: 8, w: 44, h: 84, draw: 124, sheet: "foes2", idle: F2.boss, atk: F2.bossUp, hit: F2.bossSlam, stag: F2.bossKneel, line: "천고를 지키는 장수가 길을 막는다.",
@@ -1180,10 +1185,10 @@ function animScale(kind) { // size a loop so its frames match the boss's idle pa
 const SHEET_SC = { bossA: 1.0241, bossB: .88235, bossC: 1, bossD: 1 };   // slicer scale per sheet, so poses from different sheets keep one size
 const BOSS_ORDER = ["gumiho", "dokkaebi", "imugi", "wongwi", "jangseung", "haetae", "bulgasari", "baekho", "talchum"];
 const MASKS = ["양반탈", "각시탈", "말뚝이탈"];
-function bossFor(seed, cy, m) { // a run-seeded order: first the 셋째 마당 boss, then 수문장, then the rest; never the same twice in a row
+function bossFor(seed, cy, m) { // one guardian per turn, 수문장 first, then a run-seeded order of the rest
   const rnd = mulberry((seed ^ 0xB055) >>> 0), o = BOSS_ORDER.slice();
   for (let i = o.length - 1; i > 0; i--) { const j = (rnd() * (i + 1)) | 0; [o[i], o[j]] = [o[j], o[i]]; }
-  const full = [o[0], "sumun", ...o.slice(1)], k = cy * 2 + (m === LAST_M ? 1 : 0);
+  const full = ["sumun", ...o], k = cy;
   return full[(k + Math.floor(k / 10) * 3) % 10];
 }
 const josa = (w, a, b) => { const c = w.charCodeAt(w.length - 1) - 0xAC00; return w + (c >= 0 && c % 28 ? a : b); };
@@ -1268,7 +1273,7 @@ function bossPerform(e, a, I) {
   return false;
 }
 function stepBoss(e, dt, pcx, pcy, dist, live) {
-  const B = BOSSES[e.kind], bl = Music.beatLen, c = cyc(), I = { pcx, pcy, bl, c };
+  const B = BOSSES[e.kind], bl = Music.beatLen, c = cyc() + 1, I = { pcx, pcy, bl, c };   // guardians fight one tier above the turn
   e.emergeT = Math.max(0, (e.emergeT || 0) - dt); e.stagT = Math.max(0, (e.stagT || 0) - dt); e.swingT = Math.max(0, (e.swingT || 0) - dt); e.walkT = Math.max(0, (e.walkT || 0) - dt); e.invisT = Math.max(0, (e.invisT || 0) - dt);
   if (!e.awake) { if (!(live && dist < 470)) return; e.awake = true; toast(josa(B.name, "이", "가") + " 길을 막는다"); Music.jing(); e.nextAt = (Math.floor(songPos / bl) + 2) * bl; }
   let ecx = e.x + e.w / 2;
@@ -1298,10 +1303,11 @@ function stepBoss(e, dt, pcx, pcy, dist, live) {
       const tx = pcx - e.face * 200, ty = e.floor - 95 - e.h / 2 + Math.sin(songPos * 2) * 14;
       e.x += Math.max(-140 * dt, Math.min(140 * dt, tx - ecx)); e.y += Math.max(-120 * dt, Math.min(120 * dt, ty - (e.y + e.h / 2)));
     } else if (!B.still && dist > 110 && e.stagT <= 0) {
-      const ahead = ecx + e.face * (e.w / 2 + 4), sp = (B.speed || 55) * (e.invisT > 0 ? 2 : 1) * (e.mask === 1 ? 1.6 : 1) + 10 * c;
+      const ahead = ecx + e.face * (e.w / 2 + 4), sp = (B.speed || 55) * 1.25 * (e.hp <= e.maxHp / 2 ? 1.3 : 1) * (e.invisT > 0 ? 2 : 1) * (e.mask === 1 ? 1.6 : 1) + 10 * c;
       if (groundPt(ahead, e.y + e.h + 4) && !solidPt(ahead, e.y + e.h - 10)) { moveX(e, e.face * sp * dt); e.walkT = .12; e.wph = (e.wph || 0) + sp * dt / Math.max(22, e.w * .55); }
     }
     if (live && songPos >= e.nextAt && e.stagT <= 0) {
+      if (!e.raged && e.hp <= e.maxHp / 2) { e.raged = true; toast(`${josa(B.name, "이", "가")} 격노했다`); shake = 10; Music.jing(); }
       const pool = B.pool(c); let a = pool[(e.n = (e.n || 0) + 1) % pool.length];
       if ((a === "slam" || a === "club" || a === "inhale") && dist > 280) a = e.kind === "sumun" ? (c >= 1 ? "volley" : "charge") : e.kind === "dokkaebi" ? "coins" : "scrap";
       if (a === "claw" && dist > 200) a = "leap";
@@ -1312,7 +1318,7 @@ function stepBoss(e, dt, pcx, pcy, dist, live) {
     if (e.suck && live && P.dashT <= 0) P.vx += Math.sign(ecx - pcx) * 1100 * dt;   // 불가사리 breathes in
     if (songPos >= e.hitAt) {
       const a = e.act; e.act = null; e.swingT = .35; e.lastAct = a;
-      const gap = Math.max(2, (e.kind === "jangseung" ? 3 : 4) - (c >> 1) - (e.mask === 1 ? 1 : 0));
+      const rage = e.hp <= e.maxHp / 2, gap = Math.max(rage && c >= 3 ? 1 : 2, (e.kind === "jangseung" ? 3 : 3) - (c >> 1) - (e.mask === 1 ? 1 : 0) - (rage ? 1 : 0));
       if (!bossPerform(e, a, I)) e.nextAt = e.hitAt + gap * bl;
     }
   }
@@ -1437,7 +1443,7 @@ function fmt(t) { const m = Math.floor(t / 60), s = t - m * 60; return m + ":" +
 function setHud() {
   document.body.classList.toggle("night", !!(LV && LV.pal.night));
   if (mode === "tutorial") { $("hMadang").textContent = "수련터"; $("hJang").textContent = Music.JANGDAN[TUTORIAL.jd].name; }
-  else { const om = OMENS.find(o => o.id === run.omen); $("hMadang").textContent = ORD[run.m] + " 마당"; $("hJang").textContent = Music.JANGDAN[MADANG[MD(run.m)].jd].name + (om ? " · " + om.name : ""); }
+  else { const om = OMENS.find(o => o.id === run.omen); $("hMadang").textContent = stageName(run.m); $("hJang").textContent = Music.JANGDAN[MADANG[MD(run.m)].jd].name + (om ? " · " + om.name : ""); }
   const hb = $("hBreath"); hb.innerHTML = ""; hb.classList.toggle("inf", mode === "tutorial");
   if (mode !== "tutorial") for (let i = 0; i < Math.max(3, run.breath); i++) { const d = document.createElement("i"); if (i >= run.breath) d.className = "lost"; hb.appendChild(d); }
   hudCache = "";
@@ -2070,6 +2076,7 @@ function drawBoss(e, pal, cx, feet) {
     else if (["volley", "fan", "fan2", "spit", "scrap", "foxfire"].includes(e.act)) { ctx.fillStyle = `rgba(195,22,28,${a + .3})`; ctx.beginPath(); ctx.arc(cx + e.face * 26, e.y + 22, 6 + prog * 8, 0, 7); ctx.fill(); }
     else if (["summon", "spirits", "illusion", "mask", "gamtu", "roar", "scream", "blink"].includes(e.act)) { ctx.strokeStyle = `rgba(39,70,106,${a + .2})`; ctx.lineWidth = 3; ctx.beginPath(); ctx.arc(cx, e.y + e.h / 2, 30 + prog * 40, 0, 7); ctx.stroke(); }
   }
+  if (e.raged) { const g = ctx.createRadialGradient(cx, e.y + e.h / 2, 6, cx, e.y + e.h / 2, Math.max(e.w, e.h)); g.addColorStop(0, `rgba(195,22,28,${.18 + .08 * Math.sin(performance.now() / 120)})`); g.addColorStop(1, "rgba(195,22,28,0)"); ctx.fillStyle = g; ctx.fillRect(cx - e.w - e.h, e.y - e.h, (e.w + e.h) * 2, e.h * 3); }   // 격노
   if (e.invisT > 0) ctx.globalAlpha *= .12;   // 도깨비 감투
   const atk = e.act || e.swingT > 0 || e.chargeT > 0 || e.air || e.swoopT > 0 || e.danceT > 0 || e.suck;
   const PO = BOSS_POSE[e.kind] || {}, now = performance.now();
@@ -2135,9 +2142,9 @@ function saveSettings() { store.set("settings", settings); Music.setVolume(setti
 function buildMenu() {
   const s = store.get("run", null);
   $("bContinue").hidden = !s;
-  if (s) $("bContinue").innerHTML = `<span>이어하기</span><small style="color:inherit">${ORD[s.m]} 마당 · 숨 ${s.breath}${s.daily ? " · 오늘의 판" : ""}</small>`;
+  if (s) $("bContinue").innerHTML = `<span>이어하기</span><small style="color:inherit">${stageName(s.m)} · 숨 ${s.breath}${s.daily ? " · 오늘의 판" : ""}</small>`;
   const d = store.get("daily." + todayKey(), null), dt = new Date();
-  $("dailyInfo").textContent = `${dt.getMonth() + 1}월 ${dt.getDate()}일` + (d ? ` · ${d.reached}마당 ${fmt(d.time)}` : "");
+  $("dailyInfo").textContent = `${dt.getMonth() + 1}월 ${dt.getDate()}일` + (d ? ` · 관문 ${d.reached} ${fmt(d.time)}` : "");
 }
 function toMenu() {
   Music.menuBgm(true);
@@ -2148,7 +2155,7 @@ function toMenu() {
 function pauseGame() {
   if (state !== "play") return;
   state = "pause"; for (const k in held) held[k] = 0; Music.pause(); Music.muffle(false); if (P) P.focus = false;
-  $("pTitle").textContent = mode === "tutorial" ? "수련터" : ORD[run.m] + " 마당";
+  $("pTitle").textContent = mode === "tutorial" ? "수련터" : stageName(run.m);
   const st = $("pStats"); st.innerHTML = "";
   const rows = [["시간", fmt(run.time)], ["베인 횟수", run.deaths], ["일격", run.strikes + " / " + run.slashes]];
   if (mode !== "tutorial") rows.splice(1, 0, ["남은 숨", run.breath]);
@@ -2166,7 +2173,7 @@ $("bTut").addEventListener("click", startTutorial);
 $("bEnter").addEventListener("click", enterMadang);
 $("bPause").addEventListener("click", pauseGame);
 $("bResume").addEventListener("click", resumeGame);
-$("bGiveUp").addEventListener("click", () => { state = "play"; endRun(false); $("rSub").textContent = ORD[run.m] + " 마당에서 판을 내려놓았다."; });
+$("bGiveUp").addEventListener("click", () => { state = "play"; endRun(false); $("rSub").textContent = stageName(run.m) + "에서 판을 내려놓았다."; });
 $("bToMenu").addEventListener("click", () => { saveRun(); toMenu(); });
 $("bPauseSet").addEventListener("click", () => openSettings("pause"));
 $("bSettings").addEventListener("click", () => openSettings("menu"));

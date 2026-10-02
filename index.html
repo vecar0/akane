@@ -11,19 +11,19 @@
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="apple-mobile-web-app-title" content="천고">
 <link rel="manifest" href="manifest.webmanifest">
-<link rel="icon" href="icons/icon-192.png?v=10021130">
-<link rel="apple-touch-icon" href="icons/apple-touch-icon.png?v=10021130">
+<link rel="icon" href="icons/icon-192.png?v=10021210">
+<link rel="apple-touch-icon" href="icons/apple-touch-icon.png?v=10021210">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Song+Myung&display=swap">
-<link rel="stylesheet" href="style.css?v=10021130">
+<link rel="stylesheet" href="style.css?v=10021210">
 </head>
 <body>
 <div id="app">
   <canvas id="cv"></canvas>
 
   <div id="hud" hidden>
-    <div class="hl"><span id="hMadang">첫째 마당</span><small id="hJang">진양조</small></div>
+    <div class="hl"><span id="hMadang">入山 입산</span><small id="hJang">진양조</small></div>
     <div id="hBreath" aria-label="숨"></div>
     <div class="sp"></div>
     <div id="pip" class="on" title="대시"></div>
@@ -55,7 +55,7 @@
           <button class="btn ghost" id="bSettings">설정</button>
           <button class="btn ghost" id="bInstall" hidden>앱으로 설치</button>
         </div>
-        <p class="note">장단이 곧 규칙이에요. 소리를 켜고, 무음 모드를 끄고 하세요.<br><small class="credit">배경음악: 「국악 효과음 #572」 주식회사 아이티앤 · 공유마당 · CC BY</small><br><small class="build">판본 10021130</small></p>
+        <p class="note">장단이 곧 규칙이에요. 소리를 켜고, 무음 모드를 끄고 하세요.<br><small class="credit">배경음악: 「국악 효과음 #572」 주식회사 아이티앤 · 공유마당 · CC BY</small><br><small class="build">판본 10021210</small></p>
       </div>
     </div>
   </section>
@@ -74,7 +74,7 @@
 
   <section class="scr" id="interlude" hidden>
     <div class="inter">
-      <div class="ord" id="iOrd">첫째 마당</div>
+      <div class="ord" id="iOrd">入山</div>
       <div class="line" id="iLine">북은 아직 멀리서 울린다.</div>
       <div class="meta" id="iMeta">진양조</div>
       <button class="btn pri" id="bEnter">들어가기</button>
@@ -83,7 +83,7 @@
 
   <section class="scr" id="choice" hidden>
     <div class="choose">
-      <div class="ord-s" id="chMadang">첫째 마당을 넘었다</div>
+      <div class="ord-s" id="chMadang">入山 입산을 넘었다</div>
       <h2 id="chTitle">비급을 고르라</h2>
       <div class="cards" id="cards"></div>
     </div>
@@ -119,9 +119,9 @@
 
   <div id="toast"></div>
 </div>
-<script src="js/data.js?v=10021130"></script>
-<script src="js/music.js?v=10021130"></script>
-<script src="js/game.js?v=10021130"></script>
+<script src="js/data.js?v=10021210"></script>
+<script src="js/music.js?v=10021210"></script>
+<script src="js/game.js?v=10021210"></script>
 <script>
 if ("serviceWorker" in navigator && (location.protocol === "https:" || location.hostname === "localhost")) {
   window.addEventListener("load", () => navigator.serviceWorker.register("sw.js", { updateViaCache: "none" }).then(r => r.update()).catch(() => {}));

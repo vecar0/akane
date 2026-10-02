@@ -95,6 +95,8 @@ h2 { font-family: var(--f-head); font-weight: 400; font-size: 28px; margin: 0; }
 
 .inter { text-align: center; display: grid; gap: 10px; justify-items: center; }
 .inter .ord { font-family: var(--f-brush); font-size: clamp(64px, 13vw, 110px); line-height: .9; }
+/* the stage's hanja title with its Korean reading underneath */
+.inter .ord[data-ko]::after { content: attr(data-ko); display: block; margin-top: 10px; font-family: var(--f-head); font-size: 16px; letter-spacing: .5em; color: var(--seal); }
 .inter .line { font-family: var(--f-head); font-size: 17px; }
 .inter .meta { font-family: var(--f-mono); font-size: 12px; color: var(--ink-2); letter-spacing: .1em; margin-bottom: 10px; }
 #interlude.night, #interlude.night .meta { background: rgba(23, 22, 26, .88); color: #ece6d8; }
