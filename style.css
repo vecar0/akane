@@ -53,9 +53,9 @@ button:focus-visible { outline: 2px solid var(--jjok); outline-offset: 2px; }
 .tb::after { content: ""; position: absolute; inset: -6px; border-radius: 50%; }
 #bHook.ready { animation: kitePulse .7s ease-in-out infinite alternate; }
 @keyframes kitePulse { to { transform: scale(1.08); } }
-#bJump { width: 96px; height: 96px; right: calc(env(safe-area-inset-right, 0px) + 87px); bottom: calc(env(safe-area-inset-bottom, 0px) + 91px); font-size: 17px; }
-#bDash { width: 78px; height: 78px; right: calc(env(safe-area-inset-right, 0px) + 227px); bottom: calc(env(safe-area-inset-bottom, 0px) + 70px); color: var(--jjok); }
-#bHook { width: 62px; height: 62px; right: calc(env(safe-area-inset-right, 0px) + 102px); bottom: calc(env(safe-area-inset-bottom, 0px) + 250px); opacity: .35; color: var(--jjok); }
+#bJump { width: 96px; height: 96px; right: calc(env(safe-area-inset-right, 0px) + 110px); bottom: calc(env(safe-area-inset-bottom, 0px) + 123px); font-size: 17px; }
+#bDash { width: 78px; height: 78px; right: calc(env(safe-area-inset-right, 0px) + 238px); bottom: calc(env(safe-area-inset-bottom, 0px) + 81px); color: var(--jjok); }
+#bHook { width: 62px; height: 62px; right: calc(env(safe-area-inset-right, 0px) + 176px); bottom: calc(env(safe-area-inset-bottom, 0px) + 287px); opacity: .35; color: var(--jjok); }
 #bHook.ready { opacity: 1; }
 #bHook::after { inset: -3px; }   /* it sits where swipes pass: catch only its own ring */
 #bHook:not(.ready) { pointer-events: none; }   /* nothing to hook: a stroke that starts here is a slash */

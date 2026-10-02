@@ -3334,17 +3334,17 @@ $("bToMenu").addEventListener("click", () => { saveRun(); toMenu(); });
 $("bPauseSet").addEventListener("click", () => openSettings("pause"));
 $("bSettings").addEventListener("click", () => openSettings("menu"));
 // touch buttons: a size for all of them and a place for each, kept on this device
-const padCfg = Object.assign({ s: 1.1, pos: {} }, store.get("pad2", {}));   // "pad2": the new default layout replaces any older arrangement
+const padCfg = Object.assign({ s: 1.2, pos: {} }, store.get("pad3", {}));   // "pad2": the new default layout replaces any older arrangement
 function applyPad() {
   document.documentElement.style.setProperty("--tbs", padCfg.s); $("padVal").textContent = Math.round(padCfg.s * 100) + "%";
   for (const id of ["bJump", "bDash", "bHook"]) { const el = $(id), p = padCfg.pos[id]; el.style.right = p ? p.r + "px" : ""; el.style.bottom = p ? p.b + "px" : ""; }
 }
 applyPad();
-$("bPadDn").addEventListener("click", () => { padCfg.s = Math.max(.6, +(padCfg.s - .1).toFixed(1)); store.set("pad2", padCfg); applyPad(); });
-$("bPadUp").addEventListener("click", () => { padCfg.s = Math.min(1.6, +(padCfg.s + .1).toFixed(1)); store.set("pad2", padCfg); applyPad(); });
-$("bPadReset").addEventListener("click", () => { padCfg.s = 1.1; padCfg.pos = {}; store.set("pad2", padCfg); applyPad(); toast("버튼을 처음 자리로 돌렸다"); });
+$("bPadDn").addEventListener("click", () => { padCfg.s = Math.max(.6, +(padCfg.s - .1).toFixed(1)); store.set("pad3", padCfg); applyPad(); });
+$("bPadUp").addEventListener("click", () => { padCfg.s = Math.min(1.6, +(padCfg.s + .1).toFixed(1)); store.set("pad3", padCfg); applyPad(); });
+$("bPadReset").addEventListener("click", () => { padCfg.s = 1.2; padCfg.pos = {}; store.set("pad3", padCfg); applyPad(); toast("버튼을 처음 자리로 돌렸다"); });
 $("bPadEdit").addEventListener("click", () => { $("settings").hidden = true; $("pad").hidden = false; $("padBar").hidden = false; document.body.classList.add("padEdit"); });
-$("bPadDone").addEventListener("click", () => { document.body.classList.remove("padEdit"); $("padBar").hidden = true; store.set("pad2", padCfg); for (const k in held) held[k] = 0; for (const k in press) press[k] = 0; showScreen("settings"); });
+$("bPadDone").addEventListener("click", () => { document.body.classList.remove("padEdit"); $("padBar").hidden = true; store.set("pad3", padCfg); for (const k in held) held[k] = 0; for (const k in press) press[k] = 0; showScreen("settings"); });
 { let drag = null;   // while editing, the pad's own handlers never see the touch: it moves the button instead
   $("pad").addEventListener("pointerdown", e => { if (!document.body.classList.contains("padEdit")) return; const b = e.target.closest(".tb"); e.stopPropagation(); e.preventDefault(); if (!b) return;
     const r = b.getBoundingClientRect(); drag = { b, id: b.id, x0: e.clientX, y0: e.clientY, r0: innerWidth - r.right + (r.width - r.width / padCfg.s) / 2, b0: innerHeight - r.bottom + (r.height - r.height / padCfg.s) / 2 };
@@ -3352,7 +3352,7 @@ $("bPadDone").addEventListener("click", () => { document.body.classList.remove("
   $("pad").addEventListener("pointermove", e => { if (!drag) return; e.stopPropagation();
     const rr = Math.max(0, Math.min(innerWidth - 40, drag.r0 - (e.clientX - drag.x0))), bb = Math.max(0, Math.min(innerHeight - 40, drag.b0 - (e.clientY - drag.y0)));
     padCfg.pos[drag.id] = { r: Math.round(rr), b: Math.round(bb) }; drag.b.style.right = rr + "px"; drag.b.style.bottom = bb + "px"; }, true);
-  const end = e => { if (!drag) return; e.stopPropagation(); drag = null; store.set("pad2", padCfg); };
+  const end = e => { if (!drag) return; e.stopPropagation(); drag = null; store.set("pad3", padCfg); };
   $("pad").addEventListener("pointerup", end, true); $("pad").addEventListener("pointercancel", end, true); }
 $("bSetClose").addEventListener("click", () => { if (settingsBack === "pause") showScreen("pause"); else showScreen("menu"); });
 $("bSound").addEventListener("click", () => { settings.sound = !settings.sound; saveSettings(); });
