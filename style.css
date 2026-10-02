@@ -55,8 +55,10 @@ button:focus-visible { outline: 2px solid var(--jjok); outline-offset: 2px; }
 @keyframes kitePulse { to { transform: scale(1.08); } }
 #bJump { width: 96px; height: 96px; right: calc(env(safe-area-inset-right, 0px) + 16px); bottom: calc(env(safe-area-inset-bottom, 0px) + 14px); font-size: 17px; }
 #bDash { width: 78px; height: 78px; right: calc(env(safe-area-inset-right, 0px) + 122px); bottom: calc(env(safe-area-inset-bottom, 0px) + 12px); box-shadow: inset 0 0 0 2px var(--jjok); color: var(--jjok); }
-#bHook { width: 72px; height: 72px; right: calc(env(safe-area-inset-right, 0px) + 28px); bottom: calc(env(safe-area-inset-bottom, 0px) + 124px); opacity: .35; color: var(--jjok); box-shadow: inset 0 0 0 2px var(--jjok); }
+#bHook { width: 62px; height: 62px; right: calc(env(safe-area-inset-right, 0px) + 32px); bottom: calc(env(safe-area-inset-bottom, 0px) + 118px); opacity: .35; color: var(--jjok); box-shadow: inset 0 0 0 2px var(--jjok); }
 #bHook.ready { opacity: 1; background: rgba(39, 70, 106, .18); }
+#bHook::after { inset: -3px; }   /* it sits where swipes pass: catch only its own ring */
+#bHook:not(.ready) { pointer-events: none; }   /* nothing to hook: a stroke that starts here is a slash */
 body:not(.touch) #pad { display: none; }
 
 /* screens */
@@ -159,10 +161,12 @@ body, .btn, .set > span, #hud .t { font-weight: 400; }
 .card .ic.duo { background: var(--ic) left top / 64% no-repeat, var(--ic2) right bottom / 64% no-repeat; }
 .card .tag { font-style: normal; font-size: 11px; color: #fff; background: var(--seal); padding: 1px 8px; border-radius: 2px; word-break: keep-all; }
 /* 징조: the omen written as a large vermilion character instead of an icon */
-.card.omen .ic { width: auto; height: auto; min-height: 84px; display: grid; place-items: center; font-family: var(--f-head); font-style: normal; font-size: 44px; line-height: 1; color: var(--seal); background: none; letter-spacing: .05em; }
+.card.omen .ic { width: auto; height: auto; display: block; font-family: var(--f-head); font-style: normal; font-size: 17px !important; line-height: 1; color: var(--seal); background: none; letter-spacing: .25em; order: 1; margin: 2px 0 8px; }
+.card.omen .nm { font-size: 23px; line-height: 1.25; word-break: keep-all; text-align: center; margin-top: 22px; }
+.card.omen .ds, .card.omen .cost, .card.omen .gift, .card.omen .tag { order: 2; }
 .card.omen .gift { font-size: 12px; color: var(--seal); word-break: keep-all; }
 .card.omen.calm .ic { color: var(--ink-2); }
-@media (max-height: 430px) { .card.omen .ic { min-height: 60px; font-size: 36px; } }
+@media (max-height: 430px) { .card.omen .nm { font-size: 20px; margin-top: 16px; } }
 .card .tag.tfx { background: var(--jjok); }
 .card.tfc { box-shadow: 0 0 0 2px var(--jjok), 0 6px 18px rgba(39,70,106,.3); }
 /* run-start picks (character / weapon / oath / 업) reuse the card row; small cost line in red */
