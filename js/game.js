@@ -404,7 +404,7 @@ const CAL = { title: 0, death: 1, madang: [2, 3, 4, 5, 6], end: 7, clear: 8 };  
 const PROP = { rope: 0, aim: 1, reticle: 2, pine: 3, stoneLantern: 4, jars: 5, banner: 6, sotdae: 7, palisade: 8 };
 const DRESS = [[PROP.pine, 74, 3], [PROP.stoneLantern, 34, 2], [PROP.jars, 26, 1], [PROP.banner, 80, 3], [PROP.sotdae, 84, 3], [PROP.palisade, 28, 1]]; // [frame, world height, headroom tiles]
 const OBJ = { lanternOn: 0, lanternOff: 1, kite: 2, thorns: 3, seal: 4, emitter: 5, slash: 6, slashRed: 7, splat: 8 };
-for (const n of ["hero", "hero2", "foes", "objects", "ui", "fx", "hud", "hudsolid", "props", "props2", "rocks", "pines", "slabs", "pillars", "rogue", "roguea", "rogue2", "rogue3", "rogue4", "foes2", "bossA", "bossB", "bossfx", "bossC", "bossD", "bossE", "bossF", "hero3", "herofx", "slashfx", "perkfx", "weapons", "chars", "misc", "arms", "ic0", "ic1", "ic2", "ic3", "ic4", "ic5", "ic6", "ic7", "ic8", "ic9", "ic10", "ic11", "ic12", "ic13", "ic14", "ic15", "mu", "po", "mfx", "pfx", "vis", "guide"]) {
+for (const n of ["hero", "hero2", "foes", "objects", "ui", "fx", "hud", "hudsolid", "props", "props2", "rocks", "pines", "slabs", "pillars", "rogue", "roguea", "rogue2", "rogue3", "rogue4", "foes2", "bossA", "bossB", "bossfx", "bossC", "bossD", "bossE", "bossF", "hero3", "herofx", "slashfx", "perkfx", "weapons", "chars", "misc", "arms", "ic0", "ic1", "ic2", "ic3", "ic4", "ic5", "ic6", "ic7", "ic8", "ic9", "ic10", "ic11", "ic12", "ic13", "ic14", "ic15", "mu", "po", "mfx", "pfx", "vis", "guide", "mv0", "mv1", "mv2"]) {
   Promise.all([
     fetch(`assets/sprites/${n}.json`).then(r => r.json()),
     new Promise((res, rej) => { const im = new Image(); im.onload = () => res(im); im.onerror = rej; im.src = `assets/sprites/${n}.webp`; })
@@ -2625,6 +2625,15 @@ function drawRunner(x, y, face, col, pl) {
   ctx.beginPath(); ctx.moveTo(cx, y + 20); ctx.lineTo(cx + Math.sin(a2) * 10, y + 20 + Math.cos(a2) * 10); ctx.stroke();
   ctx.lineCap = "butt";
 }
+// mv0-2 (무명·무녀·포수): an 8-step run with the legs crossing, a 4-step cut and a 4-step dashing cut
+const MV_BASE = { mv0: "hero3", mv1: "mu", mv2: "po" };
+function movePose(mv) {
+  if (!SPR[mv]) return null;
+  if (P.slashT > 0 && Math.abs(P.slashDir.y) <= .5) { const pr = 1 - Math.min(1, P.slashT / (P.slashDur || .14)); return [mv, (P.dashT > 0 ? 12 : 8) + Math.min(3, Math.floor(pr * 4))]; }
+  if (P.dashT > 0 && !P.hook && P.slashT <= 0) return [mv, 14];
+  if (P.onGround && Math.abs(P.vx) > 40 && !(P.landT > 0) && P.slashT <= 0) return [mv, Math.floor(P.run / 1.05) % 8];
+  return null;
+}
 function heroPose() { // [sheet, frame]
   const cb = !SPR.chars ? -1 : chr("munyeo") ? 0 : chr("posu") ? 8 : -1;
   if (cb >= 0) { // 무녀 and 포수 have their own sheet
@@ -2638,6 +2647,7 @@ function heroPose() { // [sheet, frame]
     if (state === "dead") return ["chars", cb + 7];
     const sh = cb ? "po" : "mu";
     if (SPR[sh]) { // the full set of moves
+      const mp = movePose(cb ? "mv2" : "mv1"); if (mp) return mp;
       if (P.slashT > 0) return [sh, P.slashDir.y < -0.5 ? H3.up : (P.slashDir.y > 0.5 && !P.onGround ? H3.down : H3.slash)];
       if (P.dashT > 0 || P.hook) return [sh, H3.dash];
       if (!P.onGround) return [sh, P.wall ? H3.wall : P.vy < -150 ? H3.rise : Math.abs(P.vy) < 150 ? H3.flip : H3.fall];
@@ -2660,6 +2670,7 @@ function heroPose() { // [sheet, frame]
     if (P.onGround && Math.abs(P.vx) <= 40 && !P.landT && !(P.dashT > 0)) return ["weapons", w === "ssang" ? WF.ssIdle : w === "woldo" ? WF.wdIdle : WF.bdSheathe];
   }
   if (SPR.hero3) {
+    { const mp = movePose("mv0"); if (mp) return mp; }
     if (P.slashT > 0 && SPR.slashfx) return ["slashfx", P.slashDir.y < -0.5 ? SF.up : (P.slashDir.y > 0.5 && !P.onGround ? SF.down : SF.fwd)];
     if (P.slashT > 0) return ["hero3", P.slashDir.y < -0.5 ? H3.up : (P.slashDir.y > 0.5 && !P.onGround ? H3.down : H3.slash)];
     if (P.dashT > 0 || P.hook) return ["hero3", H3.dash];
@@ -2692,7 +2703,7 @@ function drawPlayer(pal) {
   let [sheet, fr] = heroPose(); if (sheet === "hero2" && !SPR.hero2) { sheet = "hero"; fr = HERO.idle; }
   const cx = P.x + P.w / 2, wallPose = sheet === "hero" && fr === HERO.wall, face = wallPose ? P.wall : P.face;
   // hero2 is scaled so its first running step matches the original running frames
-  const k = sheet === "mu" || sheet === "po" ? kOf(sheet, 0, HERO_H * 1.08) : sheet === "arms" ? kOf("arms", fr < 4 ? 2 : 5, HERO_H * 1.08) : sheet === "chars" ? kOf("chars", fr < 8 ? 0 : 8, HERO_H * 1.08) : sheet === "weapons" ? kOf("hero3", H3.idle, HERO_H * 1.08) * SLASH_K * .75 / .8 : sheet === "slashfx" ? kOf("hero3", H3.idle, HERO_H * 1.08) * SLASH_K : sheet === "hero3" ? kOf("hero3", H3.idle, HERO_H * 1.08) : sheet === "hero" ? kOf("hero", 0, HERO_H) : kOf("hero", 0, HERO_H) * SPR.hero.f[1].h / SPR.hero2.f[H2.start].h;
+  const k = MV_BASE[sheet] ? kOf(MV_BASE[sheet], 0, HERO_H * 1.08) * SPR[MV_BASE[sheet]].f[1].h / SPR[sheet].f[0].h : sheet === "mu" || sheet === "po" ? kOf(sheet, 0, HERO_H * 1.08) : sheet === "arms" ? kOf("arms", fr < 4 ? 2 : 5, HERO_H * 1.08) : sheet === "chars" ? kOf("chars", fr < 8 ? 0 : 8, HERO_H * 1.08) : sheet === "weapons" ? kOf("hero3", H3.idle, HERO_H * 1.08) * SLASH_K * .75 / .8 : sheet === "slashfx" ? kOf("hero3", H3.idle, HERO_H * 1.08) * SLASH_K : sheet === "hero3" ? kOf("hero3", H3.idle, HERO_H * 1.08) : sheet === "hero" ? kOf("hero", 0, HERO_H) : kOf("hero", 0, HERO_H) * SPR.hero.f[1].h / SPR.hero2.f[H2.start].h;
   if (state === "dead") ctx.globalAlpha = Math.max(0, 1 - deathT / 0.75);
   else if (P.invT > 0) ctx.globalAlpha = Math.floor(P.invT * 14) % 2 ? .35 : 1;
   if (pal.night && !LV.pal.night) { // slow-mo: hero keeps his ink, lifted off the dark paper by a pale wash
@@ -2701,7 +2712,7 @@ function drawPlayer(pal) {
   }
   const h3wall = (sheet === "hero3" || sheet === "mu" || sheet === "po") && fr === H3.wall, f3 = h3wall ? P.wall : face, breathe = (sheet === "hero3" || sheet === "mu" || sheet === "po") && fr === H3.idle ? 1 + Math.sin(performance.now() / 380) * .012 : 1;
   ctx.save(); ctx.translate(cx, P.y + P.h + 1); ctx.scale(1, breathe);
-  drawSprite(sheet, fr, 0, 0, k, f3 < 0, sheet === "mu" ? MU_AX[fr] : sheet === "po" ? PO_AX[fr] : sheet === "arms" ? AF_AX[fr] : sheet === "chars" ? CF_AX[fr] : sheet === "weapons" ? WF_AX[fr] : sheet === "slashfx" ? SF_AX[fr] : sheet === "hero3" ? H3_AX[fr] : sheet === "hero" ? (HERO_AX[fr] ?? .55) : (wallPose ? .62 : .5), !!LV.pal.night);
+  drawSprite(sheet, fr, 0, 0, k, f3 < 0, MV_BASE[sheet] ? (MV_AX[sheet][fr] ?? .5) : sheet === "mu" ? MU_AX[fr] : sheet === "po" ? PO_AX[fr] : sheet === "arms" ? AF_AX[fr] : sheet === "chars" ? CF_AX[fr] : sheet === "weapons" ? WF_AX[fr] : sheet === "slashfx" ? SF_AX[fr] : sheet === "hero3" ? H3_AX[fr] : sheet === "hero" ? (HERO_AX[fr] ?? .55) : (wallPose ? .62 : .5), !!LV.pal.night);
   ctx.restore();
   ctx.globalAlpha = 1;
   if (chr("posu") && wpn() !== "gakgung" && (P.reloadAt || 0) > songPos && state !== "dead") { const k = 1 - ((P.reloadAt - songPos) / ((has("soksa") ? 1 : 2) * Music.beatLen));   // the match being relit: a small arc over his hat
@@ -3244,6 +3255,8 @@ const CHARS = [
   { id: "munyeo", name: "무녀", han: "巫女", desc: "부채로 탄을 두 배 세게 되받아치고, 공중에서 한 번 더 뛴다. 베는 범위는 좁다" },
   { id: "posu", name: "포수", han: "砲手", desc: "일격이 화승총 한 발이 되어 멀리 꿰뚫는다(쏜 뒤 두 박자 장전). 보통 베기는 총검 찌르기" }];
 const chr = id => !!(run && run.char === id);
+const MV_AX = { mv0: [.52, .6, .64, .62, .61, .61, .55, .61, .54, .48, .44, .59, .58, .61, .43, .45],   // body axis of each frame, so the feet stay put
+  mv1: [.53, .62, .62, .62, .57, .6, .57, .59, .63, .57, .44, .53, .54, .64, .46, .44], mv2: [.46, .5, .52, .49, .48, .5, .49, .46, .52, .41, .41, .44, .39, .45, .42, .42] };
 const VIS = { cut: 0, splat: 1, ring: 2, drum: 3, bigDrum: 4, burst: 5, stroke: 6, seal: 7, drops: 8 };   // blood, stamps and the beat bar, painted to read at a glance
 const MU_AX = [.57, .63, .61, .61, .54, .57, .57, .59, .58, .55, .62, .6, .44, .46, .49, .53], PO_AX = [.48, .5, .49, .47, .48, .47, .46, .51, .46, .42, .51, .43, .42, .47, .53, .39];   // 무녀·포수: same 16 moves as the swordsman's hero3
 const CF = (k) => chr("munyeo") ? { dragon: ["mfx", 4], bloom: ["mfx", 5], clone: ["mfx", 8] }[k] : chr("posu") ? { dragon: ["pfx", 4], bloom: ["pfx", 2], clone: ["pfx", 7] }[k] : null;   // each hand's own picture of a shared gift
