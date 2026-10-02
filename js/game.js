@@ -95,7 +95,7 @@ const SPR = {};
 const HERO = { idle: 0, run: [1, 2, 3, 4, 5, 6, 7], rise: 8, wall: 9, slash: 10, dash: 11, fall: 12, up: 13, land: 14, dead: 15 };
 // hero3: the painted-with-effects swordsman. 0 idle, 1-6 sprint, 7 take-off, 8 somersault, 9 fall, 10 wall, 11 dash, 12-14 slashes (fwd/up/down), 15 landing
 const H3 = { idle: 0, run: [1, 2, 3, 4, 5, 6], rise: 7, flip: 8, fall: 9, wall: 10, dash: 11, slash: 12, up: 13, down: 14, land: 15 };
-const H3_AX = [.48, .57, .64, .62, .65, .57, .62, .58, .59, .54, .63, .47, .36, .42, .51, .5];
+const H3_AX = [.48, .58, .64, .63, .65, .58, .62, .59, .58, .54, .62, .46, .32, .42, .52, .49];
 const HFX = { dash: 0, jump: 1, land: 2, air: 3, wall: 4, strike: 5, arc: 6, wind: 7, ribbon: 8 };
 const HERO_AX = { 0: .5, 9: .5, 10: .4, 11: .55, 13: .45, 14: .55, 15: .45 };   // body centre as a fraction of frame width
 const FOE = { g: [0, 1], s: [2, 3], d: [4, 5], h: [6, 7] };
