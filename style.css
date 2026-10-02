@@ -163,3 +163,8 @@ body, .btn, .set > span, #hud .t { font-weight: 400; }
 .card.omen .gift { font-size: 12px; color: var(--seal); word-break: keep-all; }
 .card.omen.calm .ic { color: var(--ink-2); }
 @media (max-height: 430px) { .card.omen .ic { min-height: 60px; font-size: 36px; } }
+.card .tag.tfx { background: var(--jjok); }
+.card.tfc { box-shadow: 0 0 0 2px var(--jjok), 0 6px 18px rgba(39,70,106,.3); }
+/* run-start picks (character / weapon / oath / 업) reuse the card row; small cost line in red */
+.card .cost { font-size: 12px; color: var(--seal); word-break: keep-all; }
+.card.sel { transform: translateY(-4px); box-shadow: 0 0 0 3px var(--seal), 0 6px 18px rgba(195,22,28,.3); }
