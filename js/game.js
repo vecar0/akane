@@ -1114,7 +1114,7 @@ function aimDir() { const a = axis(), m = Math.hypot(a.x, a.y); let d = m < 0.35
     if (best) d = best; }
   return d; }
 const TAP_T = .12;   // released sooner than this, the dash button is a tap
-const focusLen = () => (P && P.cloudT ? P.cloudT : 0) + 1.2 * (has("d_jeong") ? 2 : 1) * (oath("gonggung") && !P.onGround ? 2 : 1) * (simb("hyeol") && run && run.breath <= 2 && mode !== "tutorial" ? 2 : 1) * (has("d_calm") && run && run.breath <= 1 && mode !== "tutorial" ? 3 : 1);
+const focusLen = () => (P && P.cloudT ? P.cloudT : 0) + (P && !P.onGround ? Math.max(.35, 1 - .25 * (P.aimChain || 0)) : 1) * 1.2 * (has("d_jeong") ? 2 : 1) * (oath("gonggung") && !P.onGround ? 2 : 1) * (simb("hyeol") && run && run.breath <= 2 && mode !== "tutorial" ? 2 : 1) * (has("d_calm") && run && run.breath <= 1 && mode !== "tutorial" ? 3 : 1);
 function talismans(d) { // 부적 세 장: a fan of paper charms thrown along the aim
   const cx = P.x + P.w / 2, cy = P.y + P.h / 2;
   for (const t of [-.22, 0, .22]) { const vx = d.x * Math.cos(t) - d.y * Math.sin(t), vy = d.x * Math.sin(t) + d.y * Math.cos(t);
@@ -1279,7 +1279,7 @@ function shot(d, arrow) {
 let kegs = [], rings = [], killCam = 0, cutLines = [];
 function killCamOn(e) {
   const x = e.x + e.w / 2, y = e.y + e.h / 2, d = P.dashDir || { x: P.face, y: 0 };
-  killCam = Math.max(killCam, .55); hitstop = Math.max(hitstop, .05); shake = Math.max(shake, 6); Music.sfx("strike");
+  killCam = Math.max(killCam, .35); hitstop = Math.max(hitstop, .05); shake = Math.max(shake, 6); Music.sfx("strike");
   cutLines.push({ x, y, a: Math.atan2(d.y, d.x), t: 0, life: .7 });
   seals.push({ x, y: e.y + 6, t: 0, rot: (Math.random() - .5) * .3 });
 
@@ -1525,7 +1525,7 @@ function frameInput(rdt) {
       P.focus = false; P.focusTap = false; P.focusGround = false; Music.muffle(false); P.tapDash = tap; if (!tap) P.aimedUntil = songPos + .45;
       const onBeat = Math.abs(Music.offBeat(Music.pos())) < strikeWin(), keep = (has("d_beat") || oath("jangdan")) && onBeat && !P.onGround;
       if (keep) P.airDash++;   // 박섬: on the beat, the air dash is not spent
-      P.beatDash = has("d_beat") && onBeat; P.cloudT = 0;
+      P.beatDash = has("d_beat") && onBeat; P.cloudT = 0; if (!tap && !P.onGround) P.aimChain = (P.aimChain || 0) + 1;   // shorter next time, until the feet touch ground
       if (!tap && wrule() === "ssang" && (P.gise || 0) >= 3 && songPos - (P.giseAt ?? -9) < 3) { P.giseDash = P.gise; P.gise = 0; if (!P.onGround) P.airDash++; ringFx(P.x + P.w / 2, P.y + P.h / 2, 60, "rgba(195,22,28,.9)", .3); }   // 기세: the built-up momentum rides the dash
       P.chargeK = has("d_charge") ? (P.focusT >= .8 ? 1.8 : P.focusT < .35 ? .6 : 1) : 1;   // 축기: the longer the aim, the further the cut
       if (P.chargeK > 1) { ringFx(P.x + P.w / 2, P.y + P.h / 2, 70, "rgba(195,22,28,.9)", .3); shake = Math.max(shake, 5); }
@@ -1629,7 +1629,7 @@ function stepPlayer(dt) {
   }
   const was = P.onGround;
   P.onGround = P.vy >= 0 && (rectSolid(P.x, P.y + P.h, P.w, 2) || (!(P.dropT > 0) && onLedge(P)));
-  if (P.onGround) { P.airT = 0; P.runT = Math.abs(P.vx) > 40 ? (P.runT || 0) + dt : 0; P.coyote = 0.14; P.airDash = baseAir(); P.climbT = CLIMB_T * (has("d_wall") ? 2 : 1); if (!was) { addFx("hud", HUD.dust, P.x + P.w / 2, P.y + P.h + 2, 22, { life: .35, ay: 1, a: .8 }); P.landT = 0.1; if ((P.lastVy || 0) > 650) heroFx("land", P.x + P.w / 2, P.y + P.h + 3, P.face);
+  if (P.onGround) { P.airT = 0; P.aimChain = 0; P.runT = Math.abs(P.vx) > 40 ? (P.runT || 0) + dt : 0; P.coyote = 0.14; P.airDash = baseAir(); P.climbT = CLIMB_T * (has("d_wall") ? 2 : 1); if (!was) { addFx("hud", HUD.dust, P.x + P.w / 2, P.y + P.h + 2, 22, { life: .35, ay: 1, a: .8 }); P.landT = 0.1; if ((P.lastVy || 0) > 650) heroFx("land", P.x + P.w / 2, P.y + P.h + 3, P.face);
       if (has("nakhwayusu") && (P.lastVy || 0) > 900) { const cx = P.x + P.w / 2; for (const e of enemies) if (e.alive && Math.abs(e.x + e.w / 2 - cx) < 100 && Math.abs(e.y + e.h - P.y - P.h) < 50) hurtEnemy(e, false); addFx("hud", HUD.dust, cx, P.y + P.h, 90, { life: .45, ay: 1 }); shake = Math.max(shake, 6); Music.sfx("kill"); } } } else { P.coyote = Math.max(0, P.coyote - dt); P.airT = (P.airT || 0) + dt; }
   const wl = rectSolid(P.x - 3, P.y + 4, 3, P.h - 8), wr = rectSolid(P.x + P.w, P.y + 4, 3, P.h - 8);
   P.wall = P.onGround ? 0 : wr ? 1 : wl ? -1 : 0;
@@ -2148,7 +2148,7 @@ function stepBullets(dt) {
     }
     const n = Math.max(1, Math.ceil(Math.hypot(b.vx, b.vy) * dt / 8));
     for (let i = 0; i < n && b.life > 0; i++) {
-      const bk = !b.friendly && P && P.focus ? (has("d_freeze") || (has("d_calm") && run.breath <= 1 && mode !== "tutorial") ? 0 : simb("yeong") ? .5 : 1) : 1;   // 정지 · 영심법
+      const bk = !b.friendly && P && P.focus ? (has("d_freeze") || (has("d_calm") && run.breath <= 1 && mode !== "tutorial") ? 0 : simb("yeong") ? 1.4 : 2.6) : 1;   // the aim slows the world, but shots still close in (정지 · 영심법 hold them back)
       b.x += b.vx * dt / n * bk; b.y += b.vy * dt / n * bk;
       if (solidPt(b.x, b.y) && !(b.fan && !b.friendly)) { b.life = 0; addFx("hud", HUD.spark, b.x, b.y, 22, { life: .25, rot: Math.random() * 6.28 }); break; }
       if (b.friendly) {
@@ -2159,7 +2159,7 @@ function stepBullets(dt) {
           if ((b.sword && has("yuseong")) || (b.dragon && has("biryong"))) P.airDash = Math.max(P.airDash, baseAir());
           if (b.sword && has("noegeom")) { const o = nearestFoes(e.x + e.w / 2, e.y + e.h / 2, 2, 260).find(o => o !== e); if (o) { beams.push({ x0: e.x + e.w / 2, y0: e.y + e.h / 2, x1: o.x + o.w / 2, y1: o.y + o.h / 2, t: 0, life: .2 }); hurtEnemy(o, false); } }
         }
-      } else if (state === "play" && !(P.dashT > 0 && !P.tapDash) && !(has("jangmak") && P.focus) && !((P.invT || 0) > 0) && b.x > pr.x - 3 && b.x < pr.x + pr.w + 3 && b.y > pr.y - 3 && b.y < pr.y + pr.h + 3) {
+      } else if (state === "play" && !(has("jangmak") && P.focus) && !((P.invT || 0) > 0) && b.x > pr.x - 3 && b.x < pr.x + pr.w + 3 && b.y > pr.y - 3 && b.y < pr.y + pr.h + 3) {
         if (P.ward) { P.ward = false; b.life = 0; addFx("slashfx", SF.guard, P.x + P.w / 2, P.y + P.h / 2, 70, { life: .35, grow: .6 }); Music.sfx("clang");   // 수호령 takes it
           if (has("yeongmak")) for (const o of bullets) if (!o.friendly && Math.hypot(o.x - P.x, o.y - P.y) < 320) o.life = 0;
           if (has("wolryeong")) { const px = P.x + P.w / 2, py = P.y + P.h / 2; addFx("perkfx", PF.spin, px, py, 130, { life: .35, grow: .3 }); for (const e of enemies) if (e.alive && Math.hypot(e.x + e.w / 2 - px, e.y + e.h / 2 - py) < 110) hurtEnemy(e, false); }
@@ -2189,7 +2189,7 @@ function frame(now) {
     songPos = Music.pos();
     if (state === "play") frameInput(rdt);
     let ts = 1;
-    if (hitstop > 0) { hitstop -= rdt; ts = 0.06; } else if (state === "play" && P.focus) ts = has("d_jeong") ? 0.07 : 0.12; else if (state === "play" && killCam > 0) ts = .16;
+    if (hitstop > 0) { hitstop -= rdt; ts = 0.06; } else if (state === "play" && P.focus) ts = has("d_jeong") ? 0.07 : 0.12; else if (state === "play" && killCam > 0) ts = .32;
     if (state === "dead") ts = 0.3;
     const wdt = rdt * ts, n = Math.max(1, Math.ceil(wdt / (1 / 120))), sdt = wdt / n;
     for (let i = 0; i < n; i++) {
