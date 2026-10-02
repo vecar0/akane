@@ -344,11 +344,11 @@ const CAL = { title: 0, death: 1, madang: [2, 3, 4, 5, 6], end: 7, clear: 8 };  
 const PROP = { rope: 0, aim: 1, reticle: 2, pine: 3, stoneLantern: 4, jars: 5, banner: 6, sotdae: 7, palisade: 8 };
 const DRESS = [[PROP.pine, 74, 3], [PROP.stoneLantern, 34, 2], [PROP.jars, 26, 1], [PROP.banner, 80, 3], [PROP.sotdae, 84, 3], [PROP.palisade, 28, 1]]; // [frame, world height, headroom tiles]
 const OBJ = { lanternOn: 0, lanternOff: 1, kite: 2, thorns: 3, seal: 4, emitter: 5, slash: 6, slashRed: 7, splat: 8 };
-for (const n of ["hero", "hero2", "foes", "objects", "ui", "fx", "hud", "hudsolid", "props", "props2", "rocks", "pines", "slabs", "pillars", "rogue", "roguea", "rogue2", "rogue3", "rogue4", "foes2", "bossA", "bossB", "bossfx", "bossC", "bossD", "bossE", "bossF", "hero3", "herofx", "slashfx", "perkfx", "weapons", "chars", "misc", "arms", "ic0", "ic1", "ic2", "ic3", "ic4", "ic5", "ic6", "ic7", "ic8", "ic9", "ic10", "ic11", "ic12", "ic13", "ic14", "ic15", "mu", "po", "mfx", "pfx", "vis", "guide", "mv0", "mv1", "mv2"]) {
+for (const n of ["hero", "hero2", "foes", "objects", "ui", "fx", "hud", "hudsolid", "props", "props2", "rocks", "pines", "slabs", "pillars", "rogue", "roguea", "rogue2", "rogue3", "rogue4", "foes2", "bossA", "bossB", "bossfx", "bossC", "bossD", "bossE", "bossF", "hero3", "herofx", "slashfx", "perkfx", "weapons", "chars", "misc", "arms", "ic0", "ic1", "ic2", "ic3", "ic4", "ic5", "ic6", "ic7", "ic8", "ic9", "ic10", "ic11", "ic12", "ic13", "ic14", "ic15", "mu", "po", "mfx", "pfx", "vis", "guide", "mv0", "mv1", "mv2", "bcal", "bvfx", "bname"]) {
   Promise.all([
     fetch(`assets/sprites/${n}.json`).then(r => r.json()),
     new Promise((res, rej) => { const im = new Image(); im.onload = () => res(im); im.onerror = rej; im.src = `assets/sprites/${n}.webp`; })
-  ]).then(([f, img]) => { SPR[n] = { f, img, inv: ["hero", "hero2", "foes", "objects", "fx", "props", "props2", "rocks", "pines", "slabs", "pillars", "guide"].includes(n) ? inkInverted(img) : null };
+  ]).then(([f, img]) => { SPR[n] = { f, img, inv: ["hero", "hero2", "foes", "objects", "fx", "props", "props2", "rocks", "pines", "slabs", "pillars", "guide", "bname"].includes(n) ? inkInverted(img) : null };
     if (SPR[n].inv) gpuize(SPR[n].inv, bm => { SPR[n].inv = bm; }); applyUiSprites(); }).catch(() => {});
 }
 function inkInverted(img) { // night palette: grey ink becomes bone white, coloured accents stay as they are
@@ -1285,6 +1285,12 @@ const ACT_NAME = { slam: "내려찍기", charge: "돌진", volley: "연사", sum
   shblink: "그림자 걸음", shcut: "그림자 베기", shstrike: "그림자 일격", shdash: "그림자 돌진" };
 const RAGE_ADD = { sumun: ["volley", "summon"], gumiho: ["illusion", "foxfire"], dokkaebi: ["coins", "gamtu"], imugi: ["burst2"], wongwi: ["hair", "scream"], jangseung: ["lowhigh", "highlow"],
   haetae: ["breath", "leap"], bulgasari: ["scrap", "stomp"], baekho: ["roar", "claw"], talchum: ["fan2", "dance"] };
+// painted boss-fight sheets: stamps and words (bcal), effects (bvfx), each guardian's name in brush (bname)
+const BC = { gyeoljeon: 0, tobeol: 1, gyeoknu: 2, ganpa: 3, stroke: 4, redBurst: 5, inkBurst: 6, talisman: 7, enso: 8 };
+const BV = { rage: 0, quake: 1, curtain: 2, dizzy: 3, impact: 4, warn: 5, crescent: 6, dissolve: 7, ring: 8 };
+const BNAME = { sumun: 0, gumiho: 1, dokkaebi: 2, imugi: 3, wongwi: 4, jangseung: 5, haetae: 6, bulgasari: 7, baekho: 8, talchum: 9, cheongo: 10, shadow: 11 };
+function spr(sheet, i, x, y, h, flip = false) { const S = SPR[sheet]; if (!S || !S.f[i]) return false; return drawSprite(sheet, i, x, y, h / S.f[i].h, flip, .5, sheet === "bname" && nightNow(), .5); }   // a name in black ink turns bone-white on the inverted night
+function sprW(sheet, i, h) { const S = SPR[sheet]; return S && S.f[i] ? S.f[i].w * h / S.f[i].h : 0; }
 function banner(text, col, sub) { bossBanner = { text, col, sub, t: 0 }; }
 function sealArena(e, on) { // a talisman barrier closes both sides of the arena while the guardian lives
   if (!on) { if (LV && LV.seal) { for (const x of [LV.seal.x0, LV.seal.x1]) for (let y = 0; y <= LV.seal.y1; y++) LV.grid[y * LV.w + x] = 0; LV.seal = null; } return; }
@@ -1721,7 +1727,8 @@ function hurtEnemy(e, strike) {
     const aimed = strike === 2 || (strike && P.dashT > 0);   // only the aimed dash lands the full 일격 and breaks a wind-up; a beat-timed swing just bites deeper
     const read = aimed && e.act && !["gamtu", "mask"].includes(e.act);   // 간파: caught mid wind-up
     e.hp -= aimed ? 3 : strike ? 2 : 1; e.hitT = .22;
-    if (read) { e.hp -= 1; regainAir(); banner("看破", JJOK, "간파 — 기술을 끊었다"); hitstop = Math.max(hitstop, .12); shake = Math.max(shake, 9); haz = haz.filter(z => z.kind === "ring"); }
+    addFx("bvfx", BV.impact, e.x + e.w / 2 + (Math.random() - .5) * e.w * .4, e.y + e.h * (.3 + Math.random() * .3), aimed ? 120 : strike ? 80 : 54, { life: .28, grow: .25, rot: Math.random() * 6.28, a: .9 });
+    if (read) { e.hp -= 1; regainAir(); banner("看破", JJOK, "간파 — 기술을 끊었다"); addFx("bvfx", BV.impact, e.x + e.w / 2, e.y + e.h / 2, 150, { life: .4, grow: .3 }); hitstop = Math.max(hitstop, .12); shake = Math.max(shake, 9); haz = haz.filter(z => z.kind === "ring"); }
     if (aimed) { e.stagT = read ? 1.1 : .4; e.act = null; e.suck = false; e.chargeT = 0; e.danceT = 0; e.swoopT = 0; e.nextAt = songPos + 2 * Music.beatLen; if (e.hidden) { e.hidden = false; e.x = e.tx - e.w / 2; } }
     addFx("fx", FX.drops, e.x + e.w / 2, e.y + 30, 30, { life: .4, rot: Math.random() * 6.28 });
     hitstop = Math.max(hitstop, .05); Music.sfx("clang"); shake = Math.max(shake, 4);
@@ -1758,7 +1765,10 @@ function killEnemy(e) {
   if ((P.aimedUntil || 0) > songPos && state === "play") killCamOn(e);   // a kill from an aimed dash: the world holds, inverted, the blood red
   if (e.type === "b" && e.kind === "cheongo") { run.endingDue = true; toast("북의 주인이 쓰러졌다 · 천고를 쳐라"); }
   if (e.type === "b" && mode !== "tutorial") { run.bossKills = (run.bossKills || 0) + 1; (run.bossSeen = run.bossSeen || []).push(e.kind); codexBoss(e); }
-  if (e.type === "b" && e.kind !== "cheongo") { bossOut = { t: 0, x: e.x + e.w / 2, y: e.y + e.h / 2, name: BOSSES[e.kind].name, han: BOSSES[e.kind].han }; killCam = Math.max(killCam, .9); sealArena(null, false); }
+  if (e.type === "b") { const x = e.x + e.w / 2, y = e.y + e.h / 2;   // ink and blood thrown wide, the body going up as wisps
+    addFx("bcal", BC.inkBurst, x, y, e.h * 2.2, { life: .7, grow: .5, rot: Math.random() * 6.28, a: .9 }); addFx("bcal", BC.redBurst, x, y, e.h * 1.6, { life: .8, grow: .45, rot: Math.random() * 6.28, a: .85 });
+    addFx("bvfx", BV.dissolve, x, e.y + e.h * .4, e.h * 1.8, { life: 1.4, grow: .3, ay: .7, a: .9 }); }
+  if (e.type === "b" && e.kind !== "cheongo") { bossOut = { t: 0, x: e.x + e.w / 2, y: e.y + e.h / 2, kind: e.kind, name: BOSSES[e.kind].name, han: BOSSES[e.kind].han }; killCam = Math.max(killCam, .9); sealArena(null, false); }
   if (e.type === "b") { haz = []; for (const o of enemies) if (o.type === "i") o.alive = false; toast(`${josa(BOSSES[e.kind].name, "이", "가")} 쓰러졌다 · ${run.m === LAST_M ? "천고를 베어라" : "길이 열렸다"}`); Music.jing(); shake = 14; for (let k = 0; k < 3; k++) bleed(e.x + e.w / 2 + (k - 1) * 20, e.y + 20 + k * 18, { x: k - 1, y: -.4 }, true); }
   if (omen("hyeolmaeng") && mode !== "tutorial") { run.hmN = (run.hmN || 0) + 1; if (run.hmN % 5 === 0 && run.breath < breathCap()) { run.breath++; setHud(); toast("피의 맹세 · 숨 하나를 되찾았다"); } }
   if (has("hyeol") && run.kills % (has("hyeolpung") ? 5 : 10) === 0 && run.breath < breathCap()) { run.breath++; setHud(); toast("혈로 · 숨 하나를 되찾았다"); }
@@ -1990,7 +2000,7 @@ function bossChoose(e, a, I) {
 function bossPerform(e, a, I) {
   const { pcx, pcy, bl, c } = I, ecx = e.x + e.w / 2, f = e.floor;
   switch (a) {
-    case "slam": case "club": {
+    case "slam": case "club": { addFx("bvfx", BV.quake, ecx + e.face * 80, f - 18, 70, { life: .5, grow: .2, ay: .8 });
       const zone = { x: e.face > 0 ? ecx : ecx - 150, y: f - 70, w: 150, h: 70 };
       shake = 10; Music.sfx("kill"); addFx("hud", HUD.dust, ecx + e.face * 90, f, 90, { life: .5, ay: 1 });
       if (hurtsPlayer() && overlap(zone, P)) { lastHitDir = { x: e.face, y: -.5 }; die(); }
@@ -2008,21 +2018,21 @@ function bossPerform(e, a, I) {
     case "gamtu": e.act = "club"; e.hitAt = (Math.floor(songPos / bl) + 2) * bl; return true;   // reappears swinging two beats later
     case "burst": case "burst2": e.hidden = false; e.emergeT = .6; e.x = e.tx - e.w / 2; e.y = f - e.h; e.face = Math.sign(pcx - e.tx) || e.face; shake = 10; Music.sfx("kill"); addFx("hud", HUD.dust, e.tx, f, 110, { life: .5, ay: 1 }); break;
     case "spit": for (const dx of [-70, 0, 70]) lob(e, ecx + e.face * 20, e.y + 16, pcx + dx, pcy, .9, { orb: true, water: true }); Music.sfx("shoot"); break;
-    case "scream": haz.push({ kind: "ring", x: ecx, y: e.y + e.h / 2, at: songPos, speed: 300, max: 560 }); if (c >= 2) haz.push({ kind: "ring", x: ecx, y: e.y + e.h / 2, at: songPos + bl * .5, speed: 300, max: 560 }); shake = 6; Music.sfx("die"); break;
+    case "scream": addFx("bvfx", BV.ring, ecx, e.y + e.h / 2, 140, { life: .6, grow: 1.4, a: .8 }); haz.push({ kind: "ring", x: ecx, y: e.y + e.h / 2, at: songPos, speed: 300, max: 560 }); if (c >= 2) haz.push({ kind: "ring", x: ecx, y: e.y + e.h / 2, at: songPos + bl * .5, speed: 300, max: 560 }); shake = 6; Music.sfx("die"); break;
     case "blink": { const side = Math.random() < .5 ? -1 : 1; e.x = pcx + side * 190 - e.w / 2; e.y = f - 95 - e.h / 2; e.face = -side; addFx("hud", HUD.smoke, e.x + e.w / 2, e.y + e.h / 2, 70, { life: .6 });
       const dx = pcx - (e.x + e.w / 2), dy = pcy - (e.y + e.h / 2), d = Math.hypot(dx, dy) || 1; e.swoopT = .55; e.svx = dx / d * 480; e.svy = dy / d * 480; Music.sfx("dash"); break; }
     case "low": case "high": case "lowhigh": case "highlow": case "hair": Music.sfx("strike"); shake = 5; break;
     case "breath": Music.sfx("snipe"); if (c >= 1) addHaz("fire", e.face > 0 ? e.x + e.w + 150 : e.x - 230, f - 22, 80, 22, songPos + bl, songPos + bl * 3); break;
-    case "stomp": shake = 12; Music.sfx("kill"); waves(e, 340 + 30 * c); if (hurtsPlayer() && Math.abs(pcx - ecx) < e.w / 2 + 50 && P.y + P.h > f - 40) { lastHitDir = { x: Math.sign(pcx - ecx) || 1, y: -.6 }; die(); } break;
+    case "stomp": addFx("bvfx", BV.quake, ecx, f - 18, 80, { life: .55, grow: .25, ay: .8 }); shake = 12; Music.sfx("kill"); waves(e, 340 + 30 * c); if (hurtsPlayer() && Math.abs(pcx - ecx) < e.w / 2 + 50 && P.y + P.h > f - 40) { lastHitDir = { x: Math.sign(pcx - ecx) || 1, y: -.6 }; die(); } break;
     case "inhale": { e.suck = false; const zone = { x: e.face > 0 ? ecx : ecx - 110, y: f - 70, w: 110, h: 70 }; Music.sfx("kill"); if (hurtsPlayer() && overlap(zone, P)) { lastHitDir = { x: e.face, y: -.3 }; die(); } break; }
     case "scrap": for (let i = 0; i < 5; i++) lob(e, ecx + e.face * 30, e.y + 10, pcx + (i - 2) * 55, f - 10, .8 + i * .05, { scrap: true }); Music.sfx("shoot"); break;
-    case "claw": for (let i = 0; i < 3; i++) { const at = songPos + i * bl * .5; addHaz("claw", e.face > 0 ? ecx + 10 : ecx - 120, f - 64, 110, 64, at, at + .15); } Music.sfx("slash"); break;
-    case "roar": shake = 14; Music.sfx("die"); if (Math.abs(pcx - ecx) < 360) { P.vx = Math.sign(pcx - ecx || 1) * 560; P.dashCd = Math.max(P.dashCd, bl * 1.5); } if (c >= 1) haz.push({ kind: "ring", x: ecx, y: e.y + e.h / 2, at: songPos, speed: 320, max: 240 }); break;
+    case "claw": addFx("bvfx", BV.crescent, ecx + e.face * 60, f - 34, 90, { life: .3, flip: e.face < 0, grow: .2 }); for (let i = 0; i < 3; i++) { const at = songPos + i * bl * .5; addHaz("claw", e.face > 0 ? ecx + 10 : ecx - 120, f - 64, 110, 64, at, at + .15); } Music.sfx("slash"); break;
+    case "roar": addFx("bvfx", BV.ring, ecx, e.y + e.h / 2, 140, { life: .6, grow: 1.4, a: .8 }); shake = 14; Music.sfx("die"); if (Math.abs(pcx - ecx) < 360) { P.vx = Math.sign(pcx - ecx || 1) * 560; P.dashCd = Math.max(P.dashCd, bl * 1.5); } if (c >= 1) haz.push({ kind: "ring", x: ecx, y: e.y + e.h / 2, at: songPos, speed: 320, max: 240 }); break;
     case "fan": case "fan2": { const n = a === "fan2" || e.mask === 2 ? 2 : 1;
       for (let i = 0; i < n; i++) { const ang = Math.atan2(pcy - (e.y + 20), pcx - ecx) + (n > 1 ? (i - .5) * .5 : 0), sp = 430 * slowShot(); bullets.push({ x: ecx + e.face * 16, y: e.y + 20, vx: Math.cos(ang) * sp, vy: Math.sin(ang) * sp, owner: e, friendly: false, life: 3.5, fan: true, boom: .7, t: 0 }); }
       Music.sfx("slash"); break; }
     case "dance": e.danceT = 2 * bl; Music.sfx("dash"); break;
-    case "drum": // 천고의 주인 strikes its own drum: two rings and a ground wave
+    case "drum": // 천고의 주인 strikes its own drum: two rings and a ground wave addFx("bvfx", BV.ring, ecx, e.y + e.h / 2, 140, { life: .6, grow: 1.4, a: .8 });
       haz.push({ kind: "ring", x: ecx, y: e.y + e.h / 2, at: songPos, speed: 280, max: 620 }, { kind: "ring", x: ecx, y: e.y + e.h / 2, at: songPos + bl, speed: 280, max: 620 });
       waves(e, 340 + 25 * c); shake = 12; Music.jing(); break;
     case "shblink": { const side = Math.random() < .5 ? -1 : 1, nx = pcx + side * 60 - e.w / 2; if (!rectSolid(nx, e.y, e.w, e.h)) e.x = nx; e.face = -side; addFx("perkfx", PF.clone, ecx, f, 60, { life: .3, ay: 1, a: .5 });
@@ -2045,7 +2055,7 @@ function stepBoss(e, dt, pcx, pcy, dist, live) {
   const deadly = () => { if (live && hurtsPlayer() && overlap(e, P)) { lastHitDir = { x: Math.sign(pcx - ecx) || 1, y: -.3 }; die(); } };
   if (e.air) { // leaping: arc under gravity, deadly on contact, shake on landing
     e.vy += 1900 * dt; moveX(e, e.vx * dt);
-    if (moveY(e, e.vy * dt) && e.vy > 0) { e.air = false; e.vx = 0; e.vy = 0; shake = 8; addFx("hud", HUD.dust, e.x + e.w / 2, e.y + e.h, 80, { life: .4, ay: 1 });
+    if (moveY(e, e.vy * dt) && e.vy > 0) { e.air = false; e.vx = 0; e.vy = 0; shake = 8; addFx("bvfx", BV.quake, e.x + e.w / 2, e.floor - 16, 60, { life: .45, grow: .2, ay: .8 }); addFx("hud", HUD.dust, e.x + e.w / 2, e.y + e.h, 80, { life: .4, ay: 1 });
       if (e.kind === "baekho") addHaz("claw", e.x - 50, e.y + e.h - 60, e.w + 100, 60, songPos, songPos + .12);
       if (e.kind === "haetae") { addHaz("fire", e.x - 40, e.floor - 22, e.w + 80, 22, songPos, songPos + bl * 1.5); if (c >= 1) waves(e, 330); }
       if (e.kind === "gumiho" && c >= 1) for (let i = 0; i < 4; i++) { const t = -Math.PI * (i + .5) / 4; bullets.push({ x: e.x + e.w / 2, y: e.y + 10, vx: Math.cos(t) * 170, vy: Math.sin(t) * 170, owner: e, friendly: false, life: 3, orb: true, home: .6 }); }
@@ -2482,10 +2492,10 @@ function render(rdt) {
   }
   if (LV.seal) { const sl = LV.seal, h = (sl.y1 + 1) * T, grow = Math.min(1, sl.t * 2.5);   // 결계: two curtains of ink hung with talismans
     for (const x of [sl.x0, sl.x1]) { const wx = x * T, top = h - h * grow;
-      ctx.globalAlpha = .55; inkWash(wx + 4, top, T - 8, h - top, pal.night ? "#d8d1c4" : "#1d1b20", x * 13); ctx.globalAlpha = 1;
-      for (let y = h - 40; y > top + 10; y -= 70) { const sw = Math.sin(tt * 2 + y * .05 + x) * 3; ctx.save(); ctx.translate(wx + T / 2 + sw, y); ctx.rotate(sw * .03);
-        ctx.fillStyle = "#e8cf6a"; ctx.fillRect(-7, -16, 14, 32); ctx.strokeStyle = SEAL; ctx.lineWidth = 1.4; ctx.strokeRect(-5, -13, 10, 26);
-        ctx.beginPath(); ctx.moveTo(0, -10); ctx.lineTo(0, 10); ctx.moveTo(-3, -4); ctx.lineTo(3, -4); ctx.moveTo(-3, 3); ctx.lineTo(3, 3); ctx.stroke(); ctx.restore(); } } }
+      if (SPR.bvfx) { const f = SPR.bvfx.f[BV.curtain], sc = 54 / f.w; ctx.globalAlpha = .8; for (let y = h; y > top - f.h * sc * .5; y -= f.h * sc * .8) drawSprite("bvfx", BV.curtain, wx + T / 2, y, sc, false, .5, pal.night, 1); ctx.globalAlpha = 1; }
+      else { ctx.globalAlpha = .55; inkWash(wx + 4, top, T - 8, h - top, pal.night ? "#d8d1c4" : "#1d1b20", x * 13); ctx.globalAlpha = 1; }
+      for (let y = h - 40; y > top + 10; y -= 74) { const sw = Math.sin(tt * 2 + y * .05 + x) * 3; ctx.save(); ctx.translate(wx + T / 2 + sw, y); ctx.rotate(sw * .03);
+        if (!spr("bcal", BC.talisman, 0, 0, 40)) { ctx.fillStyle = "#e8cf6a"; ctx.fillRect(-7, -16, 14, 32); ctx.strokeStyle = SEAL; ctx.lineWidth = 1.4; ctx.strokeRect(-5, -13, 10, 26); } ctx.restore(); } } }
   // 과녁: a red ring hung on a cord; a faint ghost of it while it waits to hang again
   for (const g of LV.targets) { if (!visible(g.x)) continue;
     const sw = Math.sin(tt * 1.6 + g.sway) * 2, up = g.t > 0, k = up ? Math.max(.18, 1 - g.t / 2.5) : 1;
@@ -2647,7 +2657,10 @@ function render(rdt) {
     ctx.fillStyle = "rgba(255,255,255,.18)"; ctx.fillRect(bx, by, bw * fr, 3);
     if (!boss.raged) { ctx.fillStyle = pal.text; ctx.fillRect(bx + bw / 2 - 1, by - 4, 2, 16); }   // where the fury wakes
     if (boss.stagT > .5) { ctx.fillStyle = JJOK; ctx.font = `400 12px "Song Myung", serif`; ctx.textAlign = "left"; ctx.textBaseline = "middle"; ctx.fillText("흐트러짐", bx + bw + 8, by + 4); }
-    ctx.fillStyle = pal.text; ctx.font = `400 16px "Song Myung", serif`; ctx.textAlign = "center"; ctx.textBaseline = "bottom"; ctx.fillText(`${BOSSES[boss.kind].name} ${BOSSES[boss.kind].han}${boss.raged ? " · 격노" : ""}`, W / 2, by - 4); ctx.textAlign = "left";
+    { const ni = BNAME[boss.kind], hw = SPR.bname && ni != null ? sprW("bname", ni, 20) : 0, label = `${BOSSES[boss.kind].name}${boss.raged ? " · 격노" : ""}`;
+      ctx.font = `400 16px "Song Myung", serif`; const tw = ctx.measureText(label).width, x0 = W / 2 - (tw + (hw ? hw + 8 : 0)) / 2;
+      ctx.fillStyle = boss.raged ? SEAL : pal.text; ctx.textAlign = "left"; ctx.textBaseline = "bottom"; ctx.fillText(label, x0, by - 4);
+      if (hw) spr("bname", ni, x0 + tw + 8 + hw / 2, by - 13, 20); else { ctx.fillStyle = pal.text; ctx.fillText(" " + BOSSES[boss.kind].han, x0 + tw, by - 4); } }
     ctx.setTransform(1, 0, 0, 1, 0, 0);
   }
   drawBossCards(pal);
@@ -3079,28 +3092,35 @@ function drawNewFoe(e, pal, cx) {
   }
   drawBoss(e, pal, cx, feet);
 }
-function drawBossCards(pal) { // screen-space: the guardian's entrance, the big words, the fall
+function drawBossCards(pal) { // screen-space: the guardian's entrance, the big words, the fall — painted where the sheets are in
   ctx.setTransform(DPR, 0, 0, DPR, 0, 0); ctx.textAlign = "center"; ctx.textBaseline = "middle";
-  if (bossIntro) { const t = bossIntro.t, B = BOSSES[bossIntro.e.kind], inA = Math.min(1, t / .25), out = Math.max(0, (t - 1.35) / .35), a = inA * (1 - out), bar = H * .13 * a;
+  const halo = pal.night ? "rgba(20,18,20,.75)" : "rgba(242,239,230,.88)";
+  if (bossIntro) { const t = bossIntro.t, kind = bossIntro.e.kind, B = BOSSES[kind], inA = Math.min(1, t / .25), out = Math.max(0, (t - 1.35) / .35), a = inA * (1 - out), bar = H * .13 * a;
     ctx.fillStyle = "#0e0d10"; ctx.fillRect(0, 0, W, bar); ctx.fillRect(0, H - bar, W, bar);
-    ctx.globalAlpha = a; const sx = W / 2 + (1 - Math.min(1, t / .5)) * 40;
-    brushLine(sx - 150, H * .5 + 30, sx + 150, H * .5 + 30, SEAL, 7, false, 77);
-    ctx.fillStyle = pal.text; ctx.font = `400 15px "Song Myung", serif`; ctx.fillText(B.han, sx, H * .5 - 46);
-    ctx.font = `400 52px "Song Myung", serif`; ctx.lineWidth = 6; ctx.strokeStyle = pal.night ? "rgba(20,18,20,.7)" : "rgba(242,239,230,.85)"; ctx.strokeText(B.name, sx, H * .5 - 6); ctx.fillText(B.name, sx, H * .5 - 6);
-    ctx.font = `400 15px "Song Myung", serif`; ctx.lineWidth = 4; ctx.strokeText(B.line || "", W / 2, H * .5 + 58); ctx.fillText(B.line || "", W / 2, H * .5 + 58);
-    const st = Math.min(1, Math.max(0, (t - .45) / .15)); if (st > 0) { ctx.save(); ctx.translate(sx + 128, H * .5 - 34); ctx.rotate(-.12); ctx.scale(1.6 - .6 * st, 1.6 - .6 * st); ctx.globalAlpha = a * st;
-      ctx.fillStyle = SEAL; ctx.fillRect(-20, -20, 40, 40); ctx.fillStyle = "#f2efe6"; ctx.font = `400 15px "Song Myung", serif`; ctx.fillText("決", 0, -8); ctx.fillText("戰", 0, 9); ctx.restore(); }
+    ctx.globalAlpha = a; const sx = W / 2 + (1 - Math.min(1, t / .5)) * 40, cy = H * .46, nh = Math.min(96, H * .24);
+    const sw = Math.min(1, t / .35);   // the red stroke is laid first, the name written over it
+    ctx.save(); ctx.beginPath(); ctx.rect(sx - W, 0, W + (sw - .5) * W * 1.2, H); ctx.clip(); if (!spr("bcal", BC.stroke, sx, cy + nh * .52, nh * .5)) brushLine(sx - 150, cy + 30, sx + 150, cy + 30, SEAL, 7, false, 77); ctx.restore();
+    const ni = BNAME[kind], nw = sprW("bname", ni, nh);
+    if (ni != null && nw) { const bx = sx, glow = Math.min(1, Math.max(0, (t - .15) / .3)); ctx.globalAlpha = a * glow; spr("bname", ni, bx, cy, nh); ctx.globalAlpha = a; }
+    else { ctx.fillStyle = pal.text; ctx.font = `400 52px "Song Myung", serif`; ctx.fillText(B.han, sx, cy); }
+    ctx.font = `400 22px "Song Myung", serif`; ctx.lineWidth = 5; ctx.strokeStyle = halo; ctx.fillStyle = pal.text; ctx.strokeText(B.name, sx, cy + nh * .9); ctx.fillText(B.name, sx, cy + nh * .9);
+    ctx.font = `400 15px "Song Myung", serif`; ctx.lineWidth = 4; ctx.strokeText(B.line || "", W / 2, cy + nh * .9 + 28); ctx.fillText(B.line || "", W / 2, cy + nh * .9 + 28);
+    const st = Math.min(1, Math.max(0, (t - .5) / .15)); if (st > 0) { ctx.save(); ctx.translate(sx + Math.max(nw, 120) / 2 + 34, cy - nh * .38); ctx.rotate(-.1); const k = 1.7 - .7 * st; ctx.scale(k, k); ctx.globalAlpha = a * st;
+      ctx.fillStyle = "#f2efe6"; ctx.fillRect(-21, -21, 42, 42); if (!spr("bcal", BC.gyeoljeon, 0, 0, 52)) { ctx.fillStyle = SEAL; ctx.fillRect(-20, -20, 40, 40); } ctx.restore(); if (st < 1) shake = Math.max(shake, 3); }
     ctx.globalAlpha = 1; }
-  if (bossBanner) { const t = bossBanner.t, a = Math.min(1, t / .12) * Math.min(1, (1.3 - t) / .35), k = 1 + Math.max(0, .25 - t) * 1.6;
-    ctx.save(); ctx.globalAlpha = a; ctx.translate(W / 2, H * .34); ctx.scale(k, k); ctx.font = `400 58px "Song Myung", serif`; ctx.lineWidth = 7; ctx.strokeStyle = "rgba(242,239,230,.8)";
-    ctx.strokeText(bossBanner.text, 0, 0); ctx.fillStyle = bossBanner.col; ctx.fillText(bossBanner.text, 0, 0);
-    if (bossBanner.sub) { ctx.font = `400 15px "Song Myung", serif`; ctx.fillStyle = pal.text; ctx.fillText(bossBanner.sub, 0, 42); } ctx.restore(); }
+  if (bossBanner) { const t = bossBanner.t, a = Math.min(1, t / .12) * Math.min(1, (1.3 - t) / .35), k = 1 + Math.max(0, .25 - t) * 1.6, fr = { "激怒": BC.gyeoknu, "看破": BC.ganpa }[bossBanner.text];
+    ctx.save(); ctx.globalAlpha = a; ctx.translate(W / 2, H * .34); ctx.scale(k, k);
+    if (fr == null || !spr("bcal", fr, 0, 0, Math.min(130, H * .32))) { ctx.font = `400 58px "Song Myung", serif`; ctx.lineWidth = 7; ctx.strokeStyle = halo; ctx.strokeText(bossBanner.text, 0, 0); ctx.fillStyle = bossBanner.col; ctx.fillText(bossBanner.text, 0, 0); }
+    if (bossBanner.sub) { ctx.font = `400 15px "Song Myung", serif`; ctx.lineWidth = 4; ctx.strokeStyle = halo; ctx.fillStyle = pal.text; ctx.strokeText(bossBanner.sub, 0, Math.min(130, H * .32) * .5 + 16); ctx.fillText(bossBanner.sub, 0, Math.min(130, H * .32) * .5 + 16); } ctx.restore(); }
   if (bossOut) { const t = bossOut.t, a = Math.min(1, t / .2) * Math.min(1, (2.2 - t) / .5), st = Math.min(1, Math.max(0, (t - .35) / .18));
     ctx.fillStyle = `rgba(120,10,16,${.18 * a})`; ctx.fillRect(0, 0, W, H);
-    if (st > 0) { ctx.save(); ctx.globalAlpha = a; ctx.translate(W / 2, H * .42); ctx.rotate(-.08); ctx.scale(2.2 - 1.2 * st, 2.2 - 1.2 * st);
-      ctx.fillStyle = SEAL; ctx.fillRect(-46, -46, 92, 92); ctx.strokeStyle = "#f2efe6"; ctx.lineWidth = 2; ctx.strokeRect(-40, -40, 80, 80);
-      ctx.fillStyle = "#f2efe6"; ctx.font = `400 34px "Song Myung", serif`; ctx.fillText("討", 0, -17); ctx.fillText("伐", 0, 19); ctx.restore();
-      ctx.globalAlpha = a; ctx.fillStyle = pal.text; ctx.font = `400 18px "Song Myung", serif`; ctx.fillText(`${bossOut.name} ${bossOut.han} 처치`, W / 2, H * .42 + 74); ctx.globalAlpha = 1; } }
+    if (st > 0) { ctx.save(); ctx.globalAlpha = a * .5; ctx.translate(W / 2, H * .42); ctx.rotate(.4); spr("bcal", BC.inkBurst, 0, 0, 250 * (.7 + .3 * st)); ctx.restore();
+      ctx.save(); ctx.globalAlpha = a; ctx.translate(W / 2, H * .42); ctx.rotate(-.08); ctx.scale(2.2 - 1.2 * st, 2.2 - 1.2 * st);
+      ctx.fillStyle = "#f2efe6"; ctx.fillRect(-44, -44, 88, 88); if (!spr("bcal", BC.tobeol, 0, 0, 110)) { ctx.fillStyle = SEAL; ctx.fillRect(-46, -46, 92, 92); } ctx.restore();
+      ctx.globalAlpha = a; const ni = BNAME[bossOut.kind];
+      if (ni != null && SPR.bname) { spr("bname", ni, W / 2 - 34, H * .42 + 84, 30); ctx.font = `400 18px "Song Myung", serif`; ctx.fillStyle = pal.text; ctx.lineWidth = 4; ctx.strokeStyle = halo; ctx.textAlign = "left"; ctx.strokeText(`${bossOut.name} 처치`, W / 2 - 34 + sprW("bname", ni, 30) / 2 + 10, H * .42 + 85); ctx.fillText(`${bossOut.name} 처치`, W / 2 - 34 + sprW("bname", ni, 30) / 2 + 10, H * .42 + 85); }
+      else { ctx.fillStyle = pal.text; ctx.font = `400 18px "Song Myung", serif`; ctx.fillText(`${bossOut.name} ${bossOut.han} 처치`, W / 2, H * .42 + 84); }
+      ctx.globalAlpha = 1; if (st < 1) shake = Math.max(shake, 6); } }
   ctx.textAlign = "left"; ctx.textBaseline = "alphabetic"; ctx.setTransform(1, 0, 0, 1, 0, 0);
 }
 function drawBoss(e, pal, cx, feet) {
@@ -3114,6 +3134,9 @@ function drawBoss(e, pal, cx, feet) {
   if (e.hidden) { // underground: only a heaving ripple of earth
     const x = e.tx || cx, w = 40 + Math.sin(performance.now() / 80) * 6; ctx.fillStyle = "rgba(40,34,30,.55)"; ctx.beginPath(); ctx.ellipse(x, e.floor - 2, w, 7, 0, 0, 7); ctx.fill(); return;
   }
+  if (e.act && songPos < e.hitAt && !e.hidden && SPR.bvfx) { const q = Math.max(0, Math.min(1, 1 - (e.hitAt - songPos) / Math.max(.2, e.hitAt - (e.actFrom ?? e.hitAt - 1))));   // sparks gathering to the moment it lands
+    ctx.save(); ctx.globalAlpha = .25 + .6 * q; ctx.translate(cx, e.y + e.h * .45); ctx.rotate(performance.now() / 700); spr("bvfx", BV.warn, 0, 0, e.h * (1.4 - .7 * q)); ctx.restore(); }
+  if (e.stagT > 0 && !e.hidden && SPR.bvfx) { ctx.save(); ctx.translate(cx, e.y - 14); ctx.rotate(performance.now() / 260); ctx.globalAlpha = Math.min(1, e.stagT * 3); spr("bvfx", BV.dizzy, 0, 0, 30); ctx.restore(); }
   if (e.act && songPos < e.hitAt && ACT_NAME[e.act] && !e.hidden) { const span = Math.max(.2, e.hitAt - (e.actFrom ?? e.hitAt - Music.beatLen)), q = Math.max(0, Math.min(1, (songPos - (e.actFrom ?? songPos)) / span)), y = e.y - 22;
     ctx.save(); ctx.font = `400 15px "Song Myung", serif`; ctx.textAlign = "center"; ctx.textBaseline = "middle"; ctx.lineWidth = 4; ctx.strokeStyle = pal.night ? "rgba(20,18,20,.8)" : "rgba(242,239,230,.9)";
     ctx.strokeText(ACT_NAME[e.act], cx, y); ctx.fillStyle = q > .7 ? SEAL : pal.text; ctx.fillText(ACT_NAME[e.act], cx, y);
@@ -3128,7 +3151,8 @@ function drawBoss(e, pal, cx, feet) {
     else if (e.act === "shcut" || e.act === "shstrike") { const w = e.act === "shstrike" ? 120 : 70; ctx.globalAlpha = a * 2.2; inkWash(e.face > 0 ? cx : cx - w, e.y - 20, w, e.h + 30, SEAL, sd); ctx.globalAlpha = 1; }
     else if (["summon", "spirits", "illusion", "mask", "gamtu", "roar", "scream", "blink", "drum", "shblink"].includes(e.act)) { ctx.globalAlpha = Math.min(1, (a + .2) * 1.5); brushRing(cx, e.y + e.h / 2, 30 + prog * 40, JJOK, 4, sd); ctx.globalAlpha = 1; }
   }
-  if (e.raged) { const g = ctx.createRadialGradient(cx, e.y + e.h / 2, 6, cx, e.y + e.h / 2, Math.max(e.w, e.h)); g.addColorStop(0, `rgba(195,22,28,${.18 + .08 * Math.sin(performance.now() / 120)})`); g.addColorStop(1, "rgba(195,22,28,0)"); ctx.fillStyle = g; ctx.fillRect(cx - e.w - e.h, e.y - e.h, (e.w + e.h) * 2, e.h * 3); }   // 격노
+  if (e.raged && SPR.bvfx) { const fl = 1 + Math.sin(performance.now() / 90) * .05; ctx.globalAlpha = .55 + .15 * Math.sin(performance.now() / 140); spr("bvfx", BV.rage, cx, e.y + e.h * .45, e.h * 1.5 * fl); ctx.globalAlpha = 1; }   // 격노: a painted fire behind the body
+  else if (e.raged) { const g = ctx.createRadialGradient(cx, e.y + e.h / 2, 6, cx, e.y + e.h / 2, Math.max(e.w, e.h)); g.addColorStop(0, `rgba(195,22,28,${.18 + .08 * Math.sin(performance.now() / 120)})`); g.addColorStop(1, "rgba(195,22,28,0)"); ctx.fillStyle = g; ctx.fillRect(cx - e.w - e.h, e.y - e.h, (e.w + e.h) * 2, e.h * 3); }   // 격노
   if (e.invisT > 0) ctx.globalAlpha *= .12;   // 도깨비 감투
   const atk = e.act || e.swingT > 0 || e.chargeT > 0 || e.air || e.swoopT > 0 || e.danceT > 0 || e.suck;
   const PO = BOSS_POSE[e.kind] || {}, now = performance.now();
