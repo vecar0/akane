@@ -273,7 +273,8 @@ const META = Object.assign({ hon: 0, shard: 0, bld: { seogo: 0, daejang: 0, bige
 function saveMeta() { store.set("meta", META); }
 const baseAir = () => (has("biyeon") ? 2 : 1) + (has("bisang2") ? 1 : 0);
 const cyc = () => (run && mode !== "tutorial" ? run.cycle || 0 : 0);   // how many times 천고 has been cut
-const omen = id => !!(run && mode !== "tutorial" && run.omen === id);
+const omen = id => !!(run && mode !== "tutorial" && (run.omen === id || (run.omens && run.omens.includes(id))));
+const isFinal = () => !!(run && (run.tower || run.m === LAST_M));   // a stage that ends at 천고 with its guardian
 const season = () => { const c = cyc(); return c ? ((c - 1) % 3) + 1 : 0; };   // 여름 비, then 가을 · 겨울 · 봄 in turn
 const ghostly = e => (e.type === "r" && e.ph === "gone") || !!e.hidden;
 const bossAlive = () => enemies.some(e => e.alive && e.type === "b");
@@ -329,6 +330,7 @@ function applyUiSprites() { // brush-painted UI pieces become CSS images
   if (SPR.rogue2 && !root.getPropertyValue("--chosik-100")) {
     for (let i = 0; i < 9; i++) root.setProperty("--chosik-" + (100 + i), url("rogue2", i));
   }
+  if (SPR.misc && !root.getPropertyValue("--ui-hon")) { root.setProperty("--ui-hon", url("misc", 8)); for (let i = 0; i < 9; i++) root.setProperty("--misc-" + i, url("misc", i)); }
   if (SPR.slashfx && !root.getPropertyValue("--chosik-505")) for (let i = 5; i < 9; i++) root.setProperty("--chosik-50" + i, url("slashfx", i));
   if (SPR.perkfx && !root.getPropertyValue("--chosik-600")) for (let i = 0; i < 7; i++) root.setProperty("--chosik-60" + i, url("perkfx", i));
   if (SPR.rogue3 && !root.getPropertyValue("--chosik-200")) for (let i = 0; i < 9; i++) root.setProperty("--chosik-" + (200 + i), url("rogue3", i));
@@ -573,7 +575,8 @@ function genPiece(rng, m, ropes) {
 }
 // boss arena before the last drum: a long floor with two ledges to dodge the 수문장's ground waves
 const ARENA_PIECE = (() => { const r = []; for (let y = 0; y < 16; y++) r.push(y >= 12 ? "#".repeat(26) : y === 11 ? " C" + " ".repeat(16) + "b" + " ".repeat(7) : y === 9 ? "     ====      ====       " : " ".repeat(26)); return r; })();
-function buildMadangMap(seed, m, cy = 0, om = null) {
+function buildMadangMap(seed, m, cy = 0, omIn = null, arena = m === 4, crowd = 0) {
+  const omList = Array.isArray(omIn) ? omIn : [omIn], om = omList.includes("gyeopjul") ? "gyeopjul" : omList.includes("gunse") || crowd ? "gunse" : omIn;
   const rng = mulberry(seed ^ Math.imul(m + 1, 0x9E3779B1) ^ Math.imul(cy, 0x85EBCA6B));   // each turn of the tower lays out fresh
   const rows = START_PIECE.slice();
   const used = new Set();
@@ -599,14 +602,14 @@ function buildMadangMap(seed, m, cy = 0, om = null) {
       else if ((ch === "L" || ch === "M") && rng() < .5) c[y][x] = ch === "L" ? "M" : "L";
     }
     // extra guard on open ground in about half the pieces
-    for (let extra = om === "gunse" ? 2 : 1; extra > 0; extra--) if (rng() < .45 + .08 * m + (om === "gunse" ? .35 : 0)) for (let tries = 0; tries < 8; tries++) {
+    for (let extra = (om === "gunse" ? 2 : 1) + crowd; extra > 0; extra--) if (rng() < .45 + .08 * m + (om === "gunse" ? .35 : 0)) for (let tries = 0; tries < 8; tries++) {
       const x = 3 + ((rng() * (c[0].length - 6)) | 0);
       let y = 2; while (y < 15 && c[y][x] === " ") y++;
       if (y < 15 && c[y][x] === "#" && c[y - 1][x] === " " && c[y - 2][x] === " " && !c[y - 1].some(ch => "gshdmr".includes(ch))) { c[y - 1][x] = m >= 2 && rng() < .35 ? "h" : "g"; break; }
     }
     for (let y = 0; y < 16; y++) rows[y] += c[y].join("");
   }
-  if (m === 4) for (let y = 0; y < 16; y++) rows[y] += ARENA_PIECE[y];   // only 天鼓臺 (tier 4) has a guardian, 천고 right behind it
+  if (arena) for (let y = 0; y < 16; y++) rows[y] += ARENA_PIECE[y];   // only 天鼓臺 (tier 4) has a guardian, 천고 right behind it
   for (let y = 0; y < 16; y++) rows[y] += END_PIECE[y];
   // scatter extra kites through open sky so the 연 line can carry you across most of the 마당
   const W = rows[0].length, grid = rows.map(r => r.split(""));
@@ -783,7 +786,7 @@ function startPicks(step = 0) {
 }
 function continueRun() {
   const s = store.get("run", null); if (!s) return;
-  run = s; mode = s.daily ? "daily" : "run";
+  run = s; mode = s.tower ? "tower" : s.daily ? "daily" : "run";
   if (s.m > LAST_M) s.m = LAST_M;   // a run saved under the old five-마당 tower
   if (s.picking) { startPicks(); return; }
   if (s.choosing === "omen") showOmen(); else if (s.choosing) showChoice(s.choosing); else showInterlude();
@@ -794,12 +797,17 @@ function showInterlude() {
   const md = MADANG[MD(run.m)], jd = Music.JANGDAN[md.jd];
   const sg = stageOf(run.m); $("iOrd").textContent = sg.ko; $("iOrd").dataset.han = sg.han;   // the reading large in the brush face, the hanja small beneath
   const om = OMENS.find(o => o.id === run.omen);
-  const bk = run.m === LAST_M && BOSSES[bossFor(run.seed, run.cycle || 0, run.m)];
+  const bk = isFinal() && BOSSES[bossFor(run.seed, run.cycle || 0, run.m)];
   $("iLine").textContent = run.m === 0 && run.cycle ? SEASON[season()].line : bk ? `${bk.line} ${josa(bk.name, "을", "를")} 베면 그 뒤에 천고가 있다.` : md.line;
   $("iMeta").textContent = ((run.cycle || 0) ? `${run.cycle + 1}번째 판 · ${SEASON[season()].name} · ` : "") + `${sg.ko} (${ORD[run.m]} 관문) · ` + jd.name + " · " + "●".repeat(run.breath) + "○".repeat(Math.max(0, 3 - run.breath)) + (om && !om.calm ? " · 징조 " + om.name : "") + (run.daily ? " · 오늘의 판" : "");
   $("interlude").classList.remove("night");
+  if (run.tower) { // 천고탑: every floor is a guardian's stage, crowded, with all the omens gathered so far
+    const tier = [0, 2, 4][(run.floor - 1) % 3];
+    $("iMeta").textContent = `천고탑 ${run.floor}층 · ${SEASON[season()].name} · ` + Music.JANGDAN[MADANG[tier].jd].name + " · " + "●".repeat(run.breath) + (run.omens.length ? " · 징조 " + run.omens.map(id => OMENS.find(o => o.id === id).name).join("·") : "");
+    loadMap(buildMadangMap(run.seed + run.floor * 7919, tier, run.cycle || 0, run.omens, true, Math.min(4, 1 + (run.floor >> 2))), PAL[tier]); LV.ledgeStone = tier >= 3;
+  } else
   loadMap(buildMadangMap(run.seed, MD(run.m), run.cycle || 0, run.omen), PAL[MD(run.m)]); LV.ledgeStone = MD(run.m) >= 3;
-  if (run.m === LAST_M && LV.exit) { // the last 마당 ends at 천고 itself instead of a seal
+  if (isFinal() && LV.exit) { // the last 마당 ends at 천고 itself instead of a seal
     LV.drums = [{ id: 0, big: true, x: LV.exit.x + LV.exit.w / 2, y: LV.exit.y + LV.exit.h, w: 60, h: 80 }]; LV.exit = null; LV.gate = null;
   }
   showScreen("interlude");
@@ -817,7 +825,7 @@ function enterMadang() {
   const s = cpSave || LV.start;
   P = newPlayer(s.x, s.y); run.hosinUsed = 0; run.cutDrums = run.cutDrums || [];
   bullets = []; parts = []; ghosts = []; seals = []; vfx = []; haz = []; beams = []; clones = [];
-  Music.start(MADANG[MD(run.m)].jd, run.seed + run.m, (1 + .08 * (run.cycle || 0)) * (omen("geupbak") ? 1.15 : 1));
+  Music.start(MADANG[run.tower ? [0, 2, 4][(run.floor - 1) % 3] : MD(run.m)].jd, run.seed + run.m, (1 + .08 * (run.cycle || 0)) * (omen("geupbak") ? 1.15 : 1));
   songPos = Music.pos(); spawnEnemies();
   cam.x = P.x; cam.y = P.y;
   setHud(); showScreen(null); state = "play";
@@ -927,17 +935,22 @@ function showOmen() {   // the rule for the coming turn: two omens drawn at rand
 function endRun(won) {
   state = "result"; Music.stop();
   store.del("run");
-  const reached = (run.cycle || 0) * (LAST_M + 1) + run.m + (won ? 1 : 0);
+  const reached = run.tower ? run.floor - 1 : (run.cycle || 0) * (LAST_M + 1) + run.m + (won ? 1 : 0);
   const rate = run.slashes ? Math.round(run.strikes / run.slashes * 100) : 0;
   $("rSeal").textContent = won ? "登" : "終";
   $("rTitle").textContent = won ? "등천" : "절명";
-  $("rSub").textContent = won ? "천고는 아직 위에서 울린다." : stageName(run.m) + "에서 숨이 다했다.";
+  $("rSub").textContent = run.tower ? `천고탑 ${run.floor}층에서 숨이 다했다.` : won ? "천고는 아직 위에서 울린다." : stageName(run.m) + "에서 숨이 다했다.";
   $("rStats").innerHTML = "";
-  for (const [k, v] of [["넘은 관문", reached + ((run.cycle || 0) ? ` · ${run.cycle}번 천고를 벰` : "")], ["시간", fmt(run.time)], ["일격", run.strikes + "회 · " + rate + "%"], ["벤 적", run.kills], ["베인 횟수", run.deaths]]) {
+  const gain = runRewards(reached);
+  for (const [k, v] of [[run.tower ? "오른 층" : "넘은 관문", reached + (!run.tower && (run.cycle || 0) ? ` · ${run.cycle}번 천고를 벰` : "")], ["시간", fmt(run.time)], ["일격", run.strikes + "회 · " + rate + "%"], ["벤 적", run.kills], ["얻은 혼", "+" + gain.hon + (gain.shard ? ` · 천고 조각 +${gain.shard}` : "")]]) {
     const a = document.createElement("span"), b = document.createElement("b"); a.textContent = k; b.textContent = v; $("rStats").append(a, b);
   }
   let rec = "";
-  if (run.daily) {
+  sealable = !run.tower && !run.daily && (run.cycle || 0) >= 1 ? JSON.parse(JSON.stringify(run)) : null; $("bSeal").hidden = !sealable;
+  if (run.tower) {
+    const bk = META.books.find(b => b.id === run.book); if (bk && reached > (bk.best || 0)) { bk.best = reached; rec = "이 비급첩의 최고 층"; }
+    if (reached > META.towerBest) { META.towerBest = reached; rec = "천고탑 최고 기록"; } saveMeta();
+  } else if (run.daily) {
     const best = store.get("daily." + run.dateKey, null);
     const better = !best || reached > best.reached || (reached === best.reached && run.time < best.time);
     if (better) { store.set("daily." + run.dateKey, { reached, time: run.time, rate }); rec = best ? "오늘의 판 최고 기록 갱신" : "오늘의 판 첫 기록"; }
@@ -949,7 +962,15 @@ function endRun(won) {
   lastResult = { reached, rate, time: run.time, daily: run.daily, dateKey: run.dateKey, won };
   showScreen("result");
 }
-let lastResult = null;
+let lastResult = null, sealable = null;
+// 혼 for everything done, 천고 조각 for the rare things (cutting 천고, every tenth floor); 업 multiplies both
+function runRewards(reached) {
+  const mult = 1 + .15 * (run.upPts || 0) + (run.honDouble || 0);
+  const hon = Math.round(((run.tower ? reached * 9 : reached * 5) + Math.floor(run.strikes / 4) + Math.floor(run.kills / 3) + (run.bossKills || 0) * 12) * mult);
+  const shard = (run.tower ? Math.floor(reached / 10) : (run.cycle || 0)) + (run.firstBoss || 0);
+  META.hon += hon; META.shard += shard; saveMeta(); if (typeof questEvent === "function") questEvent("runEnd", { reached });
+  return { hon, shard };
+}
 function shareText() {
   const r = lastResult; if (!r) return "";
   const head = r.daily ? `천고 · 오늘의 판 ${r.dateKey.slice(5).replace("-", ".")}` : "천고";
@@ -1195,6 +1216,7 @@ function hurtEnemy(e, strike) {
   if (e.type === "b") { // a plain cut takes one, an 일격 three (four with 파천) and staggers it out of its wind-up
     if (!strike && (BOSSES[e.kind].armored || (e.kind === "talchum" && e.mask === 0))) { e.hitT = .1; Music.sfx("clang"); addFx("hud", HUD.spark, e.x + e.w / 2, e.y + 20, 34, { life: .25 }); return; }
     if (oath("goyo2") && !strike) { e.hitT = .1; return; }
+    if (!strike) e.softHits = (e.softHits || 0) + 1;
     e.hp -= (strike ? (has("pacheon") ? 4 : 3) : has("ssangryong") ? 2 : 1) * (strike && oath("jangdan") ? 2 : 1); e.hitT = .22;
     if (strike) { e.stagT = .4; e.act = null; e.suck = false; e.chargeT = 0; e.danceT = 0; e.swoopT = 0; e.nextAt = songPos + 2 * Music.beatLen; if (e.hidden) { e.hidden = false; e.x = e.tx - e.w / 2; } }
     addFx("fx", FX.drops, e.x + e.w / 2, e.y + 30, 30, { life: .4, rot: Math.random() * 6.28 });
@@ -1220,6 +1242,7 @@ function killEnemy(e) {
   if (e.type === "m") for (const o of enemies) if (o.wardBy === e.id) o.ward = false;
   if (has("hyeolhwa") && !inBloom) { inBloom = true; const bx = e.x + e.w / 2, by = e.y + e.h / 2; const br = has("hyeolu") ? 140 : 80; addFx("perkfx", PF.bloom, bx, by, br, { life: .45, grow: .5 }); if (has("hyeolhyang")) P.invT = Math.max(P.invT || 0, .3);
     for (const o of enemies) if (o !== e && o.alive && Math.hypot(o.x + o.w / 2 - bx, o.y + o.h / 2 - by) < br) hurtEnemy(o, false); inBloom = false; }
+  if (e.type === "b" && mode !== "tutorial") { run.bossKills = (run.bossKills || 0) + 1; (run.bossSeen = run.bossSeen || []).push(e.kind); codexBoss(e); }
   if (e.type === "b") { haz = []; for (const o of enemies) if (o.type === "i") o.alive = false; toast(`${josa(BOSSES[e.kind].name, "이", "가")} 쓰러졌다 · ${run.m === LAST_M ? "천고를 베어라" : "길이 열렸다"}`); Music.jing(); shake = 14; for (let k = 0; k < 3; k++) bleed(e.x + e.w / 2 + (k - 1) * 20, e.y + 20 + k * 18, { x: k - 1, y: -.4 }, true); }
   if (omen("hyeolmaeng") && mode !== "tutorial") { run.oath = (run.oath || 0) + 1; if (run.oath % 5 === 0 && run.breath < 5) { run.breath++; setHud(); toast("피의 맹세 · 숨 하나를 되찾았다"); } }
   if (has("hyeol") && run.kills % (has("hyeolpung") ? 5 : 10) === 0 && run.breath < 5) { run.breath++; setHud(); toast("혈로 · 숨 하나를 되찾았다"); }
@@ -1476,7 +1499,7 @@ function bossPerform(e, a, I) {
 function stepBoss(e, dt, pcx, pcy, dist, live) {
   const B = BOSSES[e.kind], bl = Music.beatLen, c = cyc() + 1, I = { pcx, pcy, bl, c };   // guardians fight one tier above the turn
   e.emergeT = Math.max(0, (e.emergeT || 0) - dt); e.stagT = Math.max(0, (e.stagT || 0) - dt); e.swingT = Math.max(0, (e.swingT || 0) - dt); e.walkT = Math.max(0, (e.walkT || 0) - dt); e.invisT = Math.max(0, (e.invisT || 0) - dt);
-  if (!e.awake) { if (!(live && dist < 470)) return; e.awake = true; toast(josa(B.name, "이", "가") + " 길을 막는다"); Music.jing(); e.nextAt = (Math.floor(songPos / bl) + 2) * bl; }
+  if (!e.awake) { if (!(live && dist < 470)) return; e.awake = true; toast(josa(B.name, "이", "가") + " 길을 막는다"); Music.jing(); e.fightBreath = run.breath; e.nextAt = (Math.floor(songPos / bl) + 2) * bl; }
   let ecx = e.x + e.w / 2;
   const deadly = () => { if (live && hurtsPlayer() && overlap(e, P)) { lastHitDir = { x: Math.sign(pcx - ecx) || 1, y: -.3 }; die(); } };
   if (e.air) { // leaping: arc under gravity, deadly on contact, shake on landing
@@ -1540,6 +1563,7 @@ function cutDrum(d) {
   run.cutDrums.push(d.id); saveRun();
   addFx("hud", HUD.spark, d.x, d.y - 20, 70, { life: .5 }); seals.push({ x: d.x, y: d.y - 30, t: 0, rot: -.1 });
   Music.sfx("strike"); Music.jing(); shake = 8; hitstop = .12; buzz(30);
+  if (run.tower) { towerNext(); return; }
   run.choosing = "cycle"; saveRun();
   state = "result"; Music.stop(); setTimeout(() => showChoice("cycle"), 700);
 }
@@ -2389,9 +2413,94 @@ function drawHazards(pal) {
     ctx.fillStyle = z.kind === "fire" ? "rgba(220,90,30,.75)" : z.kind === "beam" ? "rgba(214,160,40,.8)" : "rgba(23,22,26,.8)"; ctx.fillRect(z.x, z.y, z.w, z.h);
   }
 }
+// ---------- outside the run: 비급첩, 천고탑 ----------
+// a board is a scrolling panel of rows with buttons, used by every screen outside a run
+function board(title, sub, rows, buttons) {
+  $("bdTitle").textContent = title; $("bdSub").textContent = sub || "";
+  const body = $("bdBody"); body.innerHTML = "";
+  for (const r of rows) body.appendChild(r);
+  const bb = $("bdBtns"); bb.innerHTML = "";
+  for (const [label, fn, pri] of buttons) { const b = document.createElement("button"); b.className = "btn" + (pri ? " pri" : ""); b.textContent = label; b.addEventListener("click", fn); bb.appendChild(b); }
+  state = "menu"; showScreen("board");
+}
+function bdRow(title, desc, pic, btnLabel, onBtn, disabled) {
+  const r = document.createElement("div"); r.className = "bd-row";
+  r.innerHTML = `<i class="pic"></i><div><b></b><small></small></div>`;
+  if (pic) r.querySelector(".pic").style.setProperty("--pic", pic); else r.querySelector(".pic").style.display = "none";
+  r.querySelector("b").textContent = title; r.querySelector("small").textContent = desc;
+  if (btnLabel) { const b = document.createElement("button"); b.className = "btn"; b.textContent = btnLabel; b.disabled = !!disabled; b.addEventListener("click", onBtn); r.appendChild(b); } else r.appendChild(document.createElement("span"));
+  return r;
+}
+const curLine = () => { const d = document.createElement("div"); d.className = "bd-cur"; d.innerHTML = `<span><i></i> 혼 ${META.hon}</span><span>천고 조각 ${META.shard}</span>`; return d; };
+const bookCap = () => 8 + Math.min(4, META.bld.bigeup);         // 비급 a 비급첩 can hold
+const shelfCap = () => 3 + Math.min(4, META.bld.bigeup);        // 비급첩 kept at once
+const perkName = id => (CHOSIK.find(c => c.id === id) || { name: id }).name;
+function bookLine(bk) { return `${WEAPONS[bk.weapon || "hwando"].name}${bk.oath ? " · " + OATHS.find(o => o.id === bk.oath).name : ""} · 비급 ${bk.perks.filter(id => !(CHOSIK.find(c => c.id === id) || {}).tf).length} · 최고 ${bk.best || 0}층`; }
+// sealing: the run's 변형, weapon and oath come along; of the rest, only as many 비급 as the book can hold
+function sealScreen() {
+  const r = sealable; if (!r) return;
+  const tfs = r.perks.filter(id => (CHOSIK.find(c => c.id === id) || {}).tf), rest = r.perks.filter(id => id !== "sum" && !tfs.includes(id));
+  const pick = new Set(rest.slice(0, bookCap()));
+  const name = document.createElement("input"); name.className = "bd-name"; name.maxLength = 12; name.value = `제${(META.firsts.bookN || 0) + 1}첩`;
+  const chips = document.createElement("div"); chips.className = "chips";
+  const info = document.createElement("small");
+  const draw = () => { chips.innerHTML = ""; for (const id of tfs) { const c = document.createElement("span"); c.className = "chip fixed"; c.textContent = "변형 · " + perkName(id); chips.appendChild(c); }
+    for (const id of rest) { const c = document.createElement("button"); c.className = "chip" + (pick.has(id) ? " on" : ""); c.textContent = perkName(id);
+      c.addEventListener("click", () => { if (pick.has(id)) pick.delete(id); else if (pick.size < bookCap()) pick.add(id); else toast(`비급은 ${bookCap()}개까지`); draw(); }); chips.appendChild(c); }
+    info.textContent = `고른 비급 ${pick.size} / ${bookCap()} · ${WEAPONS[r.weapon || "hwando"].name}${r.oath ? " · " + OATHS.find(o => o.id === r.oath).name : ""}`; };
+  draw();
+  const save = (replace) => {
+    const bk = { id: Date.now().toString(36), name: name.value.trim() || "이름 없는 첩", weapon: r.weapon || "hwando", oath: r.oath || null, char: r.char || "mumyeong", perks: [...tfs, ...pick], best: 0, made: todayKey() };
+    if (replace != null) META.books.splice(replace, 1, bk); else META.books.push(bk);
+    META.firsts.bookN = (META.firsts.bookN || 0) + 1; saveMeta(); sealable = null; $("bSeal").hidden = true; toast(`「${bk.name}」를 봉인했다`);
+    if (typeof gainStroke === "function") gainStroke("seal"); toMenu();
+  };
+  const rows = [name, chips, info];
+  if (META.books.length >= shelfCap()) { const t = document.createElement("small"); t.textContent = "비급첩을 둘 자리가 없다. 하나를 골라 덮어쓴다."; rows.push(t);
+    META.books.forEach((bk, i) => rows.push(bdRow(bk.name, bookLine(bk), null, "덮어쓰기", () => save(i)))); }
+  board("비급첩에 봉인", "이 판의 빌드에서 핵심만 골라 담는다", rows, META.books.length >= shelfCap() ? [["그만두기", () => showScreen("result")]] : [["봉인", () => save(null), true], ["그만두기", () => showScreen("result")]]);
+}
+// 천고탑: pick a 비급첩, then climb until the breath runs out
+function towerScreen() {
+  const rows = [curLine()];
+  if (!META.books.length) rows.push(bdRow("봉인된 비급첩이 없다", "천고를 한 번 이상 벤 판이 끝나면 그 빌드를 비급첩에 봉인할 수 있다."));
+  META.books.forEach((bk, i) => rows.push(bdRow(bk.name, bookLine(bk), null, "오르기", () => startTower(bk))));
+  board("천고탑", `최고 기록 ${META.towerBest}층 · 층마다 우두머리, 적은 늘고 징조는 쌓인다`, rows, [["돌아가기", toMenu]]);
+}
+function startTower(bk) {
+  run = { tower: true, book: bk.id, seed: (Math.random() * 2 ** 32) >>> 0, daily: false, dateKey: todayKey(), m: LAST_M, floor: 1, cycle: 0, cp: -1, dead: [],
+    breath: Math.min(oath2cap(bk.oath), 3 + (META.bld.sadang >= 1 ? 1 : 0)), time: 0, deaths: 0, kills: 0, strikes: 0, slashes: 0, perks: bk.perks.slice(), weapon: bk.weapon, oath: bk.oath, char: bk.char || "mumyeong", omens: [], cutDrums: [] };
+  mode = "tower"; saveRun();
+  if (META.ended && typeof upPicks === "function") upPicks(() => { saveRun(); showInterlude(); }); else showInterlude();
+}
+const oath2cap = o => o === "pi" ? 2 : 5;
+function towerNext() { // 천고 of this floor is cut: one floor up, another omen, and a rest every third floor
+  run.floor++; run.cycle = run.floor - 1; run.cp = -1; run.dead = []; run.cutDrums = []; run.honDouble = 0;
+  if (typeof gainStroke === "function") gainStroke("floor", run.floor - 1);
+  if (run.floor % 10 === 0 || run.floor > 1) { const pool = OMENS.filter(o => !o.calm && !run.omens.includes(o.id) && o.id !== "geupbak"); if (pool.length && run.floor > 1 && run.omens.length < 6) run.omens.push(pool[(Math.random() * pool.length) | 0].id); }
+  saveRun(); state = "result"; Music.stop();
+  setTimeout(() => {
+    if ((run.floor - 1) % 3 === 0) pickScreen("쉼터", `천고탑 ${run.floor - 1}층을 넘었다`, [
+      { name: "숨 고르기", han: "息", desc: "숨 하나를 되찾는다" }, { name: "혼 모으기", han: "魂", desc: "이번 판에서 얻는 혼이 늘어난다" }, { name: "곧장 오르기", han: "登", desc: "아무것도 하지 않는다", calm: true }],
+      it => { if (it.han === "息") run.breath = Math.min(breathCap(), run.breath + 1); if (it.han === "魂") run.honDouble = (run.honDouble || 0) + .25; saveRun(); Music.stop(); showInterlude(); });
+    else showInterlude();
+  }, 700);
+}
+// first time a guardian falls: a 천고 조각 and its entry in the 도감
+function codexBoss(e) {
+  const c = META.codex[e.kind] = META.codex[e.kind] || { kills: 0, marks: [] };
+  if (!c.kills) { run.firstBoss = (run.firstBoss || 0) + 1; toast(`도감에 ${BOSSES[e.kind].name}의 이름이 적혔다`); }
+  c.kills++;
+  const mk = m => { if (!c.marks.includes(m)) c.marks.push(m); };
+  if (e.fightBreath != null && run.breath >= e.fightBreath) mk("nohit");
+  if (!e.softHits) mk("strike");
+  if ((run.upPts || 0) >= 10) mk("up");
+  if (META.ended && typeof gainStroke === "function") {} saveMeta();
+  if (typeof gainStroke === "function") gainStroke("codex");
+}
 // ---------- screens ----------
 function showScreen(id) {
-  for (const s of ["menu", "settings", "interlude", "pause", "result", "choice"]) $(s).hidden = s !== id;
+  for (const s of ["menu", "settings", "interlude", "pause", "result", "choice", "board"]) $(s).hidden = s !== id;
   const inGame = id === null;
   $("hud").hidden = !(inGame || id === "pause");
   $("pad").hidden = !inGame;
@@ -2404,6 +2513,7 @@ function buildMenu() {
   const s = store.get("run", null);
   $("bContinue").hidden = !s;
   if (s) $("bContinue").innerHTML = `<span>이어하기</span><small style="color:inherit">${stageName(s.m, s)} · 숨 ${s.breath}${s.daily ? " · 오늘의 판" : ""}</small>`;
+  $("bTower").hidden = !META.books.length; $("towerInfo").textContent = META.books.length ? `최고 ${META.towerBest}층 · 비급첩 ${META.books.length}권` : "";
   const d = store.get("daily." + todayKey(), null), dt = new Date();
   $("dailyInfo").textContent = `${dt.getMonth() + 1}월 ${dt.getDate()}일` + (d ? ` · 관문 ${d.reached} ${fmt(d.time)}` : "");
 }
@@ -2431,6 +2541,10 @@ $("bNew").addEventListener("click", () => newRun(false));
 $("bDaily").addEventListener("click", () => newRun(true));
 $("bContinue").addEventListener("click", continueRun);
 $("bTut").addEventListener("click", startTutorial);
+$("bTower").addEventListener("click", towerScreen);
+$("bSeal").addEventListener("click", sealScreen);
+$("bHermit").addEventListener("click", () => typeof hermitScreen === "function" && hermitScreen());
+$("bCodex").addEventListener("click", () => typeof codexScreen === "function" && codexScreen());
 $("bEnter").addEventListener("click", enterMadang);
 $("bPause").addEventListener("click", pauseGame);
 $("bResume").addEventListener("click", resumeGame);
