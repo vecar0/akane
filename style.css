@@ -184,3 +184,11 @@ body, .btn, .set > span, #hud .t { font-weight: 400; }
 .bd-cur { display: flex; gap: 16px; justify-content: center; font-family: var(--f-head); font-size: 15px; }
 .bd-cur i { display: inline-block; width: 18px; height: 18px; vertical-align: -3px; background: var(--ui-hon) center / contain no-repeat; }
 .bd-name { width: 100%; padding: 8px; font-family: var(--f-head); font-size: 16px; border: 0; background: rgba(255, 255, 255, .6); }
+/* 이름의 획: the true name surfaces left to right as strokes return */
+.nameline { margin: -4px 0 8px; }
+.nameline b { font-family: "Nanum Myeongjo", var(--f-head); font-weight: 400; font-size: 30px; letter-spacing: .3em; color: var(--seal);
+  -webkit-mask: linear-gradient(90deg, #000 calc(var(--p) * 100%), rgba(0,0,0,.08) calc(var(--p) * 100% + 6%)); mask: linear-gradient(90deg, #000 calc(var(--p) * 100%), rgba(0,0,0,.08) calc(var(--p) * 100% + 6%)); }
+.nameline small { display: block; font-size: 12px; color: var(--ink-2); letter-spacing: .1em; }
+.mem { display: grid; gap: 10px; justify-items: center; }
+.mem i { width: min(340px, 80vw, 52vh); aspect-ratio: 1; background: url(assets/lore.webp) 0 0 / 300% 300% no-repeat; box-shadow: 0 4px 16px rgba(23,22,26,.25); }
+.mem p { font-family: var(--f-head); font-size: 16px; line-height: 1.7; text-align: center; max-width: 34ch; word-break: keep-all; margin: 0; }
