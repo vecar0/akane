@@ -3,10 +3,11 @@
 "use strict";
 const T = 32;
 const $ = id => document.getElementById(id);
-const cv = $("cv"), ctx = cv.getContext("2d");
+const cv = $("cv"), ctx = cv.getContext("2d", { alpha: false });   // opaque canvas: cheaper to composite on phones
 let W = 0, H = 0, DPR = 1, SCALE = 1;
 const MOBILE = matchMedia("(pointer:coarse)").matches || /Android|iPhone|iPad/i.test(navigator.userAgent);
-let dprCap = MOBILE ? 1.5 : 2;   // phones: 1.5x is sharp enough and much lighter on the GPU; lowered further if frames run long
+const LITE = () => localStorage.getItem("chungo.lite") === "1";
+let dprCap = LITE() ? 1 : MOBILE ? 1.5 : 2;   // phones: 1.5x is sharp enough and much lighter on the GPU; lowered further if frames run long
 function resize() {
   DPR = Math.min(dprCap, window.devicePixelRatio || 1);
   for (const k in PAT) delete PAT[k];   // patterns carry the old pixel scale
@@ -71,6 +72,9 @@ const SEAL = "#c3161c", JJOK = "#27466a", JJOK_L = "#5f86b5";
 
 // ---------- images (optional; drawn procedurally when missing) ----------
 // far/mid: Higgsfield ink-wash panoramas with alpha. tex-*: seamless tiles (seam ratio checked <= 1.3).
+// A canvas we touched with getImageData lives in CPU memory, and on Android Chrome drawing it uploads the whole
+// texture to the GPU every frame. Each processed picture is turned into an ImageBitmap (GPU-resident) once ready.
+function gpuize(c, put) { if (window.createImageBitmap && c && c.getContext) createImageBitmap(c).then(put).catch(() => {}); return c; }
 const IMG = {}, PAT = {};
 let perfT = 0, perfN = 0, perfSlow = 0;   // frame-time watch for the automatic quality drop
 for (const k of ["tex-paper", "tex-stone", "tex-giwa", "tex-granite", "tex-slab"]) { const im = new Image(); im.onload = () => { IMG[k] = im; PAT[k] = null; }; im.src = "assets/" + k + ".webp"; }
@@ -84,7 +88,7 @@ function pattern(key, scale) { // world- or screen-anchored repeating pattern, b
   if (!PAT[key]) { PAT[key] = ctx.createPattern(IMG[key], "repeat"); PAT[key].setTransform(new DOMMatrix().scale(scale)); }
   return PAT[key];
 }
-for (const k of ["far", "mid"]) { const im = new Image(); im.onload = () => { IMG[k] = softened(seamlessStrip(im), k === "far" ? 3 : 2); }; im.src = "assets/" + k + ".webp"; }
+for (const k of ["far", "mid"]) { const im = new Image(); im.onload = () => { IMG[k] = gpuize(softened(seamlessStrip(im), k === "far" ? 3 : 2), bm => { IMG[k] = bm; }); }; im.src = "assets/" + k + ".webp"; }
 // Make a panorama wrap horizontally: the last 22% is cross-faded into the start, so tiling shows no cut or mirror.
 function softened(c, px) { // blur once at load, so the backdrop recedes behind the sharp pines and actors
   const o = document.createElement("canvas"); o.width = c.width; o.height = c.height; const g = o.getContext("2d");
@@ -417,7 +421,8 @@ for (const n of ["hero", "hero2", "foes", "objects", "ui", "fx", "hud", "hudsoli
   Promise.all([
     fetch(`assets/sprites/${n}.json`).then(r => r.json()),
     new Promise((res, rej) => { const im = new Image(); im.onload = () => res(im); im.onerror = rej; im.src = `assets/sprites/${n}.webp`; })
-  ]).then(([f, img]) => { SPR[n] = { f, img, inv: ["hero", "hero2", "foes", "objects", "fx", "props", "props2", "rocks", "pines", "slabs", "pillars", "guide"].includes(n) ? inkInverted(img) : null }; applyUiSprites(); }).catch(() => {});
+  ]).then(([f, img]) => { SPR[n] = { f, img, inv: ["hero", "hero2", "foes", "objects", "fx", "props", "props2", "rocks", "pines", "slabs", "pillars", "guide"].includes(n) ? inkInverted(img) : null };
+    if (SPR[n].inv) gpuize(SPR[n].inv, bm => { SPR[n].inv = bm; }); applyUiSprites(); }).catch(() => {});
 }
 function inkInverted(img) { // night palette: grey ink becomes bone white, coloured accents stay as they are
   const c = document.createElement("canvas"); c.width = img.width; c.height = img.height; const g = c.getContext("2d"); g.drawImage(img, 0, 0);
@@ -545,7 +550,7 @@ function bake(img, br, ct) {
   const id = br + "/" + ct; if (m[id]) return m[id];
   const c = document.createElement("canvas"); c.width = img.width; c.height = img.height; const g = c.getContext("2d"); g.drawImage(img, 0, 0);
   try { const d = g.getImageData(0, 0, c.width, c.height), a = d.data; for (let i = 0; i < a.length; i += 4) for (let k = 0; k < 3; k++) a[i + k] = Math.max(0, Math.min(255, ((a[i + k] * br / 255) - .5) * ct * 255 + 127.5)); g.putImageData(d, 0, 0); } catch (_) {}
-  return m[id] = c;
+  m[id] = c; gpuize(c, bm => { m[id] = bm; }); return c;
 }
 function drawPillar(c, pal) { // stacked rock segments; a grounded pillar fades into the ground over its last 56px
   const f = SPR.pillars.f[c.i], segH = c.w * f.h / f.w, img = bake(pal.night ? SPR.pillars.inv : SPR.pillars.img, .72, 1.15), base = pal.night ? .45 : .88;
@@ -2083,8 +2088,10 @@ function stepBullets(dt) {
 
 // ---------- loop ----------
 let last = performance.now(), cvInverted = false;
+let showFps = localStorage.getItem("chungo.fps") === "1", fpsNow = 0, fpsAcc = 0, fpsCnt = 0;
 function frame(now) {
   const raw = (now - last) / 1000, rdt = Math.min(0.05, raw); last = now;
+  fpsAcc += raw; fpsCnt++; if (fpsAcc >= 1) { fpsNow = Math.round(fpsCnt / fpsAcc); fpsAcc = fpsCnt = 0; hudCache = ""; }
   if (state === "play" && raw < .5) { perfT += raw; perfN++; if (perfN >= 90) { const avg = perfT / perfN; perfT = perfN = 0;   // three seconds of slow frames: draw at a lower resolution
     if (avg > 1 / 45 && dprCap > 1) { dprCap = Math.max(1, +(dprCap - .25).toFixed(2)); resize(); } } }
   if (state === "play" || state === "dead") {
@@ -2140,7 +2147,7 @@ let hudCache = "";
 function updateHud() {
   const t = fmt(run.time), pip = (P.onGround || P.airDash > 0) && P.dashCd <= 0, hk = !!hookCand, key = t + pip + hk;
   if (key === hudCache) return; hudCache = key;
-  $("hTime").textContent = t; $("pip").classList.toggle("on", pip); $("bHook").classList.toggle("ready", hk);
+  $("hTime").textContent = t + (showFps ? ` · ${fpsNow}fps ${DPR}x` : ""); $("pip").classList.toggle("on", pip); $("bHook").classList.toggle("ready", hk);
 }
 function toast(msg) { const el = $("toast"); el.textContent = msg; el.classList.add("on"); toastT = 1.6; }
 function buzz(ms) { try { navigator.vibrate && navigator.vibrate(ms); } catch (e) {} }
@@ -2174,12 +2181,12 @@ function render(rdt) {
   ctx.setTransform(1, 0, 0, 1, 0, 0);
   const ssn0 = LV && state !== "menu" && !pal.night ? season() : 0;   // the season's tint is baked into the paper, so the screen is washed once, not twice
   const paperTex = ssn0 ? tintedPaper(ssn0) : pattern("tex-paper", DPR * 0.9);
-  if (paperTex) { ctx.globalCompositeOperation = "multiply"; ctx.globalAlpha = pal.rim ? .35 : .9; ctx.fillStyle = paperTex; ctx.fillRect(0, 0, cv.width, cv.height); ctx.globalCompositeOperation = "source-over"; ctx.globalAlpha = 1; }
+  if (paperTex && !LITE()) { ctx.globalCompositeOperation = "multiply"; ctx.globalAlpha = pal.rim ? .35 : .9; ctx.fillStyle = paperTex; ctx.fillRect(0, 0, cv.width, cv.height); ctx.globalCompositeOperation = "source-over"; ctx.globalAlpha = 1; }
   else { ctx.fillStyle = paperPat; ctx.fillRect(0, 0, cv.width, cv.height); }
   if (!LV || state === "menu") return;
   const ssn = season(), tt = performance.now() / 1000;
   if (ssn && !pal.night && !IMG["tex-paper"]) { ctx.globalCompositeOperation = "multiply"; ctx.fillStyle = SEASON_TINT[ssn]; ctx.fillRect(0, 0, cv.width, cv.height); ctx.globalCompositeOperation = "source-over"; }
-  drawWeather(ssn, tt, pal);
+  if (!LITE()) drawWeather(ssn, tt, pal);
 
   ctx.setTransform(k, 0, 0, k, Math.round((W / 2 + sx) * DPR - cam.x * k), Math.round((H / 2 + sy) * DPR - cam.y * k));
   const x0 = Math.max(0, Math.floor((cam.x - vw / 2) / T) - 1), x1 = Math.min(LV.w - 1, Math.ceil((cam.x + vw / 2) / T) + 1);
@@ -2487,7 +2494,7 @@ function render(rdt) {
     const fg = ctx.createRadialGradient(px, py, r * .8, px, py, r * 2.6); fg.addColorStop(0, "rgba(226,222,212,0)"); fg.addColorStop(1, pal.night ? "rgba(30,28,30,.9)" : "rgba(226,222,212,.9)");
     ctx.fillStyle = fg; ctx.fillRect(0, 0, cv.width, cv.height);
   }
-  ctx.fillStyle = vignette; ctx.fillRect(0, 0, cv.width, cv.height);
+  if (!LITE()) { ctx.fillStyle = vignette; ctx.fillRect(0, 0, cv.width, cv.height); }
   const boss = enemies.find(e => e.type === "b" && e.alive && e.awake);
   if (boss && (state === "play" || state === "dead" || state === "pause")) { // 수문장's life as a brush bar along the top
     ctx.setTransform(DPR, 0, 0, DPR, 0, 0);
@@ -3145,7 +3152,7 @@ function recolorSash() {
       const v = r / 255; if (hue < 0) { d[i] = d[i + 1] = d[i + 2] = 200 + v * 50; continue; }
       const h = hue / 60, x = 1 - Math.abs(h % 2 - 1), rgb = h < 1 ? [1, x, 0] : h < 2 ? [x, 1, 0] : h < 3 ? [0, 1, x] : h < 4 ? [0, x, 1] : h < 5 ? [x, 0, 1] : [1, 0, x];
       d[i] = rgb[0] * v * 230; d[i + 1] = rgb[1] * v * 230; d[i + 2] = rgb[2] * v * 230; }
-    g.putImageData(id, 0, 0); s.img = c; }
+    g.putImageData(id, 0, 0); s.img = c; gpuize(c, bm => { if (s.img === c) s.img = bm; }); }
 }
 // ---------- 수행: three tasks a day ----------
 const QUEST_POOL = [
@@ -3354,6 +3361,10 @@ $("bGiveUp").addEventListener("click", () => { state = "play"; endRun(false); $(
 $("bToMenu").addEventListener("click", () => { saveRun(); toMenu(); });
 $("bPauseSet").addEventListener("click", () => openSettings("pause"));
 $("bSettings").addEventListener("click", () => openSettings("menu"));
+const liteLabel = () => { $("bLite").textContent = LITE() ? "켜짐" : "꺼짐"; $("bFps").textContent = showFps ? "켜짐" : "꺼짐"; };
+liteLabel();
+$("bLite").addEventListener("click", () => { localStorage.setItem("chungo.lite", LITE() ? "0" : "1"); dprCap = LITE() ? 1 : MOBILE ? 1.5 : 2; resize(); liteLabel(); });
+$("bFps").addEventListener("click", () => { showFps = !showFps; localStorage.setItem("chungo.fps", showFps ? "1" : "0"); liteLabel(); });
 // touch buttons: a size for all of them and a place for each, kept on this device
 const padCfg = Object.assign({ s: 1.2, pos: {} }, store.get("pad3", {}));   // "pad2": the new default layout replaces any older arrangement
 function applyPad() {
