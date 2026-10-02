@@ -448,6 +448,7 @@ function applyUiSprites() { // brush-painted UI pieces become CSS images
     for (let i = 0; i < 9; i++) root.setProperty("--chosik-" + (100 + i), url("rogue2", i));
   }
   if (SPR.hero3 && SPR.weapons && META.sash && META.sash !== "red" && !SPR.hero3.orig) recolorSash();
+  if (SPR.vis && !root.getPropertyValue("--vis-seal")) root.setProperty("--vis-seal", url("vis", VIS.seal));   // the carved stamp frame for the result seal
   if (SPR.misc && !root.getPropertyValue("--ui-hon")) { root.setProperty("--ui-hon", url("misc", 8)); for (let i = 0; i < 9; i++) root.setProperty("--misc-" + i, url("misc", i)); }
   for (const k in BOSSES) { const B = BOSSES[k]; if (B.sheet !== "hero3" && SPR[B.sheet] && !root.getPropertyValue("--boss-" + k)) root.setProperty("--boss-" + k, url(B.sheet, B.idle)); }   // 도감 portraits
   if (SPR.slashfx && !root.getPropertyValue("--chosik-505")) for (let i = 5; i < 9; i++) root.setProperty("--chosik-50" + i, url("slashfx", i));
@@ -1014,6 +1015,7 @@ function showChoice(kind) {   // kind: "madang" after a cleared 마당, "cycle" 
       run.cycle = (run.cycle || 0) + 1; run.m = 0; run.breath = Math.max(run.breath, 3); run.cp = -1; run.dead = []; run.cutDrums = []; run.omen = null;
       run.choosing = "omen"; saveRun(); showOmen(); return;
     }
+    if (kind === "tower") { saveRun(); towerRest(); return; }
     saveRun(); Music.stop(); showInterlude();
   };
   const owned = id => (run.perks || []).includes(id);
@@ -1052,7 +1054,7 @@ function showChoice(kind) {   // kind: "madang" after a cleared 마당, "cycle" 
   if (!run.discarded && mine.length && run.breath < breathCap() && !oath("godok")) { const db = document.createElement("button"); db.className = "btn ghost"; db.textContent = "비급 버리고 숨 +1";
     db.addEventListener("click", () => discardScreen(kind)); tools.appendChild(db); }
   if (tools.children.length) box.appendChild(tools);
-  $("chMadang").textContent = kind === "cycle" ? `천고를 베었다 · ${(run.cycle || 0) + 1}번째` : kind === "bonus" ? "징조의 대가" : `${josa(stageOf(run.m - 1).ko, "을", "를")} 넘었다 · ${stageOf(run.m - 1).han}`;
+  $("chMadang").textContent = kind === "tower" ? `천고탑 ${run.floor - 1}층을 넘었다` : kind === "cycle" ? `천고를 베었다 · ${(run.cycle || 0) + 1}번째` : kind === "bonus" ? "징조의 대가" : `${josa(stageOf(run.m - 1).ko, "을", "를")} 넘었다 · ${stageOf(run.m - 1).han}`;
   state = "choice"; Music.pause(); if (P) P.focus = false; for (const k in held) held[k] = 0; showScreen("choice");
 }
 const SIMBEOP_START = () => (SIMBEOP.find(m => m.id === run.simbeop) || {}).start;
@@ -1096,7 +1098,7 @@ function endRun(won) {
     const a = document.createElement("span"), b = document.createElement("b"); a.textContent = k; b.textContent = v; $("rStats").append(a, b);
   }
   let rec = "";
-  sealable = !run.tower && !run.daily && (run.cycle || 0) >= 1 ? JSON.parse(JSON.stringify(run)) : null; $("bSeal").hidden = !sealable;
+  sealable = !run.daily && ((!run.tower && (run.cycle || 0) >= 1) || (run.fresh && run.floor > 3)) ? JSON.parse(JSON.stringify(run)) : null; $("bSeal").hidden = !sealable;
   if (run.tower) {
     const bk = META.books.find(b => b.id === run.book); if (bk && reached > (bk.best || 0)) { bk.best = reached; rec = "이 비급첩의 최고 층"; }
     if (reached > META.towerBest) { META.towerBest = reached; rec = "천고탑 최고 기록"; } saveMeta();
@@ -1244,15 +1246,12 @@ function killCamOn(e) {
   killCam = Math.max(killCam, .55); hitstop = Math.max(hitstop, .05); shake = Math.max(shake, 6); Music.sfx("strike");
   cutLines.push({ x, y, a: Math.atan2(d.y, d.x), t: 0, life: .7 });
   seals.push({ x, y: e.y + 6, t: 0, rot: (Math.random() - .5) * .3 });
-  if (SPR.vis) addFx("vis", VIS.splat, x, y, 52, { life: .6, grow: .3, ay: .5, rot: Math.random() * 6.28 });
-  for (let i = 0; i < 22; i++) { const a = Math.atan2(d.y, d.x) + (Math.random() - .5) * 1, v = 120 + Math.random() * 380; parts.push({ x, y, vx: Math.cos(a) * v, vy: Math.sin(a) * v - 50, life: .6, max: .6, c: i % 5 ? SEAL : "#7a0d12", s: 1.2 + Math.random() * 2 }); }
-  bleed(x, y, d, false);
+
 }
 function drawCutLines() { // a short wet cut of blood across the body, drawn in one stroke
   for (const c of cutLines) { const k = c.t / c.life, grow = Math.min(1, c.t / .07), w = 1 - Math.max(0, k - .4) / .6;
     ctx.save(); ctx.translate(c.x, c.y); ctx.rotate(c.a); ctx.globalAlpha = w;
-    if (SPR.vis) { const f = SPR.vis.f[VIS.cut], L = 110 * grow; ctx.scale(1, .45); drawSprite("vis", VIS.cut, 0, 0, L / f.w, false, .5, false, .45); }   // a thin wet line
-    else { const L = 75 * grow; ctx.fillStyle = SEAL; ctx.beginPath(); ctx.moveTo(-L, 0); ctx.lineTo(0, -5); ctx.lineTo(L, 0); ctx.lineTo(0, 5); ctx.closePath(); ctx.fill(); }
+    { const L = 70 * grow, th = 2.2 * w + .6; ctx.fillStyle = "#a3121a"; ctx.beginPath(); ctx.moveTo(-L, 0); ctx.quadraticCurveTo(0, -th, L, 0); ctx.quadraticCurveTo(0, th, -L, 0); ctx.fill(); }   // a thin line of blood, nothing more
     ctx.restore(); }
   ctx.globalAlpha = 1;
 }
@@ -2964,7 +2963,8 @@ function sealScreen() {
 // 천고탑: pick a 비급첩, then climb until the breath runs out
 function towerScreen() {
   const rows = [curLine()];
-  if (!META.books.length) rows.push(bdRow("봉인된 비급첩이 없다", "천고를 한 번 이상 벤 판이 끝나면 그 빌드를 비급첩에 봉인할 수 있다."));
+  rows.push(bdRow("맨몸으로 오르기", "검객·무기·심법·서약을 고르고 빈손으로 오른다. 층을 넘을 때마다 비급 하나", null, "오르기", startTowerFresh));
+  if (!META.books.length) rows.push(bdRow("봉인된 비급첩이 없다", "천고를 한 번 이상 벤 판이 끝나면 그 빌드를 비급첩에 봉인해, 처음부터 그 빌드로 오를 수 있다."));
   META.books.forEach((bk, i) => rows.push(bdRow(bk.name, bookLine(bk), null, "오르기", () => startTower(bk))));
   board("천고탑", `최고 기록 ${META.towerBest}층 · 층마다 우두머리, 적은 늘고 징조는 쌓인다`, rows, [["돌아가기", toMenu]]);
 }
@@ -2975,17 +2975,23 @@ function startTower(bk) {
   if (META.ended && typeof upPicks === "function") upPicks(() => { saveRun(); showInterlude(); }); else showInterlude();
 }
 const oath2cap = o => o === "pi" ? 2 : 5;
+function startTowerFresh() { // no book: pick the hand like a new run, then climb, learning one 비급 a floor
+  run = { tower: true, fresh: true, seed: (Math.random() * 2 ** 32) >>> 0, daily: false, dateKey: todayKey(), m: LAST_M, floor: 1, cycle: 0, cp: -1, dead: [],
+    breath: 3 + (META.bld.sadang >= 1 ? 1 : 0), time: 0, deaths: 0, kills: 0, strikes: 0, slashes: 0, perks: [], weapon: "hwando", oath: null, char: "mumyeong", omens: [], picking: true };
+  mode = "tower"; saveRun(); startPicks();
+}
+function towerRest() {
+  if ((run.floor - 1) % 3 === 0) pickScreen("쉼터", `천고탑 ${run.floor - 1}층을 넘었다`, [
+    { name: "숨 고르기", han: "息", desc: "숨 하나를 되찾는다" }, { name: "혼 모으기", han: "魂", desc: "이번 판에서 얻는 혼이 늘어난다" }, { name: "곧장 오르기", han: "登", desc: "아무것도 하지 않는다", calm: true }],
+    it => { if (it.han === "息") run.breath = Math.min(breathCap(), run.breath + 1); if (it.han === "魂") run.honDouble = (run.honDouble || 0) + .25; saveRun(); Music.stop(); showInterlude(); });
+  else { Music.stop(); showInterlude(); }
+}
 function towerNext() { // 천고 of this floor is cut: one floor up, another omen, and a rest every third floor
   run.floor++; run.cycle = run.floor - 1; run.cp = -1; run.dead = []; run.cutDrums = []; run.honDouble = 0;
   if (typeof gainStroke === "function") gainStroke("floor", run.floor - 1);
   if (run.floor % 10 === 0 || run.floor > 1) { const pool = OMENS.filter(o => !o.calm && !run.omens.includes(o.id) && o.id !== "geupbak"); if (pool.length && run.floor > 1 && run.omens.length < 6) run.omens.push(pool[(Math.random() * pool.length) | 0].id); }
   saveRun(); state = "result"; Music.stop();
-  setTimeout(() => {
-    if ((run.floor - 1) % 3 === 0) pickScreen("쉼터", `천고탑 ${run.floor - 1}층을 넘었다`, [
-      { name: "숨 고르기", han: "息", desc: "숨 하나를 되찾는다" }, { name: "혼 모으기", han: "魂", desc: "이번 판에서 얻는 혼이 늘어난다" }, { name: "곧장 오르기", han: "登", desc: "아무것도 하지 않는다", calm: true }],
-      it => { if (it.han === "息") run.breath = Math.min(breathCap(), run.breath + 1); if (it.han === "魂") run.honDouble = (run.honDouble || 0) + .25; saveRun(); Music.stop(); showInterlude(); });
-    else showInterlude();
-  }, 700);
+  setTimeout(() => { if (run.fresh) { run.choosing = "tower"; saveRun(); showChoice("tower"); } else towerRest(); }, 700);
 }
 // first time a guardian falls: a 천고 조각 and its entry in the 도감
 function codexBoss(e) {
@@ -3213,7 +3219,7 @@ function buildMenu() {
   const s = store.get("run", null);
   $("bContinue").hidden = !s;
   if (s) $("bContinue").innerHTML = `<span>이어하기</span><small style="color:inherit">${stageName(s.m, s)} · 숨 ${s.breath}${s.daily ? " · 오늘의 판" : ""}</small>`;
-  $("bTower").hidden = !META.books.length; $("towerInfo").textContent = META.books.length ? `최고 ${META.towerBest}층 · 비급첩 ${META.books.length}권` : "";
+  $("bTower").hidden = false; $("towerInfo").textContent = `무한 · 최고 ${META.towerBest}층` + (META.books.length ? ` · 비급첩 ${META.books.length}권` : "");
   const d = store.get("daily." + todayKey(), null), dt = new Date();
   $("dailyInfo").textContent = `${dt.getMonth() + 1}월 ${dt.getDate()}일` + (d ? ` · 관문 ${d.reached} ${fmt(d.time)}` : "");
 }
