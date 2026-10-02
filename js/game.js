@@ -134,12 +134,12 @@ const CHOSIK = [
   { id: "sum", name: "숨", han: "息", kind: "생존", desc: "숨 하나를 되찾는다", icon: 8, repeat: true },
   // 조준 — pick one: what the aimed dash becomes
   { id: "d_far", name: "원섬", han: "遠閃", kind: "조준", desc: "조준 대시가 1.8배 멀리 날아가고, 베는 폭이 두 배 넓어진다", icon: 201 },
-  { id: "d_sunbo", name: "순보", han: "瞬步", kind: "조준", desc: "조준 대시를 놓을 때 겨눈 쪽에 적이 있으면, 그 등 뒤로 순간이동하며 벤다", icon: 850 },
+  { id: "d_sunbo", name: "순보", han: "瞬步", kind: "조준", desc: "조준을 놓을 때 겨눈 쪽 가까이(7칸) 적이 있으면 그 등 뒤로 순간이동하며 벤다 — 우두머리에겐 온전한 일격이 아니고, 뒤에 잠깐 대시를 못 쓴다", icon: 850 },
   { id: "d_sun", name: "연환", han: "連環", kind: "조준", desc: "조준 대시로 적을 베면 공중 대시가 하나 더 쌓이고, 곧바로 다시 조준 슬로우에 들어간다 (대시를 누르면 날아간다)", icon: 4 },
   { id: "d_jeong", name: "정중동", han: "靜中動", kind: "조준", desc: "조준 슬로우가 두 배 오래, 더 느리게 흐르고, 조준이 겨눈 쪽의 적에게 저절로 붙는다", icon: 106 },
   { id: "d_beat", name: "박섬", han: "拍閃", kind: "조준", desc: "박자에 맞춰 놓은 조준 대시는 공중 대시를 쓰지 않고, 베는 폭이 세 배가 된다", icon: 208 },
   { id: "d_hover", name: "부동", han: "不動", kind: "조준", desc: "공중에서 조준하는 동안 그 자리에 멈춰 선다 — 떨어지지 않고 느긋하게 겨눈다", icon: 6 },
-  { id: "d_charge", name: "축기", han: "蓄氣", kind: "조준", desc: "오래 겨눌수록 세진다 — 0.8초를 채우면 1.8배 멀리, 두 배 넓게 벤다. 너무 일찍 놓으면 짧게 나간다", icon: 506 },
+  { id: "d_charge", name: "축기", han: "蓄氣", kind: "조준", desc: "0.8초를 꽉 채워 놓으면 대시가 멈춘 자리에서 참격파가 겨눈 쪽으로 멀리 날아가 일격으로 벤다. 너무 일찍 놓으면 대시가 짧다", icon: 506 },
   { id: "d_bounce", name: "반섬", han: "反閃", kind: "조준", desc: "조준 대시가 벽이나 바닥에 부딪히면 한 번 튕겨 나가며 계속 벤다", icon: 508 },
   { id: "d_return", name: "회선", han: "回旋", kind: "조준", desc: "조준 대시로 적을 베었다면, 0.6초 안에 대시를 눌러 처음 자리로 되돌아가며 한 번 더 벤다 (대시를 쓰지 않는다)", icon: 602 },
   { id: "d_chain", name: "뇌인", han: "雷引", kind: "조준", desc: "조준 대시로 적을 쓰러뜨리면 번개가 가장 가까운 적 하나에게 튀어 함께 벤다", icon: 606 },
@@ -1157,15 +1157,15 @@ function aimRay(d, L0, wide, bounce, ox, oy) { // one aimed shot: a line that st
 }
 function sunbo() { // 순보: the aimed release steps through to the back of the foe it points at, and cuts
   const d = aimDir(), cx = P.x + P.w / 2, cy = P.y + P.h / 2; let t = null, bs = 1e9;
-  for (const e of enemies) { if (!e.alive || ghostly(e)) continue; const dx = e.x + e.w / 2 - cx, dy = e.y + e.h / 2 - cy, L = Math.hypot(dx, dy); if (L > 340 || L < 8) continue;
-    if ((dx * d.x + dy * d.y) / L < .7 || !los(cx, cy, e.x + e.w / 2, e.y + e.h / 2)) continue; if (L < bs) { bs = L; t = e; } }
+  for (const e of enemies) { if (!e.alive || ghostly(e)) continue; const dx = e.x + e.w / 2 - cx, dy = e.y + e.h / 2 - cy, L = Math.hypot(dx, dy); if (L > 230 || L < 8) continue;
+    if ((dx * d.x + dy * d.y) / L < .88 || !los(cx, cy, e.x + e.w / 2, e.y + e.h / 2)) continue; if (L < bs) { bs = L; t = e; } }
   if (!t) return false;
   const side = Math.sign(t.x + t.w / 2 - cx) || P.face, nx = t.x + t.w / 2 + side * (t.w / 2 + 16) - P.w / 2, ny = t.y + t.h - P.h - .01;
   if (rectSolid(nx, ny, P.w, P.h)) return false;
   addFx("perkfx", PF.clone, cx, P.y + P.h, 60, { life: .3, ay: 1, flip: P.face < 0, a: .6 });
   beams.push({ x0: cx, y0: cy, x1: nx + P.w / 2, y1: ny + P.h / 2, t: 0, life: .25 });
   P.x = nx; P.y = ny; P.vx = 0; P.vy = -120; P.face = -side; if (!P.onGround) P.airDash = Math.max(0, P.airDash - 1);
-  P.aimedUntil = songPos + .45; P.aimDash = true; hurtEnemy(t, 2); P.aimDash = false;
+  P.aimedUntil = songPos + .45; P.aimDash = true; hurtEnemy(t, true); P.aimDash = false; P.dashCd = .55;   // a bodily step: it lands a cut, not the full 일격, and the feet need a moment
   addFx("perkfx", PF.splash, t.x + t.w / 2, t.y + t.h / 2, 40, { life: .25 }); Music.sfx("dash"); return true;
 }
 function startDash(dir, forced) {
@@ -1527,8 +1527,8 @@ function frameInput(rdt) {
       if (keep) P.airDash++;   // 박섬: on the beat, the air dash is not spent
       P.beatDash = has("d_beat") && onBeat; P.cloudT = 0; if (!tap && !P.onGround) P.aimChain = (P.aimChain || 0) + 1;   // shorter next time, until the feet touch ground
       if (!tap && wrule() === "ssang" && (P.gise || 0) >= 3 && songPos - (P.giseAt ?? -9) < 3) { P.giseDash = P.gise; P.gise = 0; if (!P.onGround) P.airDash++; ringFx(P.x + P.w / 2, P.y + P.h / 2, 60, "rgba(195,22,28,.9)", .3); }   // 기세: the built-up momentum rides the dash
-      P.chargeK = has("d_charge") ? (P.focusT >= .8 ? 1.8 : P.focusT < .35 ? .6 : 1) : 1;   // 축기: the longer the aim, the further the cut
-      if (P.chargeK > 1) { ringFx(P.x + P.w / 2, P.y + P.h / 2, 70, "rgba(195,22,28,.9)", .3); shake = Math.max(shake, 5); }
+      P.chargeK = has("d_charge") && P.focusT < .35 ? .6 : 1; P.chargeFull = has("d_charge") && P.focusT >= .8;   // 축기: full → a wave flies on; too early → a short dash
+      if (P.chargeFull) { ringFx(P.x + P.w / 2, P.y + P.h / 2, 70, "rgba(195,22,28,.9)", .3); shake = Math.max(shake, 5); }
       if (chr("munyeo") && has("m_talis")) talismans(aimDir());
       if (chr("posu") && posuShot()) {}
       else if (!(!tap && has("d_sunbo") && sunbo())) { P.aimDash = true; if (!startDash(null, true)) P.aimDash = false; } } }
@@ -1572,7 +1572,7 @@ function stepPlayer(dt) {
     for (const g of LV.targets) if (g.t <= 0 && Math.hypot(g.x - P.x - P.w / 2, g.y - P.y - P.h / 2) < 30) breakTarget(g);
     if (P.aimDash && has("m_wind") && (P.windD = (P.windD || 0) + DASHV * dt) > 36) { P.windD = 0;   // 회오리 길
       bullets.push({ x: P.x + P.w / 2, y: P.y + P.h / 2, vx: 0, vy: 0, friendly: true, tornado: true, r: 16, pierce: true, life: .8, owner: null }); }
-    if (P.aimDash) { const cx = P.x + P.w / 2, cy = P.y + P.h / 2, wide = P.beatDash ? 90 : P.giseDash ? 75 : has("d_far") || P.chargeK > 1 ? 60 : 30;
+    if (P.aimDash) { const cx = P.x + P.w / 2, cy = P.y + P.h / 2, wide = P.beatDash ? 90 : P.giseDash ? 75 : has("d_far") ? 60 : 30;
       for (const e of enemies) if (e.alive && !ghostly(e) && !P.dashHit.has(e.id) && Math.abs(e.x + e.w / 2 - cx) < wide + e.w / 2 && Math.abs(e.y + e.h / 2 - cy) < wide + e.h / 2) { P.dashHit.add(e.id); dashHurt(e); }   // 관통: a wider cut
       if (has("d_reflect") || chr("munyeo")) for (const b of bullets) if (!b.friendly && !b.noReflect && b.life > 0 && Math.hypot(b.x - cx, b.y - cy) < 44) {   // 역탄: the shot turns on its shooter
         const o = b.owner, sp = Math.max(420, Math.hypot(b.vx, b.vy) * 1.4); b.friendly = true; b.pierce = true; b.life = 3; b.g = 0; b.home = 0; b.boom = 0;
@@ -1592,6 +1592,9 @@ function stepPlayer(dt) {
           addFx("slashfx", SF.moon, cx, cy, 180, { life: .35, grow: .3, a: .8 }); }
         if (has("m_float")) P.floatT = .7;   // 강신
         if (has("m_soul") && P.dashFrom) P.echo = { x0: P.dashFrom.x, y0: P.dashFrom.y - P.h / 2, x1: cx, y1: cy, t: .35 }; }   // 넋 분신
+      if (P.aimDash && P.chargeFull) { const d = P.dashDir, a = Math.atan2(d.y, d.x);   // 축기: the stored breath leaves the blade as a crescent
+        bullets.push({ x: P.x + P.w / 2 + d.x * 20, y: P.y + P.h / 2 + d.y * 20, vx: d.x * 900, vy: d.y * 900, ang: a, friendly: true, moon: true, strike: true, pierce: true, r: 22, life: .38, owner: null }); Music.sfx("slash"); }
+      P.chargeFull = false;
       if (P.aimDash && has("d_return") && !P.retDash && P.dashHit.size && P.dashFrom) { P.returnT = .6; P.returnTo = { x: P.dashFrom.x, y: P.dashFrom.y - P.h / 2 }; } P.retDash = false; P.chargeK = 1;
       P.iaiCut = false; P.ram = false; P.flowDash = false; P.aimDash = false; P.beatDash = false; P.tapDash = false; P.giseDash = 0; resDashEnd();
       if (P.reAim && !P.onGround && P.airDash > 0) { P.focus = true; P.focusTap = true; P.focusT = 0; Music.muffle(true); } P.reAim = false;   // 순환
