@@ -37,7 +37,7 @@ function stageOf(m, r = run) {
   if (m === LAST_M && r && r.seed != null) { const l = LAIR[bossFor(r.seed, r.cycle || 0, m)]; if (l) return { han: l[0], ko: l[1] }; }
   return STAGE[m];
 }
-const stageName = (m, r) => { const s = stageOf(m, r); return `${s.han} ${s.ko}`; };
+const stageName = (m, r) => { const s = stageOf(m, r); return `${s.ko} ${s.han}`; };
 const MNAME = ["초입", "연비", "망루", "승천", "결전"];   // 初入 鳶飛 望樓 昇天 決戰
 const MADANG = [
   // "w" entries draw from wall chunks (climb / wall-jump), so every 마당 has walls to run
@@ -678,7 +678,7 @@ function saveRun() { if (run && mode !== "tutorial") store.set("run", run); }
 function showInterlude() {
   state = "interlude";
   const md = MADANG[MD(run.m)], jd = Music.JANGDAN[md.jd];
-  const sg = stageOf(run.m); $("iOrd").textContent = sg.han; $("iOrd").dataset.ko = sg.ko;
+  const sg = stageOf(run.m); $("iOrd").textContent = sg.ko; $("iOrd").dataset.han = sg.han;   // the reading large in the brush face, the hanja small beneath
   const om = OMENS.find(o => o.id === run.omen);
   const bk = run.m === LAST_M && BOSSES[bossFor(run.seed, run.cycle || 0, run.m)];
   $("iLine").textContent = run.m === 0 && run.cycle ? SEASON[season()].line : bk ? `${bk.line} ${josa(bk.name, "을", "를")} 베면 그 뒤에 천고가 있다.` : md.line;
@@ -786,7 +786,7 @@ function showChoice(kind) {   // kind: "madang" after a cleared 마당, "cycle" 
     });
     box.appendChild(b);
   }
-  $("chMadang").textContent = kind === "cycle" ? `천고를 베었다 · ${(run.cycle || 0) + 1}번째` : kind === "bonus" ? "징조의 대가" : `${josa(stageName(run.m - 1), "을", "를")} 넘었다`;
+  $("chMadang").textContent = kind === "cycle" ? `천고를 베었다 · ${(run.cycle || 0) + 1}번째` : kind === "bonus" ? "징조의 대가" : `${josa(stageOf(run.m - 1).ko, "을", "를")} 넘었다 · ${stageOf(run.m - 1).han}`;
   state = "choice"; Music.pause(); if (P) P.focus = false; for (const k in held) held[k] = 0; showScreen("choice");
 }
 function showOmen() {   // the rule for the coming turn: two omens drawn at random, or a calm one
