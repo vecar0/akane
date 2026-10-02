@@ -192,3 +192,4 @@ body, .btn, .set > span, #hud .t { font-weight: 400; }
 .mem { display: grid; gap: 10px; justify-items: center; }
 .mem i { width: min(340px, 80vw, 52vh); aspect-ratio: 1; background: url(assets/lore.webp) 0 0 / 300% 300% no-repeat; box-shadow: 0 4px 16px rgba(23,22,26,.25); }
 .mem p { font-family: var(--f-head); font-size: 16px; line-height: 1.7; text-align: center; max-width: 34ch; word-break: keep-all; margin: 0; }
+.end-p { font-family: var(--f-head); font-size: 16px; line-height: 1.8; text-align: center; max-width: 36ch; margin: 4px auto 0; word-break: keep-all; color: var(--seal, #c3161c); }
