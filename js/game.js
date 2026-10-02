@@ -2334,10 +2334,10 @@ function render(rdt) {
     ctx.fillStyle = pal.bg; ctx.beginPath(); ctx.arc(0, 0, 4.5, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
     ctx.fillStyle = SEAL; ctx.fillRect(-10, -13, 20, 3);
     ctx.restore(); }
-    if (on) { ctx.globalAlpha = .5 + .25 * Math.sin(tt * 12); brushRing(p.x + sw, p.y, 22, JJOK, 2.4, p.x); ctx.globalAlpha = 1; }
-    if (on && P && !P.hook) { ctx.globalAlpha = .55; brushLine(P.x + P.w / 2, P.y + 10, p.x + sw, p.y, JJOK, 3, true, p.x); ctx.globalAlpha = 1; }   // what jump or 연 will catch
+    if (on) { ctx.globalAlpha = .5 + .25 * Math.sin(tt * 12); brushRing(p.x + sw, p.y, 17, JJOK, 1.6, p.x); ctx.globalAlpha = 1; }
+    if (on && P && !P.hook) { ctx.globalAlpha = .55; brushLine(P.x + P.w / 2, P.y + 10, p.x + sw, p.y, JJOK, 2, true, p.x); ctx.globalAlpha = 1; }   // what jump or 연 will catch
   }
-  if (hookCand && hookCand.enemy && P && !P.hook) { ctx.globalAlpha = .6; brushLine(P.x + P.w / 2, P.y + 10, hookCand.x, hookCand.y, SEAL, 3, true, 7); brushRing(hookCand.x, hookCand.y, 20, SEAL, 2.4, 7); ctx.globalAlpha = 1; }   // 연사슬 target
+  if (hookCand && hookCand.enemy && P && !P.hook) { ctx.globalAlpha = .6; brushLine(P.x + P.w / 2, P.y + 10, hookCand.x, hookCand.y, SEAL, 2, true, 7); brushRing(hookCand.x, hookCand.y, 16, SEAL, 1.6, 7); ctx.globalAlpha = 1; }   // 연사슬 target
   if (P && P.hook) { ctx.globalAlpha = .9; brushLine(P.x + P.w / 2, P.y + 12, P.hook.x, P.hook.y, pal.fig, 2, false, 3); ctx.globalAlpha = 1; }   // the kite string, a dry line of ink
 
   drawHazards(pal);
@@ -2407,7 +2407,9 @@ function render(rdt) {
   drawBolts(); drawKegsRings(); drawCutLines();
   if (SPR.perkfx) for (const c of clones) { ctx.globalAlpha = .45 + .15 * Math.sin(performance.now() / 40); const cf = CF("clone"); if (cf && SPR[cf[0]]) { drawSprite(cf[0], cf[1], c.x, c.y, HERO_H * 1.15 / SPR[cf[0]].f[cf[1]].h, c.face < 0, .5, false, 1); ctx.globalAlpha = 1; continue; } drawSprite("perkfx", PF.clone, c.x, c.y, kOf("hero3", H3.idle, HERO_H * 1.08) * 1.1, c.face < 0, .5, false, 1); ctx.globalAlpha = 1; }
   if (P && (state === "play" || state === "pause" || state === "result" || state === "dead")) drawPlayer(pal);
-  for (const p of parts) { ctx.globalAlpha = Math.max(0, p.life / p.max); ctx.fillStyle = p.c; ctx.fillRect(p.x - p.s / 2, p.y - p.s / 2, p.s, p.s); }
+  for (const p of parts) { // round drops of ink, stretched a little along their flight — never square specks
+    const k = Math.max(0, p.life / p.max), sp = Math.hypot(p.vx, p.vy), r = p.s * .5 * (.6 + .4 * k), st = Math.min(2.2, 1 + sp / 500);
+    ctx.globalAlpha = k; ctx.fillStyle = p.c; ctx.beginPath(); ctx.ellipse(p.x, p.y, r * st, r, sp > 20 ? Math.atan2(p.vy, p.vx) : 0, 0, 6.283); ctx.fill(); }
   ctx.globalAlpha = 1;
   // painted one-shot effects
   for (const v of vfx) {
@@ -2445,9 +2447,9 @@ function render(rdt) {
   if (P && P.focus && state === "play") {
     const d = aimDir(), cx = P.x + P.w / 2, cy = P.y + P.h / 2;
     const ac = pal.night && !SPR.guide ? "#b9c8ea" : JJOK;   // indigo on paper, pale blue on the inverted night
-    ctx.globalAlpha = .85; brushLine(cx + d.x * 18, cy + d.y * 18, cx + d.x * 136, cy + d.y * 136, ac, 5, true, 11); ctx.globalAlpha = 1;   // the line of the dash, dabbed in ink
+    ctx.globalAlpha = .7; brushLine(cx + d.x * 20, cy + d.y * 20, cx + d.x * 138, cy + d.y * 138, ac, 2.4, true, 11); ctx.globalAlpha = 1;   // the line of the dash, a light trail of brush dabs
     const rs = 1 + Math.sin(performance.now() / 90) * .06;
-    { const rx = cx + d.x * 152, ry = cy + d.y * 152; ctx.globalAlpha = .9; brushRing(rx, ry, 15 * rs, ac, 3, 5); for (let q = 0; q < 4; q++) { const qa = q * Math.PI / 2 + .3; inkDab(rx + Math.cos(qa) * 22 * rs, ry + Math.sin(qa) * 22 * rs, qa, 10, 3, ac); } ctx.globalAlpha = 1; }   // where the dash will land, brushed
+    { const rx = cx + d.x * 152, ry = cy + d.y * 152; ctx.globalAlpha = .8; brushRing(rx, ry, 9 * rs, ac, 1.6, 5); if (!SPR.guide) for (let q = 0; q < 4; q++) { const qa = q * Math.PI / 2 + .3; inkDab(rx + Math.cos(qa) * 14 * rs, ry + Math.sin(qa) * 14 * rs, qa, 6, 1.6, ac); } ctx.globalAlpha = 1; }   // where the dash will land, a small brushed ring
   }
 
   // screen space overlays
