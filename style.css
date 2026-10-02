@@ -49,9 +49,13 @@ button:focus-visible { outline: 2px solid var(--jjok); outline-offset: 2px; }
 .tb { position: absolute; pointer-events: auto; border-radius: 50%; border: 0; padding: 0; touch-action: none; display: grid; place-items: center;
   background: rgba(230, 226, 215, .55); box-shadow: inset 0 0 0 2px rgba(23, 22, 26, .45); font-family: var(--f-head); font-size: 15px; color: var(--ink); }
 .tb.down { background: rgba(23, 22, 26, .3); }
-#bJump { width: 82px; height: 82px; right: calc(env(safe-area-inset-right, 0px) + 18px); bottom: calc(env(safe-area-inset-bottom, 0px) + 18px); font-size: 17px; }
-#bDash { width: 62px; height: 62px; right: calc(env(safe-area-inset-right, 0px) + 112px); bottom: calc(env(safe-area-inset-bottom, 0px) + 16px); box-shadow: inset 0 0 0 2px var(--jjok); color: var(--jjok); }
-#bHook { width: 56px; height: 56px; right: calc(env(safe-area-inset-right, 0px) + 30px); bottom: calc(env(safe-area-inset-bottom, 0px) + 116px); opacity: .35; color: var(--jjok); box-shadow: inset 0 0 0 2px var(--jjok); }
+/* fingers miss: each button catches touches a little beyond its painted ring */
+.tb::after { content: ""; position: absolute; inset: -14px; border-radius: 50%; }
+#bHook.ready { animation: kitePulse .7s ease-in-out infinite alternate; }
+@keyframes kitePulse { to { transform: scale(1.08); } }
+#bJump { width: 96px; height: 96px; right: calc(env(safe-area-inset-right, 0px) + 16px); bottom: calc(env(safe-area-inset-bottom, 0px) + 14px); font-size: 17px; }
+#bDash { width: 78px; height: 78px; right: calc(env(safe-area-inset-right, 0px) + 122px); bottom: calc(env(safe-area-inset-bottom, 0px) + 12px); box-shadow: inset 0 0 0 2px var(--jjok); color: var(--jjok); }
+#bHook { width: 72px; height: 72px; right: calc(env(safe-area-inset-right, 0px) + 28px); bottom: calc(env(safe-area-inset-bottom, 0px) + 124px); opacity: .35; color: var(--jjok); box-shadow: inset 0 0 0 2px var(--jjok); }
 #bHook.ready { opacity: 1; background: rgba(39, 70, 106, .18); }
 body:not(.touch) #pad { display: none; }
 

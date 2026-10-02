@@ -25,6 +25,8 @@ Music.setVolume(settings.sound ? 1 : 0); Music.setOffset(settings.offset);
 
 // ---------- 마당 definitions & palettes ----------
 const ORD = ["첫째", "둘째", "셋째", "넷째", "다섯째"];
+// a turn of the tower is three 마당; each draws on one of the five tiers below (진양조 → 자진모리 → 단모리)
+const LAST_M = 2, MD = m => [0, 2, 4][Math.min(LAST_M, m)];
 const MNAME = ["초입", "연비", "망루", "승천", "결전"];   // 初入 鳶飛 望樓 昇天 決戰
 const MADANG = [
   // "w" entries draw from wall chunks (climb / wall-jump), so every 마당 has walls to run
@@ -80,6 +82,10 @@ function seamlessStrip(img) {
 // ---------- sprites: Higgsfield sheets, keyed from white paper and sliced into strip atlases ----------
 const SPR = {};
 const HERO = { idle: 0, run: [1, 2, 3, 4, 5, 6, 7], rise: 8, wall: 9, slash: 10, dash: 11, fall: 12, up: 13, land: 14, dead: 15 };
+// hero3: the painted-with-effects swordsman. 0 idle, 1-6 sprint, 7 take-off, 8 somersault, 9 fall, 10 wall, 11 dash, 12-14 slashes (fwd/up/down), 15 landing
+const H3 = { idle: 0, run: [1, 2, 3, 4, 5, 6], rise: 7, flip: 8, fall: 9, wall: 10, dash: 11, slash: 12, up: 13, down: 14, land: 15 };
+const H3_AX = [.48, .57, .64, .62, .65, .57, .62, .58, .59, .54, .63, .47, .36, .42, .51, .5];
+const HFX = { dash: 0, jump: 1, land: 2, air: 3, wall: 4, strike: 5, arc: 6, wind: 7, ribbon: 8 };
 const HERO_AX = { 0: .5, 9: .5, 10: .4, 11: .55, 13: .45, 14: .55, 15: .45 };   // body centre as a fraction of frame width
 const FOE = { g: [0, 1], s: [2, 3], d: [4, 5], h: [6, 7] };
 const FOE_AX = { 0: .5, 1: .3, 2: .45, 3: .3, 6: .45, 7: .45 };
@@ -190,7 +196,7 @@ const CAL = { title: 0, death: 1, madang: [2, 3, 4, 5, 6], end: 7, clear: 8 };  
 const PROP = { rope: 0, aim: 1, reticle: 2, pine: 3, stoneLantern: 4, jars: 5, banner: 6, sotdae: 7, palisade: 8 };
 const DRESS = [[PROP.pine, 74, 3], [PROP.stoneLantern, 34, 2], [PROP.jars, 26, 1], [PROP.banner, 80, 3], [PROP.sotdae, 84, 3], [PROP.palisade, 28, 1]]; // [frame, world height, headroom tiles]
 const OBJ = { lanternOn: 0, lanternOff: 1, kite: 2, thorns: 3, seal: 4, emitter: 5, slash: 6, slashRed: 7, splat: 8 };
-for (const n of ["hero", "hero2", "foes", "objects", "ui", "fx", "hud", "hudsolid", "props", "props2", "rocks", "pines", "slabs", "pillars", "rogue", "roguea", "rogue2", "rogue3", "rogue4", "foes2", "bossA", "bossB", "bossfx", "bossC", "bossD", "bossE", "bossF"]) {
+for (const n of ["hero", "hero2", "foes", "objects", "ui", "fx", "hud", "hudsolid", "props", "props2", "rocks", "pines", "slabs", "pillars", "rogue", "roguea", "rogue2", "rogue3", "rogue4", "foes2", "bossA", "bossB", "bossfx", "bossC", "bossD", "bossE", "bossF", "hero3", "herofx"]) {
   Promise.all([
     fetch(`assets/sprites/${n}.json`).then(r => r.json()),
     new Promise((res, rej) => { const im = new Image(); im.onload = () => res(im); im.onerror = rej; im.src = `assets/sprites/${n}.webp`; })
@@ -654,20 +660,21 @@ function newRun(daily) {
 function continueRun() {
   const s = store.get("run", null); if (!s) return;
   run = s; mode = s.daily ? "daily" : "run";
+  if (s.m > LAST_M) s.m = LAST_M;   // a run saved under the old five-마당 tower
   if (s.choosing === "omen") showOmen(); else if (s.choosing) showChoice(s.choosing); else showInterlude();
 }
 function saveRun() { if (run && mode !== "tutorial") store.set("run", run); }
 function showInterlude() {
   state = "interlude";
-  const md = MADANG[run.m], jd = Music.JANGDAN[md.jd];
-  $("iOrd").textContent = MNAME[run.m];
+  const md = MADANG[MD(run.m)], jd = Music.JANGDAN[md.jd];
+  $("iOrd").textContent = MNAME[MD(run.m)];
   const om = OMENS.find(o => o.id === run.omen);
-  const bk = (run.m === 2 || run.m === 4) && BOSSES[bossFor(run.seed, run.cycle || 0, run.m)];
-  $("iLine").textContent = run.m === 0 && run.cycle ? SEASON[season()].line : bk ? `${bk.line} ${josa(bk.name, "을", "를")} 넘어 ${run.m === 4 ? "천고를 베어라." : "다음 마당으로."}` : md.line;
+  const bk = run.m >= 1 && BOSSES[bossFor(run.seed, run.cycle || 0, run.m)];
+  $("iLine").textContent = run.m === 0 && run.cycle ? SEASON[season()].line : bk ? `${bk.line} ${josa(bk.name, "을", "를")} 넘어 ${run.m === LAST_M ? "천고를 베어라." : "다음 마당으로."}` : md.line;
   $("iMeta").textContent = ((run.cycle || 0) ? `${run.cycle + 1}번째 판 · ${SEASON[season()].name} · ` : "") + ORD[run.m] + " 마당 · " + jd.name + " · " + "●".repeat(run.breath) + "○".repeat(Math.max(0, 3 - run.breath)) + (om && !om.calm ? " · 징조 " + om.name : "") + (run.daily ? " · 오늘의 판" : "");
   $("interlude").classList.remove("night");
-  loadMap(buildMadangMap(run.seed, run.m, run.cycle || 0, run.omen), PAL[run.m]); LV.ledgeStone = run.m >= 3;
-  if (run.m === 4 && LV.exit) { // the last 마당 ends at 천고 itself instead of a seal
+  loadMap(buildMadangMap(run.seed, MD(run.m), run.cycle || 0, run.omen), PAL[MD(run.m)]); LV.ledgeStone = MD(run.m) >= 3;
+  if (run.m === LAST_M && LV.exit) { // the last 마당 ends at 천고 itself instead of a seal
     LV.drums = [{ id: 0, big: true, x: LV.exit.x + LV.exit.w / 2, y: LV.exit.y + LV.exit.h, w: 60, h: 80 }]; LV.exit = null; LV.gate = null;
   }
   showScreen("interlude");
@@ -685,7 +692,7 @@ function enterMadang() {
   const s = cpSave || LV.start;
   P = newPlayer(s.x, s.y); run.hosinUsed = 0; run.cutDrums = run.cutDrums || [];
   bullets = []; parts = []; ghosts = []; seals = []; vfx = []; haz = [];
-  Music.start(MADANG[run.m].jd, run.seed + run.m, (1 + .08 * (run.cycle || 0)) * (omen("geupbak") ? 1.15 : 1));
+  Music.start(MADANG[MD(run.m)].jd, run.seed + run.m, (1 + .08 * (run.cycle || 0)) * (omen("geupbak") ? 1.15 : 1));
   songPos = Music.pos(); spawnEnemies();
   cam.x = P.x; cam.y = P.y;
   setHud(); showScreen(null); state = "play";
@@ -734,7 +741,7 @@ function afterDeath() {
 function madangClear() {
   Music.sfx("seal");
   if (mode === "tutorial") { toast("수련을 마쳤다"); setTimeout(toMenu, 900); state = "result"; return; }
-  if (run.m >= 4) { endRun(true); return; }
+  if (run.m >= LAST_M) { endRun(true); return; }
   run.m++; run.cp = -1; run.dead = []; run.cutDrums = []; run.breath = has("saenggi") ? 5 : Math.min(5, Math.max(run.breath, 3) + (has("josik") ? 1 : 0));   // breath refills each 마당
   run.choosing = "madang"; saveRun();   // every cleared 마당 grants a 초식
   state = "result";
@@ -795,7 +802,7 @@ function showOmen() {   // the rule for the coming turn: two omens drawn at rand
 function endRun(won) {
   state = "result"; Music.stop();
   store.del("run");
-  const reached = (run.cycle || 0) * 5 + run.m + (won ? 1 : 0);
+  const reached = (run.cycle || 0) * (LAST_M + 1) + run.m + (won ? 1 : 0);
   const rate = run.slashes ? Math.round(run.strikes / run.slashes * 100) : 0;
   $("rSeal").textContent = won ? "登" : "終";
   $("rTitle").textContent = won ? "등천" : "절명";
@@ -833,6 +840,7 @@ function startDash(dir) {
   if (!P.onGround) { if (P.airDash <= 0) return false; P.airDash--; if (has("bicheon")) P.djN = 0; }
   let d = dir || aimDir();
   if (P.onGround && d.y > 0.2) d = { x: d.x === 0 ? P.face : Math.sign(d.x), y: 0 };
+  { const ang = Math.atan2(d.y, Math.abs(d.x)), dx = Math.abs(d.x) > .2 ? Math.sign(d.x) : P.face; heroFx("dash", P.x + P.w / 2 - d.x * 26, P.y + P.h / 2 - d.y * 26, dx, ang); }
   P.dashDir = d; P.dashT = (has("janyeong") ? 0.21 : 0.15) * (P.onGround && has("chukji") ? 1.8 : 1); P.dashCd = has("seomgwang") ? 0.1 : 0.32; P.dashHit = new Set(); P.hook = null;
   if (Math.abs(d.x) > 0.2) P.face = Math.sign(d.x);
   Music.sfx("dash"); return true;
@@ -851,6 +859,7 @@ function doSlash(req) {
   if (strike && has("pilsal")) for (const b of bullets) if (!b.friendly && Math.hypot(b.x - P.x - P.w / 2, b.y - P.y - P.h / 2) < 280) { b.life = 0; addFx("hud", HUD.spark, b.x, b.y, 22, { life: .25 }); }
   if (strike && has("gwigeom")) { const cx = P.x + P.w / 2, cy = P.y + P.h / 2; for (const e of enemies) if (e.alive && Math.hypot(e.x + e.w / 2 - cx, e.y + e.h / 2 - cy) < 140) hurtEnemy(e, has("talhon") && e.type !== "b"); addFx("hud", HUD.spark, cx, cy, 120, { life: .35 }); }
   if (Math.abs(d.x) > 0.2) P.face = Math.sign(d.x);
+  if (strike || d.y > .5) { const sx = Math.abs(d.x) > .2 ? Math.sign(d.x) : P.face; heroFx(strike ? "strike" : "arc", P.x + P.w / 2 + d.x * 30, P.y + P.h / 2 + d.y * 26, sx, Math.atan2(d.y, Math.abs(d.x) || .001)); }
   if (!P.onGround && P.vy > 60) P.vy = 60;
   if (req.dash) startDash(d);
   Music.sfx(strike ? "strike" : "slash");
@@ -868,9 +877,11 @@ function findHook() {
 }
 function frameInput(rdt) {
   if (press.jump && P.onGround && axis().y > .5 && onLedge(P)) { P.dropT = .25; P.y += 3; P.onGround = false; press.jump = 0; } // down + jump: drop through a ledge
-  if (press.jump) P.jumpBuf = 0.13;
+  // in the air with no jump left to spend, jump grabs the 연 in reach: one button for "get higher"
+  if (press.jump && !P.onGround && P.coyote <= 0 && !P.wall && !(P.wallT > 0) && hookCand && P.hookCd <= 0 && !P.hook) { press.hook = 1; press.jump = 0; }
+  if (press.jump) P.jumpBuf = 0.18;
   if (slashReq) { doSlash(slashReq); slashReq = null; }
-  if (press.hook && hookCand && P.hookCd <= 0) { P.hook = hookCand; P.dashT = 0; P.focus = false; Music.muffle(false); Music.sfx("hook");
+  if (press.hook && hookCand && P.hookCd <= 0) { P.hook = hookCand; P.dashT = 0; P.focus = false; Music.muffle(false); Music.sfx("hook"); heroFx("wind", hookCand.x, hookCand.y, 1);
     if (has("yeoncham")) { const cx = P.x + P.w / 2, cy = P.y + P.h / 2; for (const e of enemies) if (e.alive && Math.hypot(e.x + e.w / 2 - cx, e.y + e.h / 2 - cy) < 120) hurtEnemy(e, false); addFx("fx", FX.slashB, cx, cy, 80, { life: .3 }); } }
   if (press.dash) {
     if (P.onGround || P.hook) startDash();
@@ -909,9 +920,9 @@ function stepPlayer(dt) {
       if (ix) P.face = ix;
     }
     if (P.jumpBuf > 0) {
-      if (P.onGround || P.coyote > 0) { P.vy = -JUMPV * (has("gyeonggong") ? 1.12 : 1); if (has("bisang") && Math.abs(P.vx) > maxv() * .8) P.vx *= 1.3; P.onGround = false; P.coyote = 0; P.jumpBuf = 0; Music.sfx("jump"); }
-      else if (P.wall) { P.vy = -600; P.vx = -P.wall * 380; P.face = -P.wall; P.wallLock = 0.15; P.jumpBuf = 0; P.climbT = Math.max(P.climbT, 0.35); if (has("byeokryeok")) P.airDash = Math.max(P.airDash, baseAir() + 1); Music.sfx("jump"); puff(P.wall > 0 ? P.x + P.w : P.x, P.y + P.h - 6, 6); }
-      else if (has("idan") && (P.djN || 0) < (has("neunggong") ? 3 : 1)) { P.vy = -JUMPV * .9; P.djN = (P.djN || 0) + 1; P.jumpBuf = 0; Music.sfx("jump"); addFx("hud", HUD.dust, P.x + P.w / 2, P.y + P.h, 26, { life: .35, a: .7 }); }
+      if (P.onGround || P.coyote > 0) { P.vy = -JUMPV * (has("gyeonggong") ? 1.12 : 1); if (has("bisang") && Math.abs(P.vx) > maxv() * .8) P.vx *= 1.3; heroFx("jump", P.x + P.w / 2, P.y + P.h + 2, P.face); P.onGround = false; P.coyote = 0; P.jumpBuf = 0; Music.sfx("jump"); }
+      else if (P.wall || P.wallT > 0) { const wd = P.wall || P.wallMem; P.wallT = 0; P.vy = -600; P.vx = -wd * 380; P.face = -wd; P.wallLock = 0.15; P.jumpBuf = 0; P.climbT = Math.max(P.climbT, 0.35); if (has("byeokryeok")) P.airDash = Math.max(P.airDash, baseAir() + 1); Music.sfx("jump"); puff(wd > 0 ? P.x + P.w : P.x, P.y + P.h - 6, 6); heroFx("wall", P.x + P.w / 2 + wd * 10, P.y + P.h / 2, wd); }
+      else if (has("idan") && (P.djN || 0) < (has("neunggong") ? 3 : 1)) { P.vy = -JUMPV * .9; P.djN = (P.djN || 0) + 1; heroFx("air", P.x + P.w / 2, P.y + P.h + 4, P.face); P.jumpBuf = 0; Music.sfx("jump"); addFx("hud", HUD.dust, P.x + P.w / 2, P.y + P.h, 26, { life: .35, a: .7 }); }
     }
     let g = GRAV; if (P.vy < 0 && !held.jump && !P.wallLock && !P.climbing) g *= 2.1;
     if (has("cheongeun") && axis().y > .5 && !P.wall) g *= 2.2;
@@ -928,10 +939,11 @@ function stepPlayer(dt) {
   }
   const was = P.onGround;
   P.onGround = P.vy >= 0 && (rectSolid(P.x, P.y + P.h, P.w, 2) || (!(P.dropT > 0) && onLedge(P)));
-  if (P.onGround) { P.airT = 0; P.runT = Math.abs(P.vx) > 40 ? (P.runT || 0) + dt : 0; P.coyote = 0.1; P.airDash = baseAir(); P.climbT = CLIMB_T * (has("byeokho") ? 2 : 1); if (!was) { addFx("hud", HUD.dust, P.x + P.w / 2, P.y + P.h + 2, 22, { life: .35, ay: 1, a: .8 }); P.landT = 0.1;
+  if (P.onGround) { P.airT = 0; P.runT = Math.abs(P.vx) > 40 ? (P.runT || 0) + dt : 0; P.coyote = 0.14; P.airDash = baseAir(); P.climbT = CLIMB_T * (has("byeokho") ? 2 : 1); if (!was) { addFx("hud", HUD.dust, P.x + P.w / 2, P.y + P.h + 2, 22, { life: .35, ay: 1, a: .8 }); P.landT = 0.1; if ((P.lastVy || 0) > 650) heroFx("land", P.x + P.w / 2, P.y + P.h + 3, P.face);
       if (has("nakhwayusu") && (P.lastVy || 0) > 900) { const cx = P.x + P.w / 2; for (const e of enemies) if (e.alive && Math.abs(e.x + e.w / 2 - cx) < 100 && Math.abs(e.y + e.h - P.y - P.h) < 50) hurtEnemy(e, false); addFx("hud", HUD.dust, cx, P.y + P.h, 90, { life: .45, ay: 1 }); shake = Math.max(shake, 6); Music.sfx("kill"); } } } else { P.coyote = Math.max(0, P.coyote - dt); P.airT = (P.airT || 0) + dt; }
   const wl = rectSolid(P.x - 3, P.y + 4, 3, P.h - 8), wr = rectSolid(P.x + P.w, P.y + 4, 3, P.h - 8);
   P.wall = P.onGround ? 0 : wr ? 1 : wl ? -1 : 0;
+  if (P.wall) { P.wallMem = P.wall; P.wallT = .12; } else P.wallT = Math.max(0, (P.wallT || 0) - dt);   // wall jump still works a moment after slipping off
   if (P.onGround || P.wall) P.djN = 0;
   P.chainT = Math.max(0, (P.chainT || 0) - dt);
   if (P.wall) P.airDash = Math.max(P.airDash, baseAir());
@@ -940,6 +952,13 @@ function stepPlayer(dt) {
 function ghost(gap) { const l = ghosts[ghosts.length - 1]; if (!l || l.age > gap) ghosts.push({ x: P.x, y: P.y, face: P.face, age: 0, life: 0.22 }); for (const g of ghosts) g.age += 0.004; }
 // one-shot painted effects: grow and fade
 function addFx(sheet, i, x, y, h, o = {}) { vfx.push({ sheet, i, x, y, h, t: 0, life: o.life || .5, rot: o.rot || 0, grow: o.grow ?? .35, flip: !!o.flip, ay: o.ay ?? .5, a: o.a ?? 1 }); }
+// the hero's painted effects; dir/angle orient the ones that point somewhere
+function heroFx(kind, x, y, dir = 1, ang = 0) {
+  if (!SPR.herofx) return;
+  const o = { dash: [70, .32, .5, .9], jump: [46, .4, 1, .85], land: [58, .4, 1, .8], air: [44, .4, .5, .85], wall: [52, .35, .5, .85], strike: [96, .3, .5, 1], arc: [80, .25, .5, .8], wind: [56, .45, .5, .8], ribbon: [40, .35, .5, .7] }[kind];
+  const arc = kind === "strike" || kind === "arc", flip = arc ? dir > 0 : dir < 0, rot = (dir < 0 ? -ang : ang);   // the crescents are painted bulging left, the rest pointing right
+  addFx("herofx", HFX[kind], x, y, o[0], { life: o[1], ay: o[2], a: o[3], flip, rot, grow: kind === "strike" || kind === "arc" ? .15 : .35 });
+}
 function findFloor(x, y) { let ty = Math.floor(y / T); while (ty < LV.h && tileAt(Math.floor(x / T), ty) !== 1) ty++; return ty < LV.h ? ty * T : null; }
 function bleed(x, y, dir, big) { // blood burst + spray along the blow + a pool where it lands
   addFx("fx", FX.burst, x, y, big ? 96 : 64, { life: big ? .7 : .45, rot: Math.random() * 6.28, grow: .5 });
@@ -1003,7 +1022,7 @@ function killEnemy(e) {
   if (!e.alive) return;
   e.alive = false; deadIds.add(e.id); run.kills++;
   if (e.type === "m") for (const o of enemies) if (o.wardBy === e.id) o.ward = false;
-  if (e.type === "b") { haz = []; for (const o of enemies) if (o.type === "i") o.alive = false; toast(`${josa(BOSSES[e.kind].name, "이", "가")} 쓰러졌다 · ${run.m === 4 ? "천고를 베어라" : "길이 열렸다"}`); Music.jing(); shake = 14; for (let k = 0; k < 3; k++) bleed(e.x + e.w / 2 + (k - 1) * 20, e.y + 20 + k * 18, { x: k - 1, y: -.4 }, true); }
+  if (e.type === "b") { haz = []; for (const o of enemies) if (o.type === "i") o.alive = false; toast(`${josa(BOSSES[e.kind].name, "이", "가")} 쓰러졌다 · ${run.m === LAST_M ? "천고를 베어라" : "길이 열렸다"}`); Music.jing(); shake = 14; for (let k = 0; k < 3; k++) bleed(e.x + e.w / 2 + (k - 1) * 20, e.y + 20 + k * 18, { x: k - 1, y: -.4 }, true); }
   if (omen("hyeolmaeng") && mode !== "tutorial") { run.oath = (run.oath || 0) + 1; if (run.oath % 5 === 0 && run.breath < 5) { run.breath++; setHud(); toast("피의 맹세 · 숨 하나를 되찾았다"); } }
   if (has("hyeol") && run.kills % (has("hyeolpung") ? 5 : 10) === 0 && run.breath < 5) { run.breath++; setHud(); toast("혈로 · 숨 하나를 되찾았다"); }
   if (has("heuphon") && P.slashT > 0 && P.strike) { P.invT = Math.max(P.invT || 0, .5); P.airDash = Math.max(P.airDash, baseAir()); }
@@ -1112,7 +1131,7 @@ function stepReaper(e, dt, pcx, pcy, dist, live) {
   if (e.ph !== "gone") dashThrough(e);
 }
 // ---------- bosses ----------
-// one waits at the end of the 셋째 and 다섯째 마당. All act on the beat: an act is chosen, wound up (telegraphed) until
+// one waits at the end of the 둘째 and 셋째 마당. All act on the beat: an act is chosen, wound up (telegraphed) until
 // the next beat, then performed. A plain cut takes 1, an 일격 3 and staggers the boss out of its wind-up.
 const BOSSES = {
   sumun: { name: "수문장", han: "守門將", hp: 8, w: 44, h: 84, draw: 124, sheet: "foes2", idle: F2.boss, atk: F2.bossUp, hit: F2.bossSlam, stag: F2.bossKneel, line: "천고를 지키는 장수가 길을 막는다.",
@@ -1164,7 +1183,7 @@ const MASKS = ["양반탈", "각시탈", "말뚝이탈"];
 function bossFor(seed, cy, m) { // a run-seeded order: first the 셋째 마당 boss, then 수문장, then the rest; never the same twice in a row
   const rnd = mulberry((seed ^ 0xB055) >>> 0), o = BOSS_ORDER.slice();
   for (let i = o.length - 1; i > 0; i--) { const j = (rnd() * (i + 1)) | 0; [o[i], o[j]] = [o[j], o[i]]; }
-  const full = [o[0], "sumun", ...o.slice(1)], k = cy * 2 + (m === 4 ? 1 : 0);
+  const full = [o[0], "sumun", ...o.slice(1)], k = cy * 2 + (m === LAST_M ? 1 : 0);
   return full[(k + Math.floor(k / 10) * 3) % 10];
 }
 const josa = (w, a, b) => { const c = w.charCodeAt(w.length - 1) - 0xAC00; return w + (c >= 0 && c % 28 ? a : b); };
@@ -1418,7 +1437,7 @@ function fmt(t) { const m = Math.floor(t / 60), s = t - m * 60; return m + ":" +
 function setHud() {
   document.body.classList.toggle("night", !!(LV && LV.pal.night));
   if (mode === "tutorial") { $("hMadang").textContent = "수련터"; $("hJang").textContent = Music.JANGDAN[TUTORIAL.jd].name; }
-  else { const om = OMENS.find(o => o.id === run.omen); $("hMadang").textContent = ORD[run.m] + " 마당"; $("hJang").textContent = Music.JANGDAN[MADANG[run.m].jd].name + (om ? " · " + om.name : ""); }
+  else { const om = OMENS.find(o => o.id === run.omen); $("hMadang").textContent = ORD[run.m] + " 마당"; $("hJang").textContent = Music.JANGDAN[MADANG[MD(run.m)].jd].name + (om ? " · " + om.name : ""); }
   const hb = $("hBreath"); hb.innerHTML = ""; hb.classList.toggle("inf", mode === "tutorial");
   if (mode !== "tutorial") for (let i = 0; i < Math.max(3, run.breath); i++) { const d = document.createElement("i"); if (i >= run.breath) d.className = "lost"; hb.appendChild(d); }
   hudCache = "";
@@ -1648,6 +1667,7 @@ function render(rdt) {
     ctx.fillStyle = SEAL; ctx.fillRect(-10, -13, 20, 3);
     ctx.restore(); }
     if (on) { ctx.strokeStyle = JJOK; ctx.globalAlpha = .4 + .3 * Math.sin(tt * 12); ctx.lineWidth = 1.5; ctx.beginPath(); ctx.arc(p.x + sw, p.y, 22, 0, Math.PI * 2); ctx.stroke(); ctx.globalAlpha = 1; }
+    if (on && P && !P.hook) { ctx.strokeStyle = JJOK; ctx.globalAlpha = .45; ctx.lineWidth = 1.4; ctx.setLineDash([3, 6]); ctx.beginPath(); ctx.moveTo(P.x + P.w / 2, P.y + 10); ctx.lineTo(p.x + sw, p.y); ctx.stroke(); ctx.setLineDash([]); ctx.globalAlpha = 1; }   // what jump or 연 will catch
   }
   if (P && P.hook) { ctx.strokeStyle = pal.fig; ctx.lineWidth = 1.2; ctx.beginPath(); ctx.moveTo(P.x + P.w / 2, P.y + 12); ctx.lineTo(P.hook.x, P.hook.y); ctx.stroke(); }
 
@@ -1683,7 +1703,7 @@ function render(rdt) {
     ctx.fillStyle = b.friendly ? JJOK_L : "#ff6a3d"; ctx.beginPath(); ctx.arc(b.x, b.y, 1.2, 0, Math.PI * 2); ctx.fill();
   }
   ctx.lineCap = "butt";
-  for (const g of ghosts) { ctx.globalAlpha = .3 * (1 - g.age / g.life); if (!drawSprite("hero", HERO.dash, g.x + 9, g.y + 31, kOf("hero", 0, HERO_H), g.face < 0, .55, !!LV.pal.night)) drawRunner(g.x, g.y, g.face, JJOK, null); }
+  for (const g of ghosts) { ctx.globalAlpha = .3 * (1 - g.age / g.life); if (!(SPR.hero3 ? drawSprite("hero3", H3.dash, g.x + 9, g.y + 31, kOf("hero3", H3.idle, HERO_H * 1.08), g.face < 0, H3_AX[H3.dash], !!LV.pal.night) : drawSprite("hero", HERO.dash, g.x + 9, g.y + 31, kOf("hero", 0, HERO_H), g.face < 0, .55, !!LV.pal.night))) drawRunner(g.x, g.y, g.face, JJOK, null); }
   ctx.globalAlpha = 1;
   if (P && (state === "play" || state === "pause" || state === "result" || state === "dead")) drawPlayer(pal);
   for (const p of parts) { ctx.globalAlpha = Math.max(0, p.life / p.max); ctx.fillStyle = p.c; ctx.fillRect(p.x - p.s / 2, p.y - p.s / 2, p.s, p.s); }
@@ -1884,6 +1904,14 @@ function drawRunner(x, y, face, col, pl) {
 }
 function heroPose() { // [sheet, frame]
   if (state === "dead") return ["hero", HERO.dead];
+  if (SPR.hero3) {
+    if (P.slashT > 0) return ["hero3", P.slashDir.y < -0.5 ? H3.up : (P.slashDir.y > 0.5 && !P.onGround ? H3.down : H3.slash)];
+    if (P.dashT > 0 || P.hook) return ["hero3", H3.dash];
+    if (!P.onGround) return ["hero3", P.wall ? H3.wall : P.vy < -150 ? H3.rise : Math.abs(P.vy) < 150 ? H3.flip : H3.fall];
+    if (P.landT > 0) return ["hero3", H3.land];
+    if (Math.abs(P.vx) > 40) return ["hero3", H3.run[Math.floor(P.run / 1.05) % H3.run.length]];
+    return ["hero3", H3.idle];
+  }
   if (P.slashT > 0) return ["hero", P.slashDir.y < -0.5 ? HERO.up : (P.slashDir.y > 0.5 && !P.onGround ? HERO.fall : HERO.slash)];
   if (P.dashT > 0 || P.hook) return ["hero", HERO.dash];
   if (!P.onGround) {
@@ -1908,16 +1936,19 @@ function drawPlayer(pal) {
   let [sheet, fr] = heroPose(); if (sheet === "hero2" && !SPR.hero2) { sheet = "hero"; fr = HERO.idle; }
   const cx = P.x + P.w / 2, wallPose = sheet === "hero" && fr === HERO.wall, face = wallPose ? P.wall : P.face;
   // hero2 is scaled so its first running step matches the original running frames
-  const k = sheet === "hero" ? kOf("hero", 0, HERO_H) : kOf("hero", 0, HERO_H) * SPR.hero.f[1].h / SPR.hero2.f[H2.start].h;
+  const k = sheet === "hero3" ? kOf("hero3", H3.idle, HERO_H * 1.08) : sheet === "hero" ? kOf("hero", 0, HERO_H) : kOf("hero", 0, HERO_H) * SPR.hero.f[1].h / SPR.hero2.f[H2.start].h;
   if (state === "dead") ctx.globalAlpha = Math.max(0, 1 - deathT / 0.75);
   else if (P.invT > 0) ctx.globalAlpha = Math.floor(P.invT * 14) % 2 ? .35 : 1;
   if (pal.night && !LV.pal.night) { // slow-mo: hero keeps his ink, lifted off the dark paper by a pale wash
     const g = ctx.createRadialGradient(cx, P.y + P.h / 2, 4, cx, P.y + P.h / 2, 46); g.addColorStop(0, "rgba(236,230,216,.55)"); g.addColorStop(1, "rgba(236,230,216,0)");
     ctx.fillStyle = g; ctx.fillRect(cx - 46, P.y + P.h / 2 - 46, 92, 92);
   }
-  drawSprite(sheet, fr, cx, P.y + P.h + 1, k, face < 0, sheet === "hero" ? (HERO_AX[fr] ?? .55) : (wallPose ? .62 : .5), !!LV.pal.night);
+  const h3wall = sheet === "hero3" && fr === H3.wall, f3 = h3wall ? P.wall : face, breathe = sheet === "hero3" && fr === H3.idle ? 1 + Math.sin(performance.now() / 380) * .012 : 1;
+  ctx.save(); ctx.translate(cx, P.y + P.h + 1); ctx.scale(1, breathe);
+  drawSprite(sheet, fr, 0, 0, k, f3 < 0, sheet === "hero3" ? H3_AX[fr] : sheet === "hero" ? (HERO_AX[fr] ?? .55) : (wallPose ? .62 : .5), !!LV.pal.night);
+  ctx.restore();
   ctx.globalAlpha = 1;
-  if (P.slashT > 0 && state !== "dead" && SPR.fx) { // two painted frames: the edge, then the full stroke breaking into ink
+  if (P.slashT > 0 && state !== "dead" && SPR.fx && !(sheet === "hero3" && !P.strike && fr !== H3.down)) { // two painted frames: the edge, then the full stroke breaking into ink
     const d = P.slashDir, prog = 1 - Math.min(1, P.slashT / 0.14), ang = Math.atan2(d.y, d.x);
     const first = prog < .38, i = first ? (P.strike ? FX.slashARed : FX.slashA) : (P.strike ? FX.slashBRed : FX.slashB);
     const f = SPR.fx.f[i], H2 = (P.strike ? 84 : 68) * (first ? .8 : 1), sc = H2 / f.h * (0.92 + prog * 0.14);
