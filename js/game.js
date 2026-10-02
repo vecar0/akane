@@ -834,7 +834,7 @@ function startPicks(step = 0) {
 }
 function continueRun() {
   const s = store.get("run", null); if (!s) return;
-  run = s; mode = s.tower ? "tower" : "run"; delete s.daily; if (run.char === "shadowc") run.char = "mumyeong"; run.perks = (run.perks || []).filter(id => CHOSIK.some(c => c.id === id));
+  run = s; mode = s.tower ? "tower" : "run"; delete s.daily; if (run.char === "shadowc") run.char = "mumyeong"; run.perks = fitPerks((run.perks || []).filter(id => CHOSIK.some(c => c.id === id)));   // older saves may hold more than the slots allow
   if (s.m > LAST_M) s.m = LAST_M;   // a run saved under the old five-마당 tower
   if (s.picking) { startPicks(); return; }
   if (s.choosing === "omen") showOmen(); else if (s.choosing) showChoice(s.choosing); else showInterlude();
