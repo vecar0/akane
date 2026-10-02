@@ -1447,8 +1447,6 @@ function findHook() {
 }
 function frameInput(rdt) {
   if (press.jump && P.onGround && axis().y > .5 && onLedge(P)) { P.dropT = .25; P.y += 3; P.onGround = false; press.jump = 0; } // down + jump: drop through a ledge
-  // in the air with no jump left to spend, jump grabs the 연 in reach: one button for "get higher"
-  if (press.jump && !P.onGround && P.coyote <= 0 && !P.wall && !(P.wallT > 0) && hookCand && P.hookCd <= 0 && !P.hook) { press.hook = 1; press.jump = 0; }
   if (press.jump) P.jumpBuf = 0.18;
   if (slashReq) { doSlash(slashReq); slashReq = null; }
   if (press.hook && hookCand && P.hookCd <= 0 && hookCand.enemy) { // 연사슬: the line hooks a foe and drags it in
@@ -1456,12 +1454,23 @@ function frameInput(rdt) {
     hurtEnemy(e, false); beams.push({ x0: P.x + P.w / 2, y0: P.y + 12, x1: e.x + e.w / 2, y1: e.y + e.h / 2, t: 0, life: .2 }); P.hookCd = .45; Music.sfx("hook"); press.hook = 0; }
   if (press.hook && hookCand && P.hookCd <= 0 && has("yeonbal")) { // 연발판: the kite is a springboard
     P.vy = -940; P.vx *= .6; P.airDash = Math.max(P.airDash, baseAir()); P.djN = 0; P.hookCd = .3; heroFx("wind", hookCand.x, hookCand.y, 1); Music.sfx("hook"); press.hook = 0; }
-  if (press.hook && hookCand && P.hookCd <= 0) { P.hook = hookCand; P.dashT = 0; run.hooked = true; flow("hook"); P.focus = false; Music.muffle(false); Music.sfx("hook"); heroFx("wind", hookCand.x, hookCand.y, 1);
+  if (press.hook && hookCand && P.hookCd <= 0) { // 연: a sharp kick toward the kite and up — then the swordsman is free again
+    const cx = P.x + P.w / 2, cy = P.y + P.h / 2, dx = hookCand.x - cx, dy = hookCand.y - cy, d = Math.hypot(dx, dy) || 1, lb = (has("baram") ? 1.2 : 1) * (has("deungun") ? 1.15 : 1);
+    P.dashT = 0; run.hooked = true; flow("hook"); P.focus = false; Music.muffle(false); Music.sfx("hook"); heroFx("wind", hookCand.x, hookCand.y, 1);
+    P.vx = dx / d * 620 * lb; P.vy = Math.min(dy / d * 620, 0) * lb - 560 * lb; P.onGround = false; P.coyote = 0; P.jumpBuf = 0;
+    P.kiteFlash = { x0: cx, y0: cy, x1: hookCand.x, y1: hookCand.y, t: .18 };   // the string snaps taut for a blink
+    if (has("deungun")) P.djN = 0; P.hookCd = .35; P.airDash = has("yeonsa") ? 2 : baseAir(); if (has("yeonbi")) { P.invT = Math.max(P.invT || 0, .5); P.dashCd = 0; }
+    if (has("heukryong")) { const big = has("ssangryong2");
+      P.coil = { t: big ? 2 : 1.3, max: big ? 2 : 1.3, n: big ? 2 : 1, r: big ? 118 : 88, a: 0, hit: new Map() };
+      addFx("perkfx", PF.spin, cx, cy, P.coil.r * 2.2, { life: .4, grow: .4, a: .8 }); shake = Math.max(shake, 5);
+      for (const e of nearestFoes(cx, cy, 9, P.coil.r * 1.3)) { hurtEnemy(e, false); e.stunT = Math.max(e.stunT || 0, e.type === "b" ? .15 : .5); addFx("perkfx", PF.splash, e.x + e.w / 2, e.y + e.h / 2, 44, { life: .25 }); } }
+    if (Math.abs(P.vx) > 40) P.face = Math.sign(P.vx);
     if (has("yeoncham")) { const cx = P.x + P.w / 2, cy = P.y + P.h / 2; for (const e of enemies) if (e.alive && Math.hypot(e.x + e.w / 2 - cx, e.y + e.h / 2 - cy) < 120) hurtEnemy(e, false); addFx("fx", FX.slashB, cx, cy, 80, { life: .3 }); } }
   if (press.dash && !oath("hyeon")) {
     if (P.onGround || P.hook) startDash();
     else if (P.airDash > 0 && P.dashCd <= 0) { P.focus = true; P.focusT = 0; Music.muffle(true); }
   }
+  if (P.kiteFlash && (P.kiteFlash.t -= rdt) <= 0) P.kiteFlash = null;
   if (P.focus) { P.focusT += rdt; if (!held.dash || P.focusT > (has("munyeom") ? 4 : has("jeong") ? 2.2 : 1.2) || P.onGround) { P.focus = false; Music.muffle(false); P.aimedUntil = songPos + .45; startDash(); } }
   press.jump = press.dash = press.hook = 0;
   P.jumpBuf = Math.max(0, P.jumpBuf - rdt);
@@ -2336,7 +2345,7 @@ function render(rdt) {
     if (on && P && !P.hook) { ctx.globalAlpha = .55; brushLine(P.x + P.w / 2, P.y + 10, p.x + sw, p.y, JJOK, 2, true, p.x); ctx.globalAlpha = 1; }   // what jump or 연 will catch
   }
   if (hookCand && hookCand.enemy && P && !P.hook) { ctx.globalAlpha = .6; brushLine(P.x + P.w / 2, P.y + 10, hookCand.x, hookCand.y, SEAL, 2, true, 7); brushRing(hookCand.x, hookCand.y, 16, SEAL, 1.6, 7); ctx.globalAlpha = 1; }   // 연사슬 target
-  if (P && P.hook) { ctx.globalAlpha = .9; brushLine(P.x + P.w / 2, P.y + 12, P.hook.x, P.hook.y, pal.fig, 2, false, 3); ctx.globalAlpha = 1; }   // the kite string, a dry line of ink
+  if (P && P.kiteFlash) { ctx.globalAlpha = Math.min(1, P.kiteFlash.t * 6); brushLine(P.x + P.w / 2, P.y + 12, P.kiteFlash.x1, P.kiteFlash.y1, pal.fig, 2, false, 3); ctx.globalAlpha = 1; }   // the kite string, snapping for a blink
 
   drawHazards(pal);
   for (const e of enemies) if (e.alive && (visible(e.x) || e.type === "b")) {
@@ -3325,17 +3334,17 @@ $("bToMenu").addEventListener("click", () => { saveRun(); toMenu(); });
 $("bPauseSet").addEventListener("click", () => openSettings("pause"));
 $("bSettings").addEventListener("click", () => openSettings("menu"));
 // touch buttons: a size for all of them and a place for each, kept on this device
-const padCfg = Object.assign({ s: 1, pos: {} }, store.get("pad", {}));
+const padCfg = Object.assign({ s: 1.1, pos: {} }, store.get("pad2", {}));   // "pad2": the new default layout replaces any older arrangement
 function applyPad() {
   document.documentElement.style.setProperty("--tbs", padCfg.s); $("padVal").textContent = Math.round(padCfg.s * 100) + "%";
   for (const id of ["bJump", "bDash", "bHook"]) { const el = $(id), p = padCfg.pos[id]; el.style.right = p ? p.r + "px" : ""; el.style.bottom = p ? p.b + "px" : ""; }
 }
 applyPad();
-$("bPadDn").addEventListener("click", () => { padCfg.s = Math.max(.6, +(padCfg.s - .1).toFixed(1)); store.set("pad", padCfg); applyPad(); });
-$("bPadUp").addEventListener("click", () => { padCfg.s = Math.min(1.6, +(padCfg.s + .1).toFixed(1)); store.set("pad", padCfg); applyPad(); });
-$("bPadReset").addEventListener("click", () => { padCfg.s = 1; padCfg.pos = {}; store.set("pad", padCfg); applyPad(); toast("버튼을 처음 자리로 돌렸다"); });
+$("bPadDn").addEventListener("click", () => { padCfg.s = Math.max(.6, +(padCfg.s - .1).toFixed(1)); store.set("pad2", padCfg); applyPad(); });
+$("bPadUp").addEventListener("click", () => { padCfg.s = Math.min(1.6, +(padCfg.s + .1).toFixed(1)); store.set("pad2", padCfg); applyPad(); });
+$("bPadReset").addEventListener("click", () => { padCfg.s = 1.1; padCfg.pos = {}; store.set("pad2", padCfg); applyPad(); toast("버튼을 처음 자리로 돌렸다"); });
 $("bPadEdit").addEventListener("click", () => { $("settings").hidden = true; $("pad").hidden = false; $("padBar").hidden = false; document.body.classList.add("padEdit"); });
-$("bPadDone").addEventListener("click", () => { document.body.classList.remove("padEdit"); $("padBar").hidden = true; store.set("pad", padCfg); for (const k in held) held[k] = 0; for (const k in press) press[k] = 0; showScreen("settings"); });
+$("bPadDone").addEventListener("click", () => { document.body.classList.remove("padEdit"); $("padBar").hidden = true; store.set("pad2", padCfg); for (const k in held) held[k] = 0; for (const k in press) press[k] = 0; showScreen("settings"); });
 { let drag = null;   // while editing, the pad's own handlers never see the touch: it moves the button instead
   $("pad").addEventListener("pointerdown", e => { if (!document.body.classList.contains("padEdit")) return; const b = e.target.closest(".tb"); e.stopPropagation(); e.preventDefault(); if (!b) return;
     const r = b.getBoundingClientRect(); drag = { b, id: b.id, x0: e.clientX, y0: e.clientY, r0: innerWidth - r.right + (r.width - r.width / padCfg.s) / 2, b0: innerHeight - r.bottom + (r.height - r.height / padCfg.s) / 2 };
@@ -3343,7 +3352,7 @@ $("bPadDone").addEventListener("click", () => { document.body.classList.remove("
   $("pad").addEventListener("pointermove", e => { if (!drag) return; e.stopPropagation();
     const rr = Math.max(0, Math.min(innerWidth - 40, drag.r0 - (e.clientX - drag.x0))), bb = Math.max(0, Math.min(innerHeight - 40, drag.b0 - (e.clientY - drag.y0)));
     padCfg.pos[drag.id] = { r: Math.round(rr), b: Math.round(bb) }; drag.b.style.right = rr + "px"; drag.b.style.bottom = bb + "px"; }, true);
-  const end = e => { if (!drag) return; e.stopPropagation(); drag = null; store.set("pad", padCfg); };
+  const end = e => { if (!drag) return; e.stopPropagation(); drag = null; store.set("pad2", padCfg); };
   $("pad").addEventListener("pointerup", end, true); $("pad").addEventListener("pointercancel", end, true); }
 $("bSetClose").addEventListener("click", () => { if (settingsBack === "pause") showScreen("pause"); else showScreen("menu"); });
 $("bSound").addEventListener("click", () => { settings.sound = !settings.sound; saveSettings(); });

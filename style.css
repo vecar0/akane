@@ -50,12 +50,12 @@ button:focus-visible { outline: 2px solid var(--jjok); outline-offset: 2px; }
   background: rgba(230, 226, 215, .55); box-shadow: inset 0 0 0 2px rgba(23, 22, 26, .45); font-family: var(--f-head); font-size: 15px; color: var(--ink); }
 .tb.down { background: rgba(23, 22, 26, .3); }
 /* fingers miss: each button catches touches a little beyond its painted ring */
-.tb::after { content: ""; position: absolute; inset: -14px; border-radius: 50%; }
+.tb::after { content: ""; position: absolute; inset: -6px; border-radius: 50%; }
 #bHook.ready { animation: kitePulse .7s ease-in-out infinite alternate; }
 @keyframes kitePulse { to { transform: scale(1.08); } }
-#bJump { width: 96px; height: 96px; right: calc(env(safe-area-inset-right, 0px) + 16px); bottom: calc(env(safe-area-inset-bottom, 0px) + 14px); font-size: 17px; }
-#bDash { width: 78px; height: 78px; right: calc(env(safe-area-inset-right, 0px) + 122px); bottom: calc(env(safe-area-inset-bottom, 0px) + 12px); color: var(--jjok); }
-#bHook { width: 62px; height: 62px; right: calc(env(safe-area-inset-right, 0px) + 32px); bottom: calc(env(safe-area-inset-bottom, 0px) + 118px); opacity: .35; color: var(--jjok); }
+#bJump { width: 96px; height: 96px; right: calc(env(safe-area-inset-right, 0px) + 87px); bottom: calc(env(safe-area-inset-bottom, 0px) + 91px); font-size: 17px; }
+#bDash { width: 78px; height: 78px; right: calc(env(safe-area-inset-right, 0px) + 227px); bottom: calc(env(safe-area-inset-bottom, 0px) + 70px); color: var(--jjok); }
+#bHook { width: 62px; height: 62px; right: calc(env(safe-area-inset-right, 0px) + 102px); bottom: calc(env(safe-area-inset-bottom, 0px) + 250px); opacity: .35; color: var(--jjok); }
 #bHook.ready { opacity: 1; }
 #bHook::after { inset: -3px; }   /* it sits where swipes pass: catch only its own ring */
 #bHook:not(.ready) { pointer-events: none; }   /* nothing to hook: a stroke that starts here is a slash */
