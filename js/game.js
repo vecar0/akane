@@ -1243,15 +1243,15 @@ function killCamOn(e) {
   const x = e.x + e.w / 2, y = e.y + e.h / 2, d = P.dashDir || { x: P.face, y: 0 };
   killCam = Math.max(killCam, .55); hitstop = Math.max(hitstop, .05); shake = Math.max(shake, 6); Music.sfx("strike");
   cutLines.push({ x, y, a: Math.atan2(d.y, d.x), t: 0, life: .7 });
-  seals.push({ x, y: e.y + 2, t: 0, rot: (Math.random() - .5) * .3, ch: "斬", big: true });
-  if (SPR.vis) addFx("vis", VIS.splat, x, y, 90, { life: .7, grow: .35, ay: .5, rot: Math.random() * 6.28 });
-  for (let i = 0; i < 34; i++) { const a = Math.atan2(d.y, d.x) + (Math.random() - .5) * 1.4, v = 120 + Math.random() * 520; parts.push({ x, y, vx: Math.cos(a) * v, vy: Math.sin(a) * v - 60, life: .8, max: .8, c: i % 5 ? SEAL : "#7a0d12", s: 2 + Math.random() * 4.5 }); }
-  bleed(x, y, d, true); seals.push({ x, y: e.y + 6, t: 0, rot: (Math.random() - .5) * .4 });
+  seals.push({ x, y: e.y + 6, t: 0, rot: (Math.random() - .5) * .3 });
+  if (SPR.vis) addFx("vis", VIS.splat, x, y, 52, { life: .6, grow: .3, ay: .5, rot: Math.random() * 6.28 });
+  for (let i = 0; i < 22; i++) { const a = Math.atan2(d.y, d.x) + (Math.random() - .5) * 1, v = 120 + Math.random() * 380; parts.push({ x, y, vx: Math.cos(a) * v, vy: Math.sin(a) * v - 50, life: .6, max: .6, c: i % 5 ? SEAL : "#7a0d12", s: 1.2 + Math.random() * 2 }); }
+  bleed(x, y, d, false);
 }
 function drawCutLines() { // a short wet cut of blood across the body, drawn in one stroke
   for (const c of cutLines) { const k = c.t / c.life, grow = Math.min(1, c.t / .07), w = 1 - Math.max(0, k - .4) / .6;
     ctx.save(); ctx.translate(c.x, c.y); ctx.rotate(c.a); ctx.globalAlpha = w;
-    if (SPR.vis) { const f = SPR.vis.f[VIS.cut], L = 150 * grow; drawSprite("vis", VIS.cut, 0, 0, L / f.w, false, .5, false, .45); }
+    if (SPR.vis) { const f = SPR.vis.f[VIS.cut], L = 110 * grow; ctx.scale(1, .45); drawSprite("vis", VIS.cut, 0, 0, L / f.w, false, .5, false, .45); }   // a thin wet line
     else { const L = 75 * grow; ctx.fillStyle = SEAL; ctx.beginPath(); ctx.moveTo(-L, 0); ctx.lineTo(0, -5); ctx.lineTo(L, 0); ctx.lineTo(0, 5); ctx.closePath(); ctx.fill(); }
     ctx.restore(); }
   ctx.globalAlpha = 1;
@@ -1261,6 +1261,23 @@ function stepKegs() { // 화약통: each keg bursts a beat after it was set down
   for (const k of kegs) if (songPos >= k.at) { k.done = true; const r = 100; fireFx(k.x, k.y - 12, r * .8); if (SPR.pfx) addFx("pfx", 2, k.x, k.y - 14, r * 1.5, { life: .55, grow: .35, ay: .5 }); ringFx(k.x, k.y - 12, r, "rgba(60,52,48,.7)", .4); shake = Math.max(shake, 7); Music.sfx("kill");
     for (const e of enemies) if (e.alive && !ghostly(e) && Math.hypot(e.x + e.w / 2 - k.x, e.y + e.h / 2 - k.y + 12) < r + Math.max(e.w, e.h) / 2) { hurtEnemy(e, false); e.stunT = Math.max(e.stunT || 0, .5); } }
   kegs = kegs.filter(k => !k.done);
+}
+function drawFlame(b) { // a painted flame that flickers, sways and gutters out — each one a little different, glowing on the ground
+  if (b.max == null) { b.max = b.life; b.sd = Math.random() * 6.28; b.fl = Math.random() < .5; b.sz = .75 + Math.random() * .5; }
+  const k = 1 - b.life / b.max, t = performance.now() / 1000, big = b.big ? 1.5 : 1;
+  const life = k < .1 ? k / .1 : 1 - Math.pow((k - .1) / .9, 1.6), h = 30 * big * b.sz * life;
+  if (h <= 1) return;
+  ctx.save(); ctx.translate(b.x, b.y);
+  const g = ctx.createRadialGradient(0, -h * .2, 0, 0, -h * .2, h * .9); g.addColorStop(0, `rgba(240,120,40,${.28 * life})`); g.addColorStop(1, "rgba(240,120,40,0)");   // warm light around it
+  ctx.fillStyle = g; ctx.fillRect(-h, -h * 1.1, h * 2, h * 1.4);
+  if (b.ground) { ctx.fillStyle = `rgba(30,22,18,${.2 * (1 - k)})`; ctx.beginPath(); ctx.ellipse(0, 0, h * .5, h * .09, 0, 0, 6.283); ctx.fill(); }   // scorch
+  ctx.globalAlpha = Math.min(1, b.life * 3) * .95;
+  if (SPR.perkfx) { const f = SPR.perkfx.f[PF.fire];
+    for (let j = 0; j < 2; j++) { const ph = b.sd + j * 2.1, sy = 1 + Math.sin(t * 17 + ph) * .14, sx = 1 - Math.sin(t * 17 + ph) * .07;
+      ctx.save(); ctx.translate((j ? .28 : -.12) * h, 0); ctx.rotate(Math.sin(t * 6 + ph) * .13); ctx.scale(sx * (j ? .7 : 1), sy * (j ? .7 : 1));
+      drawSprite("perkfx", PF.fire, 0, 2, h / f.h, b.fl !== !!j, .5, false, 1); ctx.restore(); } }
+  ctx.restore(); ctx.globalAlpha = 1;
+  if (Math.random() < .1) parts.push({ x: b.x + (Math.random() - .5) * h * .5, y: b.y - h * .8, vx: (Math.random() - .5) * 30, vy: -50 - Math.random() * 60, life: .45, max: .45, c: Math.random() < .5 ? "#ffd27a" : "#e8752a", s: 1.5 });   // embers
 }
 function drawKegsRings() {
   for (const k of kegs) { ctx.fillStyle = "#5a3a22"; ctx.fillRect(k.x - 7, k.y - 16, 14, 16); ctx.strokeStyle = "#17161a"; ctx.lineWidth = 1.4; ctx.strokeRect(k.x - 7, k.y - 16, 14, 16); ctx.beginPath(); ctx.moveTo(k.x - 7, k.y - 11); ctx.lineTo(k.x + 7, k.y - 11); ctx.moveTo(k.x - 7, k.y - 5); ctx.lineTo(k.x + 7, k.y - 5); ctx.stroke();
@@ -1431,8 +1448,8 @@ function stepPlayer(dt) {
   if (P.dashT > 0) {
     P.dashT -= dt; P.vx = P.dashDir.x * DASHV; P.vy = P.dashDir.y * DASHV;
     P.trailD = (P.trailD || 0) + DASHV * dt;
-    if (P.trailD > 44) { P.trailD = 0; const tx = P.x + P.w / 2, ty = P.y + P.h / 2;
-      if (has("hwaryong")) bullets.push({ x: tx, y: P.y + P.h - 8, vx: 0, vy: 0, friendly: true, fire: true, big: has("yeomryong"), r: has("yeomryong") ? 18 : 8, pierce: true, life: has("yeomryong") ? 1.8 : .9, owner: null });
+    if (P.trailD > (has("hwaryong") ? 26 : 44)) { P.trailD = 0; const tx = P.x + P.w / 2, ty = P.y + P.h / 2;
+      if (has("hwaryong")) bullets.push({ x: tx + (Math.random() - .5) * 8, y: (P.onGround ? P.y + P.h - 2 : P.y + P.h * .6), vx: 0, vy: P.onGround ? 0 : -20, friendly: true, fire: true, flame: true, ground: P.onGround, big: has("yeomryong"), r: has("yeomryong") ? 18 : 10, pierce: true, life: (has("yeomryong") ? 1.8 : .9) * (.85 + Math.random() * .3), owner: null });
       if (has("pungsin")) bullets.push({ x: tx, y: ty, vx: 0, vy: 0, friendly: true, tornado: true, big: has("daepung"), r: has("daepung") ? 26 : 12, pierce: true, noHit: !has("hwapung"), life: has("daepung") ? 1.4 : .7, owner: null });
       if (has("mupung")) for (const o of bullets) if (!o.friendly && !o.slowed && Math.hypot(o.x - tx, o.y - ty) < 300) { o.slowed = true; o.vx *= .5; o.vy *= .5; } }
     const pb = P.y + P.h, hx = moveX(P, P.vx * dt); let hy = moveY(P, P.vy * dt); ghost(0.012);
@@ -1499,7 +1516,7 @@ function bleed(x, y, dir, big) { // blood burst + spray along the blow + a pool 
   addFx("fx", FX.burst, x, y, big ? 96 : 64, { life: big ? .7 : .45, rot: Math.random() * 6.28, grow: .5 });
   addFx("fx", FX.spray, x, y, big ? 50 : 34, { life: .5, rot: Math.atan2(dir.y, dir.x), ay: .5, grow: .6 });
   addFx("fx", FX.drops, x + dir.x * 20, y - 6, 26, { life: .6, rot: Math.random() * 6.28 });
-  if (SPR.vis) { addFx("vis", VIS.splat, x, y, big ? 80 : 56, { life: .55, grow: .4, ay: .5, rot: Math.random() * 6.28 }); addFx("vis", VIS.drops, x + dir.x * 26, y + 6, big ? 40 : 28, { life: .7, grow: .1, ay: .5, rot: Math.atan2(dir.y, dir.x) }); }
+  if (SPR.vis) { addFx("vis", VIS.splat, x, y, big ? 48 : 34, { life: .45, grow: .3, ay: .5, rot: Math.random() * 6.28, a: .85 }); addFx("vis", VIS.drops, x + dir.x * 20, y + 4, big ? 24 : 18, { life: .55, grow: .1, ay: .5, rot: Math.atan2(dir.y, dir.x), a: .85 }); }
   const fy = findFloor(x, y); if (fy != null && LV.stains.length < 160) LV.stains.push({ x, y: fy + 2, pool: true, w: big ? 70 : 46, rot: 0 });
 }
 function puff(x, y, n) { for (let i = 0; i < n; i++) parts.push({ x, y, vx: (Math.random() - 0.5) * 140, vy: -Math.random() * 80, life: .3, max: .3, c: LV.pal.foe, s: 2 }); }
@@ -2304,6 +2321,7 @@ function render(rdt) {
     if (b.thorn) { const a = Math.atan2(b.vy, b.vx); ctx.save(); ctx.translate(b.x, b.y); ctx.rotate(a); ctx.fillStyle = "#9a1424"; ctx.beginPath(); ctx.moveTo(12, 0); ctx.lineTo(-10, -3); ctx.lineTo(-16, 0); ctx.lineTo(-10, 3); ctx.closePath(); ctx.fill(); ctx.restore();   // 혈 공명's thorn of blood
       if (Math.random() < .6) parts.push({ x: b.x, y: b.y, vx: 0, vy: 30, life: .3, max: .3, c: "#9a1424", s: 2 }); continue; }
     if (b.smoke && SPR.pfx) { const f = SPR.pfx.f[3]; ctx.globalAlpha = Math.min(1, b.life * 2.5) * .9; drawSprite("pfx", 3, b.x, b.y, 54 / f.h * (1 + (1 - Math.min(1, b.life)) * .3), false, .5, false, .5); ctx.globalAlpha = 1; continue; }   // 화약 연기
+    if (b.fire && !b.smoke) { drawFlame(b); continue; }
     const bg = b.big ? 1.6 : 1, ps = b.sword ? ["slashfx", SF.sword, 16] : b.moon ? ["slashfx", SF.moon, 46 * bg] : b.dragon ? ["perkfx", PF.dragon, 40] : b.fire ? ["perkfx", PF.fire, 26 * bg] : b.tornado ? ["perkfx", PF.wind, 58 * bg] : null;
     if (ps && SPR[ps[0]]) { const f = SPR[ps[0]].f[ps[1]], fade = b.fire || b.tornado ? Math.min(1, b.life * 3) : 1; ctx.save(); ctx.translate(b.x, b.y); ctx.globalAlpha = fade * .95;
       if (b.sword || b.moon || b.dragon) { const a = Math.atan2(b.vy, b.vx), left = Math.cos(a) < 0; ctx.rotate(left ? a + Math.PI : a); drawSprite(ps[0], ps[1], 0, 0, ps[2] / f.h, left, .5, false, .5); }
