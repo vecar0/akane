@@ -912,7 +912,7 @@ function enterMadang() {
   }
   const s = cpSave || LV.start;
   P = newPlayer(s.x, s.y); run.hosinUsed = 0; run.shadeUsed = false; run.cutDrums = run.cutDrums || []; 
-  bullets = []; parts = []; ghosts = []; seals = []; vfx = []; haz = []; beams = []; bolts = []; kegs = []; rings = []; cutLines = []; killCam = 0; clones = [];
+  bullets = []; parts = []; ghosts = []; seals = []; vfx = []; haz = []; beams = []; bolts = []; kegs = []; rings = []; cutLines = []; killCam = 0; clones = []; bossIntro = bossOut = bossBanner = null; sealArena(null, false);
   Music.start(MADANG[run.tower ? [0, 2, 4][(run.floor - 1) % 3] : MD(run.m)].jd, run.seed + run.m, (1 + .08 * (run.cycle || 0)) * (omen("geupbak") ? 1.15 : 1) * (upOn("fast") ? 1.15 : 1));
   songPos = Music.pos(); spawnEnemies();
   cam.x = P.x; cam.y = P.y;
@@ -934,7 +934,7 @@ function startTutorial() {
   setHud(); showScreen(null); state = "play";
 }
 function respawn() {
-  bullets = []; ghosts = []; haz = []; beams = []; bolts = []; kegs = []; rings = []; cutLines = []; killCam = 0; clones = [];
+  bullets = []; ghosts = []; haz = []; beams = []; bolts = []; kegs = []; rings = []; cutLines = []; killCam = 0; clones = []; bossIntro = bossOut = bossBanner = null; sealArena(null, false);
   const s = cpSave || { x: LV.start.x, y: LV.start.y, dead: new Set() };
   deadIds = new Set(s.dead);
   P = newPlayer(s.x, s.y); clones = [];
@@ -1277,6 +1277,24 @@ function shot(d, arrow) {
     if (strike) addFx("perkfx", PF.spark, tx, ty, 40, { life: .2, rot: Math.random() * 6.28, grow: .6 }); }
 }
 let kegs = [], rings = [], killCam = 0, cutLines = [];
+// 보스전 연출: the entrance card, the sealed arena, big brush words (격노 · 간파), the fall
+let bossIntro = null, bossOut = null, bossBanner = null;
+const ACT_NAME = { slam: "내려찍기", charge: "돌진", volley: "연사", summon: "매 부르기", pounce: "덮치기", foxfire: "여우불", illusion: "환영", club: "방망이", coins: "엽전 비", gamtu: "감투",
+  burst: "솟구침", burst2: "연이은 솟구침", spit: "독물", scream: "곡성", blink: "덮쳐 오기", hair: "머리카락", low: "아래 베기", high: "위 베기", lowhigh: "아래 · 위", highlow: "위 · 아래", spirits: "장승 정령",
+  breath: "불길", leap: "도약", stomp: "짓밟기", inhale: "들이마시기", scrap: "쇳조각", claw: "할퀴기", roar: "포효", fan: "부채", fan2: "쌍부채", dance: "탈춤", mask: "탈 바꾸기", drum: "천고",
+  shblink: "그림자 걸음", shcut: "그림자 베기", shstrike: "그림자 일격", shdash: "그림자 돌진" };
+const RAGE_ADD = { sumun: ["volley", "summon"], gumiho: ["illusion", "foxfire"], dokkaebi: ["coins", "gamtu"], imugi: ["burst2"], wongwi: ["hair", "scream"], jangseung: ["lowhigh", "highlow"],
+  haetae: ["breath", "leap"], bulgasari: ["scrap", "stomp"], baekho: ["roar", "claw"], talchum: ["fan2", "dance"] };
+function banner(text, col, sub) { bossBanner = { text, col, sub, t: 0 }; }
+function sealArena(e, on) { // a talisman barrier closes both sides of the arena while the guardian lives
+  if (!on) { if (LV && LV.seal) { for (const x of [LV.seal.x0, LV.seal.x1]) for (let y = 0; y <= LV.seal.y1; y++) LV.grid[y * LV.w + x] = 0; LV.seal = null; } return; }
+  const d = LV.defs.find(o => o.id === e.id); if (!d || LV.seal) return;
+  const x0 = d.tx - 18, x1 = d.tx + 7, px = Math.floor((P.x + P.w / 2) / T);
+  if (x0 < 1 || x1 >= LV.w - 1 || px <= x0 || px >= x1) return;
+  for (const x of [x0, x1]) for (let y = 0; y <= d.ty; y++) if (LV.grid[y * LV.w + x] !== 0) return;   // only where the arena is open sky
+  for (const x of [x0, x1]) for (let y = 0; y <= d.ty; y++) LV.grid[y * LV.w + x] = 1;
+  LV.seal = { x0, x1, y1: d.ty, t: 0 };
+}
 function killCamOn(e) {
   const x = e.x + e.w / 2, y = e.y + e.h / 2, d = P.dashDir || { x: P.face, y: 0 };
   killCam = Math.max(killCam, .35); hitstop = Math.max(hitstop, .05); shake = Math.max(shake, 6); Music.sfx("strike");
@@ -1484,6 +1502,7 @@ function findHook() {
   return best;
 }
 function frameInput(rdt) {
+  if (bossIntro) { press.jump = press.dash = press.hook = 0; slashReq = null; return; }   // the entrance card holds the hands
   if (press.jump && P.onGround && axis().y > .5 && onLedge(P)) { P.dropT = .25; P.y += 3; P.onGround = false; press.jump = 0; } // down + jump: drop through a ledge
   if (press.jump) P.jumpBuf = 0.18;
   if (slashReq) { doSlash(slashReq); slashReq = null; }
@@ -1700,8 +1719,10 @@ function hurtEnemy(e, strike) {
     if (oath("goyo2") && !strike) { e.hitT = .1; return; }
     if (!strike) e.softHits = (e.softHits || 0) + 1;
     const aimed = strike === 2 || (strike && P.dashT > 0);   // only the aimed dash lands the full 일격 and breaks a wind-up; a beat-timed swing just bites deeper
+    const read = aimed && e.act && !["gamtu", "mask"].includes(e.act);   // 간파: caught mid wind-up
     e.hp -= aimed ? 3 : strike ? 2 : 1; e.hitT = .22;
-    if (aimed) { e.stagT = .4; e.act = null; e.suck = false; e.chargeT = 0; e.danceT = 0; e.swoopT = 0; e.nextAt = songPos + 2 * Music.beatLen; if (e.hidden) { e.hidden = false; e.x = e.tx - e.w / 2; } }
+    if (read) { e.hp -= 1; regainAir(); banner("看破", JJOK, "간파 — 기술을 끊었다"); hitstop = Math.max(hitstop, .12); shake = Math.max(shake, 9); haz = haz.filter(z => z.kind === "ring"); }
+    if (aimed) { e.stagT = read ? 1.1 : .4; e.act = null; e.suck = false; e.chargeT = 0; e.danceT = 0; e.swoopT = 0; e.nextAt = songPos + 2 * Music.beatLen; if (e.hidden) { e.hidden = false; e.x = e.tx - e.w / 2; } }
     addFx("fx", FX.drops, e.x + e.w / 2, e.y + 30, 30, { life: .4, rot: Math.random() * 6.28 });
     hitstop = Math.max(hitstop, .05); Music.sfx("clang"); shake = Math.max(shake, 4);
     if (e.hp <= 0) killEnemy(e); return;
@@ -1737,6 +1758,7 @@ function killEnemy(e) {
   if ((P.aimedUntil || 0) > songPos && state === "play") killCamOn(e);   // a kill from an aimed dash: the world holds, inverted, the blood red
   if (e.type === "b" && e.kind === "cheongo") { run.endingDue = true; toast("북의 주인이 쓰러졌다 · 천고를 쳐라"); }
   if (e.type === "b" && mode !== "tutorial") { run.bossKills = (run.bossKills || 0) + 1; (run.bossSeen = run.bossSeen || []).push(e.kind); codexBoss(e); }
+  if (e.type === "b" && e.kind !== "cheongo") { bossOut = { t: 0, x: e.x + e.w / 2, y: e.y + e.h / 2, name: BOSSES[e.kind].name, han: BOSSES[e.kind].han }; killCam = Math.max(killCam, .9); sealArena(null, false); }
   if (e.type === "b") { haz = []; for (const o of enemies) if (o.type === "i") o.alive = false; toast(`${josa(BOSSES[e.kind].name, "이", "가")} 쓰러졌다 · ${run.m === LAST_M ? "천고를 베어라" : "길이 열렸다"}`); Music.jing(); shake = 14; for (let k = 0; k < 3; k++) bleed(e.x + e.w / 2 + (k - 1) * 20, e.y + 20 + k * 18, { x: k - 1, y: -.4 }, true); }
   if (omen("hyeolmaeng") && mode !== "tutorial") { run.hmN = (run.hmN || 0) + 1; if (run.hmN % 5 === 0 && run.breath < breathCap()) { run.breath++; setHud(); toast("피의 맹세 · 숨 하나를 되찾았다"); } }
   if (has("hyeol") && run.kills % (has("hyeolpung") ? 5 : 10) === 0 && run.breath < breathCap()) { run.breath++; setHud(); toast("혈로 · 숨 하나를 되찾았다"); }
@@ -2015,7 +2037,10 @@ function bossPerform(e, a, I) {
 function stepBoss(e, dt, pcx, pcy, dist, live) {
   const B = BOSSES[e.kind], bl = Music.beatLen, c = cyc() + 1, I = { pcx, pcy, bl, c };   // guardians fight one tier above the turn
   e.emergeT = Math.max(0, (e.emergeT || 0) - dt); e.stagT = Math.max(0, (e.stagT || 0) - dt); e.swingT = Math.max(0, (e.swingT || 0) - dt); e.walkT = Math.max(0, (e.walkT || 0) - dt); e.invisT = Math.max(0, (e.invisT || 0) - dt);
-  if (!e.awake) { if (!(live && dist < 470)) return; e.awake = true; toast(josa(B.name, "이", "가") + " 길을 막는다"); Music.jing(); e.fightBreath = run.breath; e.nextAt = (Math.floor(songPos / bl) + 2) * bl; }
+  if (!e.awake) { if (!(live && dist < 470)) return; e.awake = true; Music.jing(); e.fightBreath = run.breath; sealArena(e, true); e.hpShow = e.hp;
+    const seen = (LV.introSeen = LV.introSeen || new Set()).has(e.kind); LV.introSeen.add(e.kind);
+    if (!seen && mode !== "tutorial") bossIntro = { t: 0, e }; else toast(josa(B.name, "이", "가") + " 길을 막는다");
+    e.nextAt = (Math.floor(songPos / bl) + 2) * bl + (bossIntro ? 1.7 : 0); }
   let ecx = e.x + e.w / 2;
   const deadly = () => { if (live && hurtsPlayer() && overlap(e, P)) { lastHitDir = { x: Math.sign(pcx - ecx) || 1, y: -.3 }; die(); } };
   if (e.air) { // leaping: arc under gravity, deadly on contact, shake on landing
@@ -2047,11 +2072,12 @@ function stepBoss(e, dt, pcx, pcy, dist, live) {
       if (groundPt(ahead, e.y + e.h + 4) && !solidPt(ahead, e.y + e.h - 10)) { moveX(e, e.face * sp * dt); e.walkT = .12; e.wph = (e.wph || 0) + sp * dt / Math.max(22, e.w * .55); }
     }
     if (live && songPos >= e.nextAt && e.stagT <= 0) {
-      if (!e.raged && e.hp <= e.maxHp / 2) { e.raged = true; toast(`${josa(B.name, "이", "가")} 격노했다`); shake = 10; Music.jing(); }
-      const pool = B.pool(c); let a = pool[(e.n = (e.n || 0) + 1) % pool.length];
+      if (!e.raged && e.hp <= e.maxHp / 2) { e.raged = true; banner("激怒", SEAL, `${josa(B.name, "이", "가")} 격노했다 — 새 기술이 섞인다`); shake = 14; flash = .25; Music.jing();
+        for (let i = 0; i < 3; i++) bleed(ecx + (i - 1) * 24, e.y + 20 + i * 10, { x: i - 1, y: -.5 }, true); }
+      const pool = e.raged ? [...B.pool(c), ...(RAGE_ADD[e.kind] || [])] : B.pool(c); let a = pool[(e.n = (e.n || 0) + 1) % pool.length];
       if ((a === "slam" || a === "club" || a === "inhale") && dist > 280) a = e.kind === "sumun" ? (c >= 1 ? "volley" : "charge") : e.kind === "dokkaebi" ? "coins" : "scrap";
       if (a === "claw" && dist > 200) a = "leap";
-      e.act = a; e.hitAt = (Math.floor(songPos / bl) + 1) * bl; if (e.hitAt - songPos < .45) e.hitAt += bl;
+      e.act = a; e.hitAt = (Math.floor(songPos / bl) + 1) * bl; if (e.hitAt - songPos < .45) e.hitAt += bl; e.actFrom = songPos;
       bossChoose(e, a, I);
     }
   } else {
@@ -2192,7 +2218,12 @@ function frame(now) {
     songPos = Music.pos();
     if (state === "play") frameInput(rdt);
     let ts = 1;
-    if (hitstop > 0) { hitstop -= rdt; ts = 0.06; } else if (state === "play" && P.focus) ts = has("d_jeong") ? 0.07 : 0.12; else if (state === "play" && killCam > 0) ts = .32;
+    if (bossIntro && (bossIntro.t += rdt) > 1.7) bossIntro = null;
+    if (bossOut && (bossOut.t += rdt) > 2.2) bossOut = null;
+    if (bossBanner && (bossBanner.t += rdt) > 1.3) bossBanner = null;
+    if (LV && LV.seal) LV.seal.t += rdt;
+    if (state === "play" && bossIntro) ts = 0.03;
+    else if (hitstop > 0) { hitstop -= rdt; ts = 0.06; } else if (state === "play" && P.focus) ts = has("d_jeong") ? 0.07 : 0.12; else if (state === "play" && killCam > 0) ts = .32;
     if (state === "dead") ts = 0.3;
     const wdt = rdt * ts, n = Math.max(1, Math.ceil(wdt / (1 / 120))), sdt = wdt / n;
     for (let i = 0; i < n; i++) {
@@ -2261,7 +2292,8 @@ function render(rdt) {
   if (!paperPat) makePaper();
   const pal = !LV ? PAL[0] : (P && (P.focus || killCam > 0) && state === "play") ? NIGHT : LV.pal, k = SCALE * DPR, vw = W / SCALE, vh = H / SCALE;
   if (P && LV) {
-    const tx = P.x + P.w / 2 + Math.max(-110, Math.min(110, P.vx * 0.22)) + P.face * 24, ty = P.y + P.h / 2 - 24, f = Math.min(1, rdt * 7);
+    let tx = P.x + P.w / 2 + Math.max(-110, Math.min(110, P.vx * 0.22)) + P.face * 24, ty = P.y + P.h / 2 - 24; const f = Math.min(1, rdt * (bossIntro ? 4 : 7));
+    if (bossIntro) { const e = bossIntro.e; tx = tx * .25 + (e.x + e.w / 2) * .75; ty = ty * .4 + (e.y + e.h / 2 - 30) * .6; }
     cam.x += (tx - cam.x) * f; cam.y += (ty - cam.y) * f;
     const lw = LV.w * T, lh = LV.h * T;
     cam.x = lw <= vw ? lw / 2 : Math.max(vw / 2, Math.min(lw - vw / 2, cam.x));
@@ -2448,6 +2480,12 @@ function render(rdt) {
     ctx.fillStyle = pal.bg; ctx.fillRect(-1.5, -s / 2 + 7, 3, s - 14); ctx.fillRect(-s / 2 + 7, -1.5, s - 14, 3);
     ctx.restore(); }
   }
+  if (LV.seal) { const sl = LV.seal, h = (sl.y1 + 1) * T, grow = Math.min(1, sl.t * 2.5);   // 결계: two curtains of ink hung with talismans
+    for (const x of [sl.x0, sl.x1]) { const wx = x * T, top = h - h * grow;
+      ctx.globalAlpha = .55; inkWash(wx + 4, top, T - 8, h - top, pal.night ? "#d8d1c4" : "#1d1b20", x * 13); ctx.globalAlpha = 1;
+      for (let y = h - 40; y > top + 10; y -= 70) { const sw = Math.sin(tt * 2 + y * .05 + x) * 3; ctx.save(); ctx.translate(wx + T / 2 + sw, y); ctx.rotate(sw * .03);
+        ctx.fillStyle = "#e8cf6a"; ctx.fillRect(-7, -16, 14, 32); ctx.strokeStyle = SEAL; ctx.lineWidth = 1.4; ctx.strokeRect(-5, -13, 10, 26);
+        ctx.beginPath(); ctx.moveTo(0, -10); ctx.lineTo(0, 10); ctx.moveTo(-3, -4); ctx.lineTo(3, -4); ctx.moveTo(-3, 3); ctx.lineTo(3, 3); ctx.stroke(); ctx.restore(); } } }
   // 과녁: a red ring hung on a cord; a faint ghost of it while it waits to hang again
   for (const g of LV.targets) { if (!visible(g.x)) continue;
     const sw = Math.sin(tt * 1.6 + g.sway) * 2, up = g.t > 0, k = up ? Math.max(.18, 1 - g.t / 2.5) : 1;
@@ -2601,12 +2639,18 @@ function render(rdt) {
   const boss = enemies.find(e => e.type === "b" && e.alive && e.awake);
   if (boss && (state === "play" || state === "dead" || state === "pause")) { // 수문장's life as a brush bar along the top
     ctx.setTransform(DPR, 0, 0, DPR, 0, 0);
-    const bw = Math.min(320, W * .44), bx = W / 2 - bw / 2, by = 46;
-    ctx.fillStyle = "rgba(23,22,26,.25)"; ctx.fillRect(bx, by, bw, 7);
-    ctx.fillStyle = SEAL; ctx.fillRect(bx, by, bw * Math.max(0, boss.hp) / boss.maxHp, 7);
-    ctx.fillStyle = pal.text; ctx.font = `400 14px "Song Myung", serif`; ctx.textAlign = "center"; ctx.textBaseline = "bottom"; ctx.fillText(`${BOSSES[boss.kind].name} ${BOSSES[boss.kind].han}`, W / 2, by - 3); ctx.textAlign = "left";
+    const bw = Math.min(440, W * .6), bx = W / 2 - bw / 2, by = 48, fr = Math.max(0, boss.hp) / boss.maxHp;
+    boss.hpShow = Math.max(boss.hp, (boss.hpShow ?? boss.hp) - rdt * boss.maxHp * .35);
+    ctx.fillStyle = "rgba(23,22,26,.3)"; ctx.fillRect(bx - 2, by - 2, bw + 4, 12);
+    ctx.fillStyle = "rgba(242,226,200,.85)"; ctx.fillRect(bx, by, bw * Math.max(0, boss.hpShow) / boss.maxHp, 8);
+    ctx.fillStyle = boss.raged ? "#e0331f" : SEAL; ctx.fillRect(bx, by, bw * fr, 8);
+    ctx.fillStyle = "rgba(255,255,255,.18)"; ctx.fillRect(bx, by, bw * fr, 3);
+    if (!boss.raged) { ctx.fillStyle = pal.text; ctx.fillRect(bx + bw / 2 - 1, by - 4, 2, 16); }   // where the fury wakes
+    if (boss.stagT > .5) { ctx.fillStyle = JJOK; ctx.font = `400 12px "Song Myung", serif`; ctx.textAlign = "left"; ctx.textBaseline = "middle"; ctx.fillText("흐트러짐", bx + bw + 8, by + 4); }
+    ctx.fillStyle = pal.text; ctx.font = `400 16px "Song Myung", serif`; ctx.textAlign = "center"; ctx.textBaseline = "bottom"; ctx.fillText(`${BOSSES[boss.kind].name} ${BOSSES[boss.kind].han}${boss.raged ? " · 격노" : ""}`, W / 2, by - 4); ctx.textAlign = "left";
     ctx.setTransform(1, 0, 0, 1, 0, 0);
   }
+  drawBossCards(pal);
   if (P && P.focus && state === "play") { ctx.fillStyle = "rgba(39,70,106,.14)"; ctx.fillRect(0, 0, cv.width, cv.height); }
   else if (killCam > 0 && state === "play") { ctx.fillStyle = `rgba(120,10,16,${.12 * Math.min(1, killCam * 3)})`; ctx.fillRect(0, 0, cv.width, cv.height); }   // a faint red breath over the held moment
   if (flash > 0) { ctx.strokeStyle = `rgba(195,22,28,${flash * 3})`; ctx.lineWidth = 10 * DPR; ctx.strokeRect(0, 0, cv.width, cv.height); }
@@ -3035,6 +3079,30 @@ function drawNewFoe(e, pal, cx) {
   }
   drawBoss(e, pal, cx, feet);
 }
+function drawBossCards(pal) { // screen-space: the guardian's entrance, the big words, the fall
+  ctx.setTransform(DPR, 0, 0, DPR, 0, 0); ctx.textAlign = "center"; ctx.textBaseline = "middle";
+  if (bossIntro) { const t = bossIntro.t, B = BOSSES[bossIntro.e.kind], inA = Math.min(1, t / .25), out = Math.max(0, (t - 1.35) / .35), a = inA * (1 - out), bar = H * .13 * a;
+    ctx.fillStyle = "#0e0d10"; ctx.fillRect(0, 0, W, bar); ctx.fillRect(0, H - bar, W, bar);
+    ctx.globalAlpha = a; const sx = W / 2 + (1 - Math.min(1, t / .5)) * 40;
+    brushLine(sx - 150, H * .5 + 30, sx + 150, H * .5 + 30, SEAL, 7, false, 77);
+    ctx.fillStyle = pal.text; ctx.font = `400 15px "Song Myung", serif`; ctx.fillText(B.han, sx, H * .5 - 46);
+    ctx.font = `400 52px "Song Myung", serif`; ctx.lineWidth = 6; ctx.strokeStyle = pal.night ? "rgba(20,18,20,.7)" : "rgba(242,239,230,.85)"; ctx.strokeText(B.name, sx, H * .5 - 6); ctx.fillText(B.name, sx, H * .5 - 6);
+    ctx.font = `400 15px "Song Myung", serif`; ctx.lineWidth = 4; ctx.strokeText(B.line || "", W / 2, H * .5 + 58); ctx.fillText(B.line || "", W / 2, H * .5 + 58);
+    const st = Math.min(1, Math.max(0, (t - .45) / .15)); if (st > 0) { ctx.save(); ctx.translate(sx + 128, H * .5 - 34); ctx.rotate(-.12); ctx.scale(1.6 - .6 * st, 1.6 - .6 * st); ctx.globalAlpha = a * st;
+      ctx.fillStyle = SEAL; ctx.fillRect(-20, -20, 40, 40); ctx.fillStyle = "#f2efe6"; ctx.font = `400 15px "Song Myung", serif`; ctx.fillText("決", 0, -8); ctx.fillText("戰", 0, 9); ctx.restore(); }
+    ctx.globalAlpha = 1; }
+  if (bossBanner) { const t = bossBanner.t, a = Math.min(1, t / .12) * Math.min(1, (1.3 - t) / .35), k = 1 + Math.max(0, .25 - t) * 1.6;
+    ctx.save(); ctx.globalAlpha = a; ctx.translate(W / 2, H * .34); ctx.scale(k, k); ctx.font = `400 58px "Song Myung", serif`; ctx.lineWidth = 7; ctx.strokeStyle = "rgba(242,239,230,.8)";
+    ctx.strokeText(bossBanner.text, 0, 0); ctx.fillStyle = bossBanner.col; ctx.fillText(bossBanner.text, 0, 0);
+    if (bossBanner.sub) { ctx.font = `400 15px "Song Myung", serif`; ctx.fillStyle = pal.text; ctx.fillText(bossBanner.sub, 0, 42); } ctx.restore(); }
+  if (bossOut) { const t = bossOut.t, a = Math.min(1, t / .2) * Math.min(1, (2.2 - t) / .5), st = Math.min(1, Math.max(0, (t - .35) / .18));
+    ctx.fillStyle = `rgba(120,10,16,${.18 * a})`; ctx.fillRect(0, 0, W, H);
+    if (st > 0) { ctx.save(); ctx.globalAlpha = a; ctx.translate(W / 2, H * .42); ctx.rotate(-.08); ctx.scale(2.2 - 1.2 * st, 2.2 - 1.2 * st);
+      ctx.fillStyle = SEAL; ctx.fillRect(-46, -46, 92, 92); ctx.strokeStyle = "#f2efe6"; ctx.lineWidth = 2; ctx.strokeRect(-40, -40, 80, 80);
+      ctx.fillStyle = "#f2efe6"; ctx.font = `400 34px "Song Myung", serif`; ctx.fillText("討", 0, -17); ctx.fillText("伐", 0, 19); ctx.restore();
+      ctx.globalAlpha = a; ctx.fillStyle = pal.text; ctx.font = `400 18px "Song Myung", serif`; ctx.fillText(`${bossOut.name} ${bossOut.han} 처치`, W / 2, H * .42 + 74); ctx.globalAlpha = 1; } }
+  ctx.textAlign = "left"; ctx.textBaseline = "alphabetic"; ctx.setTransform(1, 0, 0, 1, 0, 0);
+}
 function drawBoss(e, pal, cx, feet) {
   const B = BOSSES[e.kind];
   if (e.kind === "shadow" && SPR.hero3) { // drawn from the hero's own sheet, inverted to bone white, trailing ink
@@ -3046,6 +3114,10 @@ function drawBoss(e, pal, cx, feet) {
   if (e.hidden) { // underground: only a heaving ripple of earth
     const x = e.tx || cx, w = 40 + Math.sin(performance.now() / 80) * 6; ctx.fillStyle = "rgba(40,34,30,.55)"; ctx.beginPath(); ctx.ellipse(x, e.floor - 2, w, 7, 0, 0, 7); ctx.fill(); return;
   }
+  if (e.act && songPos < e.hitAt && ACT_NAME[e.act] && !e.hidden) { const span = Math.max(.2, e.hitAt - (e.actFrom ?? e.hitAt - Music.beatLen)), q = Math.max(0, Math.min(1, (songPos - (e.actFrom ?? songPos)) / span)), y = e.y - 22;
+    ctx.save(); ctx.font = `400 15px "Song Myung", serif`; ctx.textAlign = "center"; ctx.textBaseline = "middle"; ctx.lineWidth = 4; ctx.strokeStyle = pal.night ? "rgba(20,18,20,.8)" : "rgba(242,239,230,.9)";
+    ctx.strokeText(ACT_NAME[e.act], cx, y); ctx.fillStyle = q > .7 ? SEAL : pal.text; ctx.fillText(ACT_NAME[e.act], cx, y);
+    ctx.strokeStyle = SEAL; ctx.globalAlpha = .35 + .5 * q; ctx.lineWidth = 2.2; ctx.beginPath(); ctx.arc(cx, y - 16, 6, -Math.PI / 2, -Math.PI / 2 + Math.PI * 2 * q); ctx.stroke(); ctx.restore(); }
   if (e.act && songPos < e.hitAt) { // telegraph what is coming
     const prog = Math.max(0, Math.min(1, 1 - (e.hitAt - songPos) / Music.beatLen)), a = .1 + prog * .3, f = e.floor;
     const sd = e.id * 7 + (e.hitAt * 3 | 0);   // the same strokes for the whole wind-up
