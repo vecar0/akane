@@ -286,14 +286,14 @@ const WEAPONS = {
   hwando: { name: "환도", han: "環刀", desc: "장단 — 박자에 맞춘 베기로 적이나 과녁을 베면 공중 대시가 다시 찬다", R: 1, reach: 0, cd: .2, dur: .14 },
   ssang: { name: "쌍검", han: "雙劍", desc: "기세 — 잇따라 벨수록 기세가 쌓이고(최대 다섯), 셋 이상이면 다음 조준 대시가 넓게 휘몰아치며 대시를 쓰지 않는다. 다섯 번째 베기는 일격", R: .82, reach: -2, cd: .09, dur: .1 },
   woldo: { name: "월도", han: "月刀", desc: "내려베기 — 공중에서 아래로 베어 적·과녁·탄을 치면 튕겨 오르고 공중 대시가 다시 찬다. 방패를 무시하고 밀쳐낸다", R: 1.55, reach: 16, cd: .4, dur: .22 },
-  baldo: { name: "발도", han: "拔刀", desc: "거합 — 누르고 있다가 박자에 맞춰 떼면 멀리 뻗는 일격, 성공하면 공중 대시가 다시 찬다. 놓치면 헛친다", R: .72, reach: 0, cd: .25, dur: .14 },
+  baldo: { name: "발도", han: "拔刀", desc: "거합 — 베기를 누르고 있으면 원이 차오르고(0.3초), 다 찬 뒤 떼면 앞으로 돌진하며 벤다. 박자에 맞춰 떼면 일격이 되고 공중 대시가 다시 찬다", R: .72, reach: 0, cd: .25, dur: .14 },
   // 무녀의 무구 — her own hand, her own reach (kind: which sword's rules it borrows)
   buchae: { ch: "munyeo", name: "부채", han: "扇", desc: "장단 — 펼친 부채로 넓게 쓸어 탄을 두 배로 되받아치고, 박자에 맞춰 적이나 과녁을 치면 공중 대시가 찬다", R: 1.12, reach: -4, cd: .2, dur: .16, fx: "fan" },
   bangul: { ch: "munyeo", kind: "ssang", ring: true, name: "방울", han: "鈴", desc: "기세 — 흔들 때마다 몸 둘레로 방울 소리가 퍼져 베고 기세가 쌓인다, 셋 이상이면 조준 대시가 넓게 휘몰아친다", R: 1.05, reach: 0, cd: .11, dur: .14, fx: "bell", cost: 150 },
   singal: { ch: "munyeo", kind: "woldo", name: "신칼", han: "神刀", desc: "내려베기 — 오방색 띠를 단 무구 칼, 공중에서 아래로 내려치면 튕겨 오르며 공중 대시가 찬다", R: 1.5, reach: 14, cd: .38, dur: .22, fx: "streamer", cost: 180 },
   // 포수의 병기
   chonggeom: { ch: "posu", name: "총검", han: "銃劍", desc: "장단 — 총 끝의 칼로 길게 찌른다, 박자에 맞춰 적이나 과녁을 맞히면 공중 대시가 찬다", R: 1, reach: 0, cd: .2, dur: .13, fx: "thrust" },
-  gakgung: { ch: "posu", kind: "baldo", bow: true, name: "각궁", han: "角弓", desc: "거합 — 누르고 있다가 박자에 맞춰 놓으면 끝까지 꿰뚫는 화살, 맞히면 공중 대시가 찬다", R: .8, reach: 0, cd: .22, dur: .13, fx: "thrust", cost: 150 },
+  gakgung: { ch: "posu", kind: "baldo", bow: true, name: "각궁", han: "角弓", desc: "거합 — 누르고 있다가 원이 다 차면 놓아 끝까지 꿰뚫는 화살을 쏜다. 박자에 맞춰 놓으면 일격이 되고 공중 대시가 찬다", R: .8, reach: 0, cd: .22, dur: .13, fx: "thrust", cost: 150 },
   chang: { ch: "posu", kind: "woldo", name: "창", han: "槍", desc: "내려베기 — 멀리 닿는 긴 찌르기, 공중에서 아래로 찌르면 튕겨 오르며 공중 대시가 찬다", R: .85, reach: 44, cd: .32, dur: .18, fx: "spear", cost: 180 }
 };
 const wpn = () => (run && run.weapon && WEAPONS[run.weapon]) ? run.weapon : "hwando";
@@ -523,7 +523,7 @@ function keyAct(code) {
 }
 window.addEventListener("keydown", e => {
   if (e.code === "Escape" || e.code === "KeyP") { if (state === "play") pauseGame(); else if (state === "pause") resumeGame(); return; }
-  if (e.code === "KeyJ" || e.code === "KeyX") { if (!e.repeat) { Music.unlock(); if (wk() === "baldo" && state === "play") { iaiFrom = e.timeStamp; if (P) P.iaiHold = true; } else slashReq = { dir: null, ts: e.timeStamp, dash: false }; } e.preventDefault(); return; }
+  if (e.code === "KeyJ" || e.code === "KeyX") { if (!e.repeat) { Music.unlock(); if (wk() === "baldo" && state === "play") { iaiFrom = e.timeStamp; if (P) { P.iaiHold = true; P.iaiAt = performance.now(); } } else slashReq = { dir: null, ts: e.timeStamp, dash: false }; } e.preventDefault(); return; }
   const a = keyAct(e.code); if (!a) return;
   e.preventDefault(); Music.unlock();
   if (!held[a] && a in press) press[a] = 1;
@@ -532,7 +532,8 @@ window.addEventListener("keydown", e => {
 window.addEventListener("keyup", e => {
   if ((e.code === "KeyJ" || e.code === "KeyX") && iaiFrom != null) { slashReq = { dir: null, ts: e.timeStamp, dash: false, iai: (e.timeStamp - iaiFrom) / 1000 }; iaiFrom = null; if (P) P.iaiHold = false; return; }
   const a = keyAct(e.code); if (a) held[a] = 0; });
-let iaiFrom = null;   // 발도: when the hand went to the hilt
+let iaiFrom = null;
+const IAI_FULL = .32;   // seconds of holding before the 발도 / 각궁 draw is full   // 발도: when the hand went to the hilt
 window.addEventListener("blur", () => { for (const k in held) held[k] = 0; });
 function markTouch() { document.body.classList.add("touch"); }
 if (matchMedia("(pointer:coarse)").matches || "ontouchstart" in window) markTouch();
@@ -572,7 +573,7 @@ swipeZone.addEventListener("pointerdown", e => {
   Music.unlock(); e.preventDefault();
   try { swipeZone.setPointerCapture(e.pointerId); } catch (_) {}
   swipes.set(e.pointerId, { x0: e.clientX, y0: e.clientY, t0: e.timeStamp, fired: false, dashed: false });
-  if (wk() === "baldo" && P) P.iaiHold = true;
+  if (wk() === "baldo" && P) { P.iaiHold = true; P.iaiAt = performance.now(); }
   trail.push({ x: e.clientX, y: e.clientY, t: performance.now(), start: true });
 });
 swipeZone.addEventListener("pointermove", e => {
@@ -1229,14 +1230,16 @@ function shot(d, arrow) {
   P.whiff = oath("jangdan") && !onBeat;   // 장단의 서약: off the beat, the blade finds nothing
   if (oath("geommu")) { const gap = songPos - (P.danceAt ?? -9); P.dance = gap < .7 ? Math.min(5, (P.dance || 0) + 1) : 0; P.danceAt = songPos; P.danceRest = gap > 1; }
   if (wk() === "ssang") { P.combo = songPos - (P.lastCut || -9) < .5 ? (P.combo || 0) + 1 : 1; P.lastCut = songPos; if (P.combo >= 5) { strike = true; P.combo = 0; } }
-  if (wk() === "baldo" && req.iai != null && WP.bow) {   // 각궁: a full draw loosed on the beat runs through everything in line
-    if (req.iai >= .16 && onBeat) { strike = true; P.arrow = true; regainAir(); } else if (req.iai >= .16) P.whiff = true;
-  } else if (wk() === "baldo" && req.iai != null) {   // 발도: a long held draw released on the beat becomes a lunging 일격
-    if (req.iai >= .16 && onBeat) { strike = true; P.iaiCut = true; regainAir(); P.dashCd = 0; P.slashDir = d; startDash({ x: Math.abs(d.x) > .2 ? Math.sign(d.x) : P.face, y: 0 }, true); P.dashT = .2; }
-    else if (req.iai >= .16) P.whiff = true;
+  const full = wk() === "baldo" && req.iai != null && req.iai >= IAI_FULL;   // 모아베기: held long enough, the draw always comes out
+  if (full && WP.bow) {   // 각궁: a full draw always flies; on the beat it is an 일격 and the air comes back
+    P.arrow = true; if (onBeat) { strike = true; regainAir(); }
+  } else if (full) {   // 발도: a full draw lunges forward cutting; on the beat it is the 일격 and the air comes back
+    P.iaiCut = onBeat; if (onBeat) { strike = true; regainAir(); } P.dashCd = 0; P.slashDir = d; P.tapDash = !onBeat;
+    startDash({ x: Math.abs(d.x) > .2 ? Math.sign(d.x) : P.face, y: Math.abs(d.x) > .2 ? 0 : 0 }, true); P.dashT = onBeat ? .22 : .16;
+    ringFx(P.x + P.w / 2, P.y + P.h / 2, onBeat ? 70 : 46, onBeat ? "rgba(195,22,28,.9)" : "rgba(23,22,26,.5)", .3); if (onBeat) shake = Math.max(shake, 6);
   }
   run.slashes++; if (strike) run.strikes++;
-  if (!strike && !req.dash && mode !== "tutorial") P.offBal = .42;   // a cut off the beat leaves the swordsman off balance: mashing gets nowhere
+  if (!strike && !req.dash && !full && mode !== "tutorial") P.offBal = .42;   // a cut off the beat leaves the swordsman off balance: mashing gets nowhere
   P.windBack = false; P.slashDir = d; P.slashT = P.slashDur = (req.dash ? 0.22 : WP.dur); P.slashCd = (has("yeongyeok") ? Math.min(.08, WP.cd) : WP.cd) * (oath("hyeon") ? .5 : 1) + (has("geommak") ? .1 : 0); P.strike = strike; P.clanged = new Set(); P.hitSet = new Set();
   if (strike && has("bangyeok")) { const cx = P.x + P.w / 2, cy = P.y + P.h / 2;   // 반격: the shots around you die and their shooters answer for them
     for (const b of bullets) if (!b.friendly && Math.hypot(b.x - cx, b.y - cy) < 110) { b.life = 0; const o = b.owner; if (o && o.alive) { beams.push({ x0: cx, y0: cy, x1: o.x + o.w / 2, y1: o.y + o.h / 2, t: 0, life: .2 }); hurtEnemy(o, o.type !== "b"); } }
@@ -1267,7 +1270,7 @@ function shot(d, arrow) {
   if (strike && has("sinnaerim") && !((P.possessUntil || 0) > songPos) && (P.sinN = (P.sinN || 0) + 1) % 5 === 0) { P.possessUntil = songPos + 2 * Music.beatLen; ringFx(P.x + P.w / 2, P.y + P.h / 2, 90, "rgba(217,165,32,.9)", .5); Music.sfx("lantern"); }   // 신내림
   if (strike && res("noe", 6) && (P.noeN = (P.noeN || 0) + 1) % 3 === 0 && !P.boltDash) { P.boltDash = true; resFx("noe", "다음 대시가 번개가 된다"); }
   if (!P.onGround && res("pung", 4)) for (let i = 0; i < 6; i++) { const a = Math.random() * 6.28; parts.push({ x: P.x + P.w / 2 + Math.cos(a) * 30, y: P.y + P.h / 2 + Math.sin(a) * 26, vx: -Math.sin(a) * 160, vy: Math.cos(a) * 160, life: .3, max: .3, c: "rgba(47,138,120,.7)", s: 2 }); }
-  if (strike && chr("posu") && (wpn() !== "gakgung" || P.arrow)) musket(d, P.arrow); P.arrow = false;
+  if ((strike && chr("posu") && wpn() !== "gakgung") || P.arrow) musket(d, P.arrow); P.arrow = false;
   if (!P.onGround && P.vy > 60) P.vy = 60;
   if (req.dash) { P.tapDash = true; startDash(d); }
   Music.sfx(strike ? "strike" : "slash");
@@ -2912,7 +2915,10 @@ function drawPlayer(pal) {
     for (let i = 0; i < n; i++) { ctx.fillStyle = full ? SEAL : "rgba(60,56,50,.75)"; ctx.beginPath(); ctx.arc(cx - (n - 1) * 3.5 + i * 7, P.y - 10, full ? 2.8 : 2.2, 0, Math.PI * 2); ctx.fill(); } }
   if (chr("posu") && wpn() !== "gakgung" && (P.reloadAt || 0) > songPos && state !== "dead") { const k = 1 - ((P.reloadAt - songPos) / ((has("soksa") ? 1 : 2) * Music.beatLen));   // the match being relit: a small arc over his hat
     ctx.strokeStyle = "rgba(23,22,26,.25)"; ctx.lineWidth = 2; ctx.beginPath(); ctx.arc(cx, P.y - 14, 6, 0, 6.283); ctx.stroke(); ctx.strokeStyle = SEAL; ctx.beginPath(); ctx.arc(cx, P.y - 14, 6, -Math.PI / 2, -Math.PI / 2 + k * 6.283); ctx.stroke(); }
-  if (P.iaiHold && wk() === "baldo" && state !== "dead") { const near = Math.abs(Music.offBeat(Music.pos())) < strikeWin(); ctx.strokeStyle = near ? SEAL : "rgba(23,22,26,.4)"; ctx.lineWidth = near ? 2.4 : 1.4; ctx.beginPath(); ctx.arc(cx, P.y + P.h / 2, 30, 0, 7); ctx.stroke(); }   // 발도: the ring reddens when releasing now would land on the beat
+  if (P.iaiHold && wk() === "baldo" && state !== "dead") { const near = Math.abs(Music.offBeat(Music.pos())) < strikeWin(), q = Math.min(1, (performance.now() - (P.iaiAt || 0)) / 1000 / IAI_FULL), cy = P.y + P.h / 2;   // 발도: the ring fills as the draw gathers, and reddens on the beat once full
+    ctx.strokeStyle = "rgba(23,22,26,.25)"; ctx.lineWidth = 1.4; ctx.beginPath(); ctx.arc(cx, cy, 30, 0, 7); ctx.stroke();
+    ctx.strokeStyle = q < 1 ? "rgba(23,22,26,.7)" : near ? SEAL : JJOK; ctx.lineWidth = q < 1 ? 2.2 : near ? 3.4 : 2.6; ctx.beginPath(); ctx.arc(cx, cy, 30, -Math.PI / 2, -Math.PI / 2 + Math.PI * 2 * q); ctx.stroke();
+    if (q >= 1 && near) { ctx.globalAlpha = .5; ctx.beginPath(); ctx.arc(cx, cy, 36, 0, 7); ctx.stroke(); ctx.globalAlpha = 1; } }   // 발도: the ring reddens when releasing now would land on the beat
   if (P.orbit && state !== "dead" && (chr("munyeo") || chr("posu"))) for (let i = 0; i < P.orbit.n; i++) { const a = P.orbit.a + i * Math.PI * 2 / P.orbit.n, ox = cx + Math.cos(a) * 46, oy = P.y + P.h / 2 + Math.sin(a) * 40;   // talismans for her, balls of shot for him
     ctx.save(); ctx.translate(ox, oy); ctx.globalAlpha = Math.min(1, P.orbit.t * 3);
     if (chr("munyeo")) { ctx.rotate(a + Math.PI / 2); ctx.fillStyle = "#e8cf6a"; ctx.fillRect(-6, -10, 12, 20); ctx.strokeStyle = SEAL; ctx.lineWidth = 1.4; ctx.beginPath(); ctx.moveTo(0, -7); ctx.lineTo(0, 7); ctx.moveTo(-3, -2); ctx.lineTo(3, 2); ctx.stroke(); }
