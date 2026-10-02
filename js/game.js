@@ -404,11 +404,11 @@ const CAL = { title: 0, death: 1, madang: [2, 3, 4, 5, 6], end: 7, clear: 8 };  
 const PROP = { rope: 0, aim: 1, reticle: 2, pine: 3, stoneLantern: 4, jars: 5, banner: 6, sotdae: 7, palisade: 8 };
 const DRESS = [[PROP.pine, 74, 3], [PROP.stoneLantern, 34, 2], [PROP.jars, 26, 1], [PROP.banner, 80, 3], [PROP.sotdae, 84, 3], [PROP.palisade, 28, 1]]; // [frame, world height, headroom tiles]
 const OBJ = { lanternOn: 0, lanternOff: 1, kite: 2, thorns: 3, seal: 4, emitter: 5, slash: 6, slashRed: 7, splat: 8 };
-for (const n of ["hero", "hero2", "foes", "objects", "ui", "fx", "hud", "hudsolid", "props", "props2", "rocks", "pines", "slabs", "pillars", "rogue", "roguea", "rogue2", "rogue3", "rogue4", "foes2", "bossA", "bossB", "bossfx", "bossC", "bossD", "bossE", "bossF", "hero3", "herofx", "slashfx", "perkfx", "weapons", "chars", "misc", "arms", "ic0", "ic1", "ic2", "ic3", "ic4", "ic5", "ic6", "ic7", "ic8", "ic9", "ic10", "ic11", "ic12", "ic13", "ic14", "ic15", "mu", "po", "mfx", "pfx", "vis"]) {
+for (const n of ["hero", "hero2", "foes", "objects", "ui", "fx", "hud", "hudsolid", "props", "props2", "rocks", "pines", "slabs", "pillars", "rogue", "roguea", "rogue2", "rogue3", "rogue4", "foes2", "bossA", "bossB", "bossfx", "bossC", "bossD", "bossE", "bossF", "hero3", "herofx", "slashfx", "perkfx", "weapons", "chars", "misc", "arms", "ic0", "ic1", "ic2", "ic3", "ic4", "ic5", "ic6", "ic7", "ic8", "ic9", "ic10", "ic11", "ic12", "ic13", "ic14", "ic15", "mu", "po", "mfx", "pfx", "vis", "guide"]) {
   Promise.all([
     fetch(`assets/sprites/${n}.json`).then(r => r.json()),
     new Promise((res, rej) => { const im = new Image(); im.onload = () => res(im); im.onerror = rej; im.src = `assets/sprites/${n}.webp`; })
-  ]).then(([f, img]) => { SPR[n] = { f, img, inv: ["hero", "hero2", "foes", "objects", "fx", "props", "props2", "rocks", "pines", "slabs", "pillars"].includes(n) ? inkInverted(img) : null }; applyUiSprites(); }).catch(() => {});
+  ]).then(([f, img]) => { SPR[n] = { f, img, inv: ["hero", "hero2", "foes", "objects", "fx", "props", "props2", "rocks", "pines", "slabs", "pillars", "guide"].includes(n) ? inkInverted(img) : null }; applyUiSprites(); }).catch(() => {});
 }
 function inkInverted(img) { // night palette: grey ink becomes bone white, coloured accents stay as they are
   const c = document.createElement("canvas"); c.width = img.width; c.height = img.height; const g = c.getContext("2d"); g.drawImage(img, 0, 0);
@@ -1347,6 +1347,10 @@ let bolts = [];
 function boltFx(x0, y0, x1, y1, life, w) { // a jagged lightning stroke, re-forked every frame it lives
   bolts.push({ x0, y0, x1, y1, t: 0, life, w });
 }
+// painted guide strokes (guide sheet): 0-2 indigo dash/line/ring, 3-5 vermilion, 6 wash, 7 black line, 8 black ring
+const nightNow = () => !!(LV && LV.pal.night) || !!(P && (P.focus || killCam > 0) && state === "play");
+const GSET = col => col === SEAL ? [3, 4, 5, false] : col === JJOK ? [0, 1, 2, nightNow()] : [7, 7, 8, nightNow()];   // on the inverted night the indigo and black strokes turn pale
+function guideSprite(i, x, y, ang, w, h, inv) { const S = SPR.guide, f = S.f[i]; ctx.save(); ctx.translate(x, y); ctx.rotate(ang); ctx.drawImage(inv && S.inv ? S.inv : S.img, f.x, f.y, f.w, f.h, -w / 2, -h / 2, w, h); ctx.restore(); }
 // ---------- brush strokes for guide lines: ink dabs, dry-brush lines and rings instead of clean vector marks ----------
 const hrnd = (a, b) => { const x = Math.sin(a * 127.1 + b * 311.7) * 43758.5453; return x - Math.floor(x); };   // stable noise, so strokes do not shimmer
 function inkDab(x, y, ang, len, w, col) { // one press of a dry brush: a wet core and bristle hairs that split and run out at different lengths
@@ -1359,7 +1363,11 @@ function inkDab(x, y, ang, len, w, col) { // one press of a dry brush: a wet cor
   ctx.restore(); ctx.globalAlpha = a0;
 }
 function brushLine(x0, y0, x1, y1, col, w, dashed, seed = 0) { // dashed: a trail of separate dabs; solid: overlapping dabs with dry gaps at the tail
-  const dx = x1 - x0, dy = y1 - y0, L = Math.hypot(dx, dy); if (L < 2) return; const a = Math.atan2(dy, dx), step = dashed ? 19 : 8, n = Math.max(2, Math.floor(L / step)), a0 = ctx.globalAlpha;
+  const dx = x1 - x0, dy = y1 - y0, L = Math.hypot(dx, dy); if (L < 2) return;
+  if (SPR.guide) { const [di, li, , inv] = GSET(col), a = Math.atan2(dy, dx);   // the painted strokes
+    if (dashed) { const f = SPR.guide.f[di], len = w * 6.5, n = Math.max(1, Math.floor(L / (len * 1.3))); for (let i = 0; i < n; i++) { const t = (i + .5) / n, k = .85 + hrnd(seed + i, 2) * .3; guideSprite(di, x0 + dx * t, y0 + dy * t, a + (hrnd(seed + i, 1) - .5) * .1, len * k, len * k * f.h / f.w, inv); } }
+    else guideSprite(li, (x0 + x1) / 2, (y0 + y1) / 2, a, L, w * 2.8, inv);
+    return; } const a = Math.atan2(dy, dx), step = dashed ? 19 : 8, n = Math.max(2, Math.floor(L / step)), a0 = ctx.globalAlpha;
   for (let i = 0; i <= n; i++) { const t = i / n, r1 = hrnd(seed + i, 1), r2 = hrnd(seed + i, 2); if (!dashed && t > .75 && r1 < (t - .75) * 2.4) continue;   // the brush runs dry toward the end
     const taper = dashed ? 1 - t * .45 : Math.min(1, t * 6, (1 - t) * 3 + .35), off = (r2 - .5) * w * .5;
     ctx.globalAlpha = a0 * (dashed ? (.75 + r1 * .25) : (.55 + r1 * .35));
@@ -1367,6 +1375,7 @@ function brushLine(x0, y0, x1, y1, col, w, dashed, seed = 0) { // dashed: a trai
   ctx.globalAlpha = a0;
 }
 function brushRing(x, y, r, col, w, seed = 0) { // a circle swept by a dry brush: parallel hairs that start and stop raggedly, never quite closing
+  if (SPR.guide) { const [, , ri, inv] = GSET(col); guideSprite(ri, x, y, hrnd(seed, 1) * 6.28, r * 2.3, r * 2.3, inv); return; }
   const a0 = ctx.globalAlpha; ctx.strokeStyle = col; ctx.lineCap = "round";
   const st = hrnd(seed, 1) * 6.28, span = 5.3 + hrnd(seed, 2) * .6;
   for (let k = 0; k < 6; k++) { const rr = r + (k - 2.5) * w * .32, s0 = st + hrnd(seed + k, 3) * .5, s1 = st + span - hrnd(seed + k, 4) * 1.1;
@@ -1375,6 +1384,7 @@ function brushRing(x, y, r, col, w, seed = 0) { // a circle swept by a dry brush
   ctx.globalAlpha = a0; ctx.lineCap = "butt";
 }
 function inkWash(x, y, w, h, col, seed = 0) { // a zone washed in with horizontal dry strokes, ragged at the edges
+  if (SPR.guide) { guideSprite(6, x + w / 2, y + h / 2, 0, w * 1.08, h * 1.15, false); return; }
   const n = Math.max(2, Math.round(h / 9)), a0 = ctx.globalAlpha; ctx.fillStyle = col;
   for (let i = 0; i < n; i++) { const yy = y + (i + .5) * h / n, l = x + hrnd(seed + i, 1) * w * .08, r = x + w - hrnd(seed + i, 2) * w * .1, th = h / n * (1.1 + hrnd(seed + i, 3) * .5);
     ctx.globalAlpha = a0 * (.7 + hrnd(seed + i, 4) * .3); ctx.beginPath(); ctx.moveTo(l, yy - th * .3); ctx.quadraticCurveTo((l + r) / 2, yy - th * .62, r, yy - th * .15); ctx.quadraticCurveTo(r - w * .05, yy + th * .5, l + w * .04, yy + th * .45); ctx.closePath(); ctx.fill(); }
@@ -2434,7 +2444,7 @@ function render(rdt) {
 
   if (P && P.focus && state === "play") {
     const d = aimDir(), cx = P.x + P.w / 2, cy = P.y + P.h / 2;
-    const ac = pal.night ? "#b9c8ea" : JJOK;   // indigo on paper, pale blue on the inverted night
+    const ac = pal.night && !SPR.guide ? "#b9c8ea" : JJOK;   // indigo on paper, pale blue on the inverted night
     ctx.globalAlpha = .85; brushLine(cx + d.x * 18, cy + d.y * 18, cx + d.x * 136, cy + d.y * 136, ac, 5, true, 11); ctx.globalAlpha = 1;   // the line of the dash, dabbed in ink
     const rs = 1 + Math.sin(performance.now() / 90) * .06;
     { const rx = cx + d.x * 152, ry = cy + d.y * 152; ctx.globalAlpha = .9; brushRing(rx, ry, 15 * rs, ac, 3, 5); for (let q = 0; q < 4; q++) { const qa = q * Math.PI / 2 + .3; inkDab(rx + Math.cos(qa) * 22 * rs, ry + Math.sin(qa) * 22 * rs, qa, 10, 3, ac); } ctx.globalAlpha = 1; }   // where the dash will land, brushed
