@@ -900,7 +900,9 @@ function startPicks(step = 0) {
     const ws = Object.entries(WEAPONS).filter(([id, w]) => w.ch === own && (META.weapons.includes(id) || id === BASE_W[run.char])).map(([id, w]) => ({ id, ...w }));
     run.weapon = BASE_W[run.char] || "hwando"; if (ws.length < 2) return next();
     return pickScreen("무기를 골라라", "손에 쥘 것", ws, w => { run.weapon = w.id; saveRun(); next(); }); }
-  if (step === 2 && !run.simbeop) { const ms = SIMBEOP.filter(m => META.simbeop.includes(m.id)).map(m => ({ ...m, desc: `${m.desc} · 시작 비급 ${CHOSIK.find(c => c.id === m.start).name} · ${SCHOOLS[m.id].name} 계열 +1` }));
+  if (step === 2 && !run.simbeop) { const pool = SIMBEOP.filter(m => META.simbeop.includes(m.id)), rs = mulberry(run.seed ^ 0x51B), drawn = [];
+    while (drawn.length < 3 && pool.length) drawn.push(pool.splice((rs() * pool.length) | 0, 1)[0]);   // three at random, like the oaths
+    const ms = drawn.map(m => ({ ...m, desc: `${m.desc} · 시작 비급 ${CHOSIK.find(c => c.id === m.start).name} · ${SCHOOLS[m.id].name} 계열 +1` }));
     return pickScreen("심법을 골라라", "어느 계열로 오를 것인가", ms, m => { run.simbeop = m.id; if (!run.perks.includes(m.start)) run.perks.push(m.start); saveRun(); startPicks(2.5); }); }
   if (step === 2.5) step = 2;
   if (step === 2) { const rnd = mulberry(run.seed ^ 0x0A7), pool = OATHS.filter(o => META.oaths.includes(o.id)), picks = [];
@@ -3280,10 +3282,24 @@ function pauseGame() {
   const st = $("pStats"); st.innerHTML = "";
   const rows = [["시간", fmt(run.time)], ["베인 횟수", run.deaths], ["일격", run.strikes + " / " + run.slashes]];
   if (mode !== "tutorial") rows.splice(1, 0, ["남은 숨", run.breath]);
-  if (run.perks && run.perks.length) rows.push(["비급", run.perks.map(id => CHOSIK.find(c => c.id === id).name).join(" · ")]);
   for (const [k, v] of rows) { const a = document.createElement("span"), b = document.createElement("b"); a.textContent = k; b.textContent = v; st.append(a, b); }
+  pauseBuild();
   $("bGiveUp").hidden = mode === "tutorial";
   showScreen("pause");
+}
+function pauseBuild() { // the build so far: hand and weapon, 심법, 서약, 공명, and every 비급 read in this hand's words
+  const box = $("pBuild"); box.innerHTML = ""; if (mode === "tutorial" || !run) { box.hidden = true; return; } box.hidden = false;
+  const line = (label, name, desc, col) => { const d = document.createElement("div"); d.className = "pb-row"; d.innerHTML = `<span class="pb-k"></span><div><b></b><small></small></div>`;
+    d.querySelector(".pb-k").textContent = label; const b = d.querySelector("b"); b.textContent = name; if (col) b.style.setProperty("--sc", col), b.classList.add("bead"); d.querySelector("small").textContent = desc || ""; box.appendChild(d); };
+  const ch = CHARS.find(c => c.id === (run.char || "mumyeong")), w = WEAPONS[wpn()];
+  line("검객", `${ch ? ch.name : "무명"} · ${w.name}`, w.desc);
+  const sm = SIMBEOP.find(m => m.id === run.simbeop); line("심법", sm ? sm.name : "없음", sm ? sm.desc : "", sm ? SCHOOLS[sm.id].col : null);
+  const oa = OATHS.find(o => o.id === run.oath); line("서약", oa ? oa.name : "없음", oa ? `${oa.desc} — 대가 · ${oa.cost}` : "");
+  const res = Object.keys(SCHOOLS).map(k => [k, schoolN(k)]).filter(([, n]) => n >= 2);
+  if (res.length) line("공명", res.map(([k, n]) => `${SCHOOLS[k].name} ${n}`).join(" · "), res.map(([k, n]) => SCHOOLS[k].tiers.slice(0, Math.min(3, n >> 1)).join(", ")).join(" / "));
+  const ps = (run.perks || []).map(id => CHOSIK.find(c => c.id === id)).filter(Boolean);
+  if (!ps.length) line("비급", "아직 없음", "");
+  ps.forEach((c, i) => { const v = pv(c), sk = SCHOOL_OF[c.id]; line(i ? "" : `비급 ${ps.length}`, v.name, v.desc, sk ? SCHOOLS[sk].col : null); });
 }
 function resumeGame() { if (state !== "pause") return; showScreen(null); Music.resume(); state = "play"; last = performance.now(); }
 
