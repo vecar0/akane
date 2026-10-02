@@ -1347,6 +1347,39 @@ let bolts = [];
 function boltFx(x0, y0, x1, y1, life, w) { // a jagged lightning stroke, re-forked every frame it lives
   bolts.push({ x0, y0, x1, y1, t: 0, life, w });
 }
+// ---------- brush strokes for guide lines: ink dabs, dry-brush lines and rings instead of clean vector marks ----------
+const hrnd = (a, b) => { const x = Math.sin(a * 127.1 + b * 311.7) * 43758.5453; return x - Math.floor(x); };   // stable noise, so strokes do not shimmer
+function inkDab(x, y, ang, len, w, col) { // one press of a dry brush: a wet core and bristle hairs that split and run out at different lengths
+  const sd = (x * 13.7 + y * 7.1) | 0;
+  ctx.save(); ctx.translate(x, y); ctx.rotate(ang); ctx.fillStyle = col; ctx.strokeStyle = col; ctx.lineCap = "round";
+  ctx.beginPath(); ctx.moveTo(-len * .45, 0); ctx.quadraticCurveTo(-len * .1, -w * .38, len * .3, -w * .08); ctx.quadraticCurveTo(-len * .05, w * .32, -len * .45, 0); ctx.fill();   // the wet heart of the stroke
+  const a0 = ctx.globalAlpha;
+  for (let k = 0; k < 5; k++) { const o = (k - 2) * w * .2 + (hrnd(sd, k) - .5) * w * .1, st = -len * (.5 - hrnd(sd, k + 9) * .25), en = len * (.15 + hrnd(sd, k + 3) * .4);
+    ctx.globalAlpha = a0 * (.45 + hrnd(sd, k + 6) * .5); ctx.lineWidth = w * (.12 + hrnd(sd, k + 2) * .12); ctx.beginPath(); ctx.moveTo(st, o * .7); ctx.quadraticCurveTo((st + en) / 2, o, en, o * 1.25); ctx.stroke(); }   // bristles
+  ctx.restore(); ctx.globalAlpha = a0;
+}
+function brushLine(x0, y0, x1, y1, col, w, dashed, seed = 0) { // dashed: a trail of separate dabs; solid: overlapping dabs with dry gaps at the tail
+  const dx = x1 - x0, dy = y1 - y0, L = Math.hypot(dx, dy); if (L < 2) return; const a = Math.atan2(dy, dx), step = dashed ? 19 : 8, n = Math.max(2, Math.floor(L / step)), a0 = ctx.globalAlpha;
+  for (let i = 0; i <= n; i++) { const t = i / n, r1 = hrnd(seed + i, 1), r2 = hrnd(seed + i, 2); if (!dashed && t > .75 && r1 < (t - .75) * 2.4) continue;   // the brush runs dry toward the end
+    const taper = dashed ? 1 - t * .45 : Math.min(1, t * 6, (1 - t) * 3 + .35), off = (r2 - .5) * w * .5;
+    ctx.globalAlpha = a0 * (dashed ? (.75 + r1 * .25) : (.55 + r1 * .35));
+    inkDab(x0 + dx * t - Math.sin(a) * off, y0 + dy * t + Math.cos(a) * off, a + (r2 - .5) * .18, (dashed ? 15 : 14) * (.8 + r1 * .5), w * taper * (.85 + r2 * .5), col); }
+  ctx.globalAlpha = a0;
+}
+function brushRing(x, y, r, col, w, seed = 0) { // a circle swept by a dry brush: parallel hairs that start and stop raggedly, never quite closing
+  const a0 = ctx.globalAlpha; ctx.strokeStyle = col; ctx.lineCap = "round";
+  const st = hrnd(seed, 1) * 6.28, span = 5.3 + hrnd(seed, 2) * .6;
+  for (let k = 0; k < 6; k++) { const rr = r + (k - 2.5) * w * .32, s0 = st + hrnd(seed + k, 3) * .5, s1 = st + span - hrnd(seed + k, 4) * 1.1;
+    ctx.globalAlpha = a0 * (.4 + hrnd(seed + k, 5) * .55); ctx.lineWidth = w * (.22 + hrnd(seed + k, 6) * .2); ctx.beginPath(); ctx.arc(x, y, rr, s0, s1); ctx.stroke(); }
+  ctx.globalAlpha = a0 * .85; ctx.lineWidth = w * .55; ctx.beginPath(); ctx.arc(x, y, r, st + .2, st + span * .55); ctx.stroke();   // the loaded first half of the sweep
+  ctx.globalAlpha = a0; ctx.lineCap = "butt";
+}
+function inkWash(x, y, w, h, col, seed = 0) { // a zone washed in with horizontal dry strokes, ragged at the edges
+  const n = Math.max(2, Math.round(h / 9)), a0 = ctx.globalAlpha; ctx.fillStyle = col;
+  for (let i = 0; i < n; i++) { const yy = y + (i + .5) * h / n, l = x + hrnd(seed + i, 1) * w * .08, r = x + w - hrnd(seed + i, 2) * w * .1, th = h / n * (1.1 + hrnd(seed + i, 3) * .5);
+    ctx.globalAlpha = a0 * (.7 + hrnd(seed + i, 4) * .3); ctx.beginPath(); ctx.moveTo(l, yy - th * .3); ctx.quadraticCurveTo((l + r) / 2, yy - th * .62, r, yy - th * .15); ctx.quadraticCurveTo(r - w * .05, yy + th * .5, l + w * .04, yy + th * .45); ctx.closePath(); ctx.fill(); }
+  ctx.globalAlpha = a0;
+}
 function drawBolts() {
   if (!bolts.length) return;
   ctx.save(); ctx.lineCap = "round"; ctx.lineJoin = "round";
@@ -2291,11 +2324,11 @@ function render(rdt) {
     ctx.fillStyle = pal.bg; ctx.beginPath(); ctx.arc(0, 0, 4.5, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
     ctx.fillStyle = SEAL; ctx.fillRect(-10, -13, 20, 3);
     ctx.restore(); }
-    if (on) { ctx.strokeStyle = JJOK; ctx.globalAlpha = .4 + .3 * Math.sin(tt * 12); ctx.lineWidth = 1.5; ctx.beginPath(); ctx.arc(p.x + sw, p.y, 22, 0, Math.PI * 2); ctx.stroke(); ctx.globalAlpha = 1; }
-    if (on && P && !P.hook) { ctx.strokeStyle = JJOK; ctx.globalAlpha = .45; ctx.lineWidth = 1.4; ctx.setLineDash([3, 6]); ctx.beginPath(); ctx.moveTo(P.x + P.w / 2, P.y + 10); ctx.lineTo(p.x + sw, p.y); ctx.stroke(); ctx.setLineDash([]); ctx.globalAlpha = 1; }   // what jump or 연 will catch
+    if (on) { ctx.globalAlpha = .5 + .25 * Math.sin(tt * 12); brushRing(p.x + sw, p.y, 22, JJOK, 2.4, p.x); ctx.globalAlpha = 1; }
+    if (on && P && !P.hook) { ctx.globalAlpha = .55; brushLine(P.x + P.w / 2, P.y + 10, p.x + sw, p.y, JJOK, 3, true, p.x); ctx.globalAlpha = 1; }   // what jump or 연 will catch
   }
-  if (hookCand && hookCand.enemy && P && !P.hook) { ctx.strokeStyle = SEAL; ctx.globalAlpha = .55; ctx.lineWidth = 1.4; ctx.setLineDash([3, 6]); ctx.beginPath(); ctx.moveTo(P.x + P.w / 2, P.y + 10); ctx.lineTo(hookCand.x, hookCand.y); ctx.stroke(); ctx.setLineDash([]); ctx.beginPath(); ctx.arc(hookCand.x, hookCand.y, 20, 0, 7); ctx.stroke(); ctx.globalAlpha = 1; }   // 연사슬 target
-  if (P && P.hook) { ctx.strokeStyle = pal.fig; ctx.lineWidth = 1.2; ctx.beginPath(); ctx.moveTo(P.x + P.w / 2, P.y + 12); ctx.lineTo(P.hook.x, P.hook.y); ctx.stroke(); }
+  if (hookCand && hookCand.enemy && P && !P.hook) { ctx.globalAlpha = .6; brushLine(P.x + P.w / 2, P.y + 10, hookCand.x, hookCand.y, SEAL, 3, true, 7); brushRing(hookCand.x, hookCand.y, 20, SEAL, 2.4, 7); ctx.globalAlpha = 1; }   // 연사슬 target
+  if (P && P.hook) { ctx.globalAlpha = .9; brushLine(P.x + P.w / 2, P.y + 12, P.hook.x, P.hook.y, pal.fig, 2, false, 3); ctx.globalAlpha = 1; }   // the kite string, a dry line of ink
 
   drawHazards(pal);
   for (const e of enemies) if (e.alive && (visible(e.x) || e.type === "b")) {
@@ -2401,11 +2434,10 @@ function render(rdt) {
 
   if (P && P.focus && state === "play") {
     const d = aimDir(), cx = P.x + P.w / 2, cy = P.y + P.h / 2;
-    ctx.fillStyle = JJOK;
-    for (let t = 18; t < 136; t += 14) { const r = 2.6 - t / 136 * 1.2; ctx.globalAlpha = .75 - t / 400; ctx.beginPath(); ctx.ellipse(cx + d.x * t, cy + d.y * t, r * 1.8, r, Math.atan2(d.y, d.x), 0, Math.PI * 2); ctx.fill(); }
-    ctx.globalAlpha = 1;
+    const ac = pal.night ? "#b9c8ea" : JJOK;   // indigo on paper, pale blue on the inverted night
+    ctx.globalAlpha = .85; brushLine(cx + d.x * 18, cy + d.y * 18, cx + d.x * 136, cy + d.y * 136, ac, 5, true, 11); ctx.globalAlpha = 1;   // the line of the dash, dabbed in ink
     const rs = 1 + Math.sin(performance.now() / 90) * .06;
-    if (!drawSprite("props", PROP.reticle, cx + d.x * 152, cy + d.y * 152, 38 * rs / (SPR.props ? SPR.props.f[PROP.reticle].h : 1), false, .5, false, .5)) { ctx.beginPath(); ctx.arc(cx + d.x * 152, cy + d.y * 152, 10, 0, 6.28); ctx.stroke(); }
+    { const rx = cx + d.x * 152, ry = cy + d.y * 152; ctx.globalAlpha = .9; brushRing(rx, ry, 15 * rs, ac, 3, 5); for (let q = 0; q < 4; q++) { const qa = q * Math.PI / 2 + .3; inkDab(rx + Math.cos(qa) * 22 * rs, ry + Math.sin(qa) * 22 * rs, qa, 10, 3, ac); } ctx.globalAlpha = 1; }   // where the dash will land, brushed
   }
 
   // screen space overlays
@@ -2806,8 +2838,7 @@ function drawEnemy(e, pal) {
     const mx = cx + e.face * 12, my = e.y + 9, locked = songPos >= e.fireAt - (sniper ? .3 : .15);
     let dx = e.tx - mx, dy = e.ty - my; const d = Math.hypot(dx, dy) || 1; dx /= d; dy /= d;
     const prog = Math.min(1, (songPos - e.aimFrom) / Math.max(.01, e.fireAt - e.aimFrom)), len = sniper ? 1000 : Math.min(d, 200);
-    ctx.strokeStyle = SEAL; ctx.globalAlpha = locked ? .95 : .2 + prog * .5; ctx.lineWidth = locked ? 2.4 : 1; if (!sniper && !locked) ctx.setLineDash([4, 5]);
-    ctx.beginPath(); ctx.moveTo(mx, my); ctx.lineTo(mx + dx * len, my + dy * len); ctx.stroke(); ctx.setLineDash([]); ctx.globalAlpha = 1;
+    ctx.globalAlpha = locked ? .95 : .25 + prog * .5; brushLine(mx, my, mx + dx * len, my + dy * len, SEAL, locked ? 3.6 : 2.2, !sniper && !locked, e.id * 13); ctx.globalAlpha = 1;   // the aim, brushed in vermilion
   }
   // 순라 / 포수: wide-brimmed hat silhouette
   ctx.fillStyle = pal.foe;
@@ -2854,12 +2885,13 @@ function drawBoss(e, pal, cx, feet) {
   }
   if (e.act && songPos < e.hitAt) { // telegraph what is coming
     const prog = Math.max(0, Math.min(1, 1 - (e.hitAt - songPos) / Music.beatLen)), a = .1 + prog * .3, f = e.floor;
-    if (e.act === "slam" || e.act === "club" || e.act === "inhale") { ctx.fillStyle = `rgba(195,22,28,${a})`; const w = e.act === "inhale" ? 110 : 150; ctx.fillRect(e.face > 0 ? cx : cx - w, f - 70, w, 70); }
-    else if (e.act === "stomp") { ctx.fillStyle = `rgba(195,22,28,${a})`; ctx.fillRect(e.x - 50, f - 40, e.w + 100, 40); }
-    else if (["charge", "pounce", "leap", "dance"].includes(e.act)) { ctx.strokeStyle = `rgba(195,22,28,${a + .2})`; ctx.lineWidth = 6; ctx.beginPath(); ctx.moveTo(cx, f - 20); ctx.lineTo(cx + e.face * 220, f - 20); ctx.stroke(); }
-    else if (["volley", "fan", "fan2", "spit", "scrap", "foxfire"].includes(e.act)) { ctx.fillStyle = `rgba(195,22,28,${a + .3})`; ctx.beginPath(); ctx.arc(cx + e.face * 26, e.y + 22, 6 + prog * 8, 0, 7); ctx.fill(); }
-    else if (e.act === "shcut" || e.act === "shstrike") { ctx.fillStyle = `rgba(195,22,28,${a})`; const w = e.act === "shstrike" ? 120 : 70; ctx.fillRect(e.face > 0 ? cx : cx - w, e.y - 20, w, e.h + 30); }
-    else if (["summon", "spirits", "illusion", "mask", "gamtu", "roar", "scream", "blink", "drum", "shblink"].includes(e.act)) { ctx.strokeStyle = `rgba(39,70,106,${a + .2})`; ctx.lineWidth = 3; ctx.beginPath(); ctx.arc(cx, e.y + e.h / 2, 30 + prog * 40, 0, 7); ctx.stroke(); }
+    const sd = e.id * 7 + (e.hitAt * 3 | 0);   // the same strokes for the whole wind-up
+    if (e.act === "slam" || e.act === "club" || e.act === "inhale") { const w = e.act === "inhale" ? 110 : 150; ctx.globalAlpha = a * 2.2; inkWash(e.face > 0 ? cx : cx - w, f - 70, w, 70, SEAL, sd); ctx.globalAlpha = 1; }
+    else if (e.act === "stomp") { ctx.globalAlpha = a * 2.2; inkWash(e.x - 50, f - 40, e.w + 100, 40, SEAL, sd); ctx.globalAlpha = 1; }
+    else if (["charge", "pounce", "leap", "dance"].includes(e.act)) { ctx.globalAlpha = Math.min(1, (a + .2) * 1.6); brushLine(cx, f - 20, cx + e.face * 220, f - 20, SEAL, 9, false, sd); ctx.globalAlpha = 1; }
+    else if (["volley", "fan", "fan2", "spit", "scrap", "foxfire"].includes(e.act)) { ctx.globalAlpha = Math.min(1, a + .4); const r = 6 + prog * 8; for (let i = 0; i < 4; i++) inkDab(cx + e.face * 26, e.y + 22, i * .8 + hrnd(sd, i), r * 2.2, r * 1.2, SEAL); ctx.globalAlpha = 1; }
+    else if (e.act === "shcut" || e.act === "shstrike") { const w = e.act === "shstrike" ? 120 : 70; ctx.globalAlpha = a * 2.2; inkWash(e.face > 0 ? cx : cx - w, e.y - 20, w, e.h + 30, SEAL, sd); ctx.globalAlpha = 1; }
+    else if (["summon", "spirits", "illusion", "mask", "gamtu", "roar", "scream", "blink", "drum", "shblink"].includes(e.act)) { ctx.globalAlpha = Math.min(1, (a + .2) * 1.5); brushRing(cx, e.y + e.h / 2, 30 + prog * 40, JJOK, 4, sd); ctx.globalAlpha = 1; }
   }
   if (e.raged) { const g = ctx.createRadialGradient(cx, e.y + e.h / 2, 6, cx, e.y + e.h / 2, Math.max(e.w, e.h)); g.addColorStop(0, `rgba(195,22,28,${.18 + .08 * Math.sin(performance.now() / 120)})`); g.addColorStop(1, "rgba(195,22,28,0)"); ctx.fillStyle = g; ctx.fillRect(cx - e.w - e.h, e.y - e.h, (e.w + e.h) * 2, e.h * 3); }   // 격노
   if (e.invisT > 0) ctx.globalAlpha *= .12;   // 도깨비 감투
@@ -2885,7 +2917,7 @@ function drawHazards(pal) {
   const tt = performance.now() / 1000;
   for (const z of haz) {
     if (z.kind === "ring") {
-      const r = (songPos - z.at) * z.speed; if (r < 0) { ctx.strokeStyle = "rgba(39,70,106,.35)"; ctx.lineWidth = 2; ctx.beginPath(); ctx.arc(z.x, z.y, 20, 0, 7); ctx.stroke(); continue; }
+      const r = (songPos - z.at) * z.speed; if (r < 0) { ctx.globalAlpha = .45; brushRing(z.x, z.y, 20, JJOK, 3, z.x); ctx.globalAlpha = 1; continue; }
       ctx.strokeStyle = `rgba(23,22,26,${.75 * (1 - r / z.max)})`; ctx.lineWidth = 10; ctx.beginPath(); ctx.arc(z.x, z.y, r, 0, 7); ctx.stroke();
       ctx.strokeStyle = `rgba(236,230,216,${.8 * (1 - r / z.max)})`; ctx.lineWidth = 2; ctx.beginPath(); ctx.arc(z.x, z.y, r, 0, 7); ctx.stroke(); continue;
     }
@@ -2897,8 +2929,8 @@ function drawHazards(pal) {
         if (!drawSprite("bossfx", FXB.coin, z.x + z.w / 2, y + z.h / 2, 30 / (SPR.bossfx ? SPR.bossfx.f[FXB.coin].h : 1), false, .5, false, .5)) { ctx.fillStyle = "#b08a3a"; ctx.beginPath(); ctx.arc(z.x + z.w / 2, y + z.h / 2, 12, 0, 7); ctx.fill(); }
         continue;
       }
-      ctx.fillStyle = `rgba(195,22,28,${.06 + prog * .22})`; ctx.fillRect(z.x, z.y, z.w, z.h);
-      if (z.kind === "beam") { ctx.fillStyle = `rgba(195,22,28,${.3 + prog * .4})`; ctx.fillRect(z.x, z.y, z.w, 2); ctx.fillRect(z.x, z.y + z.h - 2, z.w, 2); }
+      ctx.globalAlpha = .1 + prog * .4; inkWash(z.x, z.y, z.w, z.h, SEAL, z.x + z.y); ctx.globalAlpha = 1;   // a reddening wash, brushed in
+      if (z.kind === "beam") { ctx.globalAlpha = .4 + prog * .5; brushLine(z.x, z.y, z.x + z.w, z.y, SEAL, 3, false, z.x); brushLine(z.x, z.y + z.h, z.x + z.w, z.y + z.h, SEAL, 3, false, z.y); ctx.globalAlpha = 1; }
       continue;
     }
     const f = { coin: FXB.coin, fire: FXB.fire, claw: FXB.claw, hair: FXB.hair, pillar: FXB.pillar, beam: FXB.beam }[z.kind], S = SPR.bossfx;
@@ -3258,6 +3290,27 @@ $("bGiveUp").addEventListener("click", () => { state = "play"; endRun(false); $(
 $("bToMenu").addEventListener("click", () => { saveRun(); toMenu(); });
 $("bPauseSet").addEventListener("click", () => openSettings("pause"));
 $("bSettings").addEventListener("click", () => openSettings("menu"));
+// touch buttons: a size for all of them and a place for each, kept on this device
+const padCfg = Object.assign({ s: 1, pos: {} }, store.get("pad", {}));
+function applyPad() {
+  document.documentElement.style.setProperty("--tbs", padCfg.s); $("padVal").textContent = Math.round(padCfg.s * 100) + "%";
+  for (const id of ["bJump", "bDash", "bHook"]) { const el = $(id), p = padCfg.pos[id]; el.style.right = p ? p.r + "px" : ""; el.style.bottom = p ? p.b + "px" : ""; }
+}
+applyPad();
+$("bPadDn").addEventListener("click", () => { padCfg.s = Math.max(.6, +(padCfg.s - .1).toFixed(1)); store.set("pad", padCfg); applyPad(); });
+$("bPadUp").addEventListener("click", () => { padCfg.s = Math.min(1.6, +(padCfg.s + .1).toFixed(1)); store.set("pad", padCfg); applyPad(); });
+$("bPadReset").addEventListener("click", () => { padCfg.s = 1; padCfg.pos = {}; store.set("pad", padCfg); applyPad(); toast("버튼을 처음 자리로 돌렸다"); });
+$("bPadEdit").addEventListener("click", () => { $("settings").hidden = true; $("pad").hidden = false; $("padBar").hidden = false; document.body.classList.add("padEdit"); });
+$("bPadDone").addEventListener("click", () => { document.body.classList.remove("padEdit"); $("padBar").hidden = true; store.set("pad", padCfg); for (const k in held) held[k] = 0; for (const k in press) press[k] = 0; showScreen("settings"); });
+{ let drag = null;   // while editing, the pad's own handlers never see the touch: it moves the button instead
+  $("pad").addEventListener("pointerdown", e => { if (!document.body.classList.contains("padEdit")) return; const b = e.target.closest(".tb"); e.stopPropagation(); e.preventDefault(); if (!b) return;
+    const r = b.getBoundingClientRect(); drag = { b, id: b.id, x0: e.clientX, y0: e.clientY, r0: innerWidth - r.right + (r.width - r.width / padCfg.s) / 2, b0: innerHeight - r.bottom + (r.height - r.height / padCfg.s) / 2 };
+    try { $("pad").setPointerCapture(e.pointerId); } catch (_) {} }, true);
+  $("pad").addEventListener("pointermove", e => { if (!drag) return; e.stopPropagation();
+    const rr = Math.max(0, Math.min(innerWidth - 40, drag.r0 - (e.clientX - drag.x0))), bb = Math.max(0, Math.min(innerHeight - 40, drag.b0 - (e.clientY - drag.y0)));
+    padCfg.pos[drag.id] = { r: Math.round(rr), b: Math.round(bb) }; drag.b.style.right = rr + "px"; drag.b.style.bottom = bb + "px"; }, true);
+  const end = e => { if (!drag) return; e.stopPropagation(); drag = null; store.set("pad", padCfg); };
+  $("pad").addEventListener("pointerup", end, true); $("pad").addEventListener("pointercancel", end, true); }
 $("bSetClose").addEventListener("click", () => { if (settingsBack === "pause") showScreen("pause"); else showScreen("menu"); });
 $("bSound").addEventListener("click", () => { settings.sound = !settings.sound; saveSettings(); });
 $("bOffDn").addEventListener("click", () => { settings.offset = Math.max(-200, settings.offset - 10); saveSettings(); });
