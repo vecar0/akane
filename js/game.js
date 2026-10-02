@@ -2230,8 +2230,14 @@ function stepBullets(dt) {
 
 // ---------- loop ----------
 let last = performance.now(), cvInverted = false;
+const GPU_SOFT = (() => { try { const g = document.createElement("canvas").getContext("webgl"), d = g && g.getExtension("WEBGL_debug_renderer_info"); return !!(d && /swiftshader|llvmpipe|software/i.test(g.getParameter(d.UNMASKED_RENDERER_WEBGL))); } catch (e) { return false; } })();   // the browser drawing without the GPU
+if (GPU_SOFT && MOBILE) { dprCap = 1; setTimeout(resize, 0); }   // no GPU on this phone's browser: draw at native 1x from the start
 let showFps = localStorage.getItem("chungo.fps") === "1", fpsNow = 0, fpsAcc = 0, fpsCnt = 0;
+let vsyncMs = 16.7, lastTick = 0, workMs = 0;
 function frame(now) {
+  vsyncMs += (Math.min(40, now - lastTick) - vsyncMs) * .05; lastTick = now;   // the screen's own refresh, for the 진단 line
+  if (now - last < 10) { requestAnimationFrame(frame); return; }   // 120Hz+ screens: draw every other refresh (a steady 60) instead of doubling the work
+  const t0 = performance.now();
   const raw = (now - last) / 1000, rdt = Math.min(0.05, raw); last = now;
   fpsAcc += raw; fpsCnt++; if (fpsAcc >= 1) { fpsNow = Math.round(fpsCnt / fpsAcc); fpsAcc = fpsCnt = 0; hudCache = ""; }
   if (state === "play" && raw < .5) { perfT += raw; perfN++; if (perfN >= 90) { const avg = perfT / perfN; perfT = perfN = 0;   // three seconds of slow frames: draw at a lower resolution
@@ -2274,6 +2280,7 @@ function frame(now) {
   Music.setRate(inv ? .45 : 1);
   if (inv !== cvInverted) { cvInverted = inv; document.body.classList.toggle("night", inv); }
   render(rdt);
+  workMs += (performance.now() - t0 - workMs) * .1;
   requestAnimationFrame(frame);
 }
 
@@ -2294,7 +2301,7 @@ let hudCache = "";
 function updateHud() {
   const t = fmt(run.time), pip = (P.onGround || P.airDash > 0) && P.dashCd <= 0, hk = !!hookCand, key = t + pip + hk;
   if (key === hudCache) return; hudCache = key;
-  $("hTime").textContent = t + (showFps ? ` · ${fpsNow}fps ${DPR}x` : ""); $("pip").classList.toggle("on", pip); $("bHook").classList.toggle("ready", hk);
+  $("hTime").textContent = t + (showFps ? ` · ${fpsNow}fps ${workMs.toFixed(0)}ms ${Math.round(1000 / vsyncMs)}Hz ${DPR}x${GPU_SOFT ? " SW" : ""}` : ""); $("pip").classList.toggle("on", pip); $("bHook").classList.toggle("ready", hk);
 }
 function toast(msg) { const el = $("toast"); el.textContent = msg; el.classList.add("on"); toastT = 1.6; }
 function buzz(ms) { try { navigator.vibrate && navigator.vibrate(ms); } catch (e) {} }
