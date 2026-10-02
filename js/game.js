@@ -404,7 +404,7 @@ const CAL = { title: 0, death: 1, madang: [2, 3, 4, 5, 6], end: 7, clear: 8 };  
 const PROP = { rope: 0, aim: 1, reticle: 2, pine: 3, stoneLantern: 4, jars: 5, banner: 6, sotdae: 7, palisade: 8 };
 const DRESS = [[PROP.pine, 74, 3], [PROP.stoneLantern, 34, 2], [PROP.jars, 26, 1], [PROP.banner, 80, 3], [PROP.sotdae, 84, 3], [PROP.palisade, 28, 1]]; // [frame, world height, headroom tiles]
 const OBJ = { lanternOn: 0, lanternOff: 1, kite: 2, thorns: 3, seal: 4, emitter: 5, slash: 6, slashRed: 7, splat: 8 };
-for (const n of ["hero", "hero2", "foes", "objects", "ui", "fx", "hud", "hudsolid", "props", "props2", "rocks", "pines", "slabs", "pillars", "rogue", "roguea", "rogue2", "rogue3", "rogue4", "foes2", "bossA", "bossB", "bossfx", "bossC", "bossD", "bossE", "bossF", "hero3", "herofx", "slashfx", "perkfx", "weapons", "chars", "misc", "arms", "ic0", "ic1", "ic2", "ic3", "ic4", "ic5", "ic6", "ic7", "ic8", "ic9", "ic10", "ic11", "ic12", "ic13", "ic14", "ic15", "mu", "po", "mfx", "pfx"]) {
+for (const n of ["hero", "hero2", "foes", "objects", "ui", "fx", "hud", "hudsolid", "props", "props2", "rocks", "pines", "slabs", "pillars", "rogue", "roguea", "rogue2", "rogue3", "rogue4", "foes2", "bossA", "bossB", "bossfx", "bossC", "bossD", "bossE", "bossF", "hero3", "herofx", "slashfx", "perkfx", "weapons", "chars", "misc", "arms", "ic0", "ic1", "ic2", "ic3", "ic4", "ic5", "ic6", "ic7", "ic8", "ic9", "ic10", "ic11", "ic12", "ic13", "ic14", "ic15", "mu", "po", "mfx", "pfx", "vis"]) {
   Promise.all([
     fetch(`assets/sprites/${n}.json`).then(r => r.json()),
     new Promise((res, rej) => { const im = new Image(); im.onload = () => res(im); im.onerror = rej; im.src = `assets/sprites/${n}.webp`; })
@@ -894,13 +894,13 @@ function pickScreen(title, sub, items, onPick) {
 function startPicks(step = 0) {
   const next = () => startPicks(step + 1);
   if (step === 0) { const cs = (typeof CHARS !== "undefined" ? CHARS : []).filter(c => META.chars.includes(c.id)); if (cs.length < 2) return next();
-    return pickScreen("검객을 고르라", "누구로 오를 것인가", cs, c => { run.char = c.id; run.breath = Math.min(run.breath, breathCap()); saveRun(); next(); }); }
+    return pickScreen("검객을 골라라", "누구로 오를 것인가", cs, c => { run.char = c.id; run.breath = Math.min(run.breath, breathCap()); saveRun(); next(); }); }
   if (step === 1) { const own = run.char === "munyeo" || run.char === "posu" ? run.char : undefined;   // 무녀 and 포수 have their own arms
     const ws = Object.entries(WEAPONS).filter(([id, w]) => w.ch === own && (META.weapons.includes(id) || id === BASE_W[run.char])).map(([id, w]) => ({ id, ...w }));
     run.weapon = BASE_W[run.char] || "hwando"; if (ws.length < 2) return next();
-    return pickScreen("무기를 고르라", "손에 쥘 것", ws, w => { run.weapon = w.id; saveRun(); next(); }); }
+    return pickScreen("무기를 골라라", "손에 쥘 것", ws, w => { run.weapon = w.id; saveRun(); next(); }); }
   if (step === 2 && !run.simbeop) { const ms = SIMBEOP.filter(m => META.simbeop.includes(m.id)).map(m => ({ ...m, desc: `${m.desc} · 시작 비급 ${CHOSIK.find(c => c.id === m.start).name} · ${SCHOOLS[m.id].name} 계열 +1` }));
-    return pickScreen("심법을 고르라", "어느 계열로 오를 것인가", ms, m => { run.simbeop = m.id; if (!run.perks.includes(m.start)) run.perks.push(m.start); saveRun(); startPicks(2.5); }); }
+    return pickScreen("심법을 골라라", "어느 계열로 오를 것인가", ms, m => { run.simbeop = m.id; if (!run.perks.includes(m.start)) run.perks.push(m.start); saveRun(); startPicks(2.5); }); }
   if (step === 2.5) step = 2;
   if (step === 2) { const rnd = mulberry(run.seed ^ 0x0A7), pool = OATHS.filter(o => META.oaths.includes(o.id)), picks = [];
     while (picks.length < 3 && pool.length) picks.push(pool.splice((rnd() * pool.length) | 0, 1)[0]);
@@ -1025,14 +1025,14 @@ function showChoice(kind) {   // kind: "madang" after a cleared 마당, "cycle" 
   const wt = c => 1 + Math.min(3, schoolN(SCHOOL_OF[c.id]) * .6);   // what you have gathered shows up more often
   while (picks.length < nCards && pool.length) { let r = rnd() * pool.reduce((t, c) => t + wt(c), 0), i = 0; while (i < pool.length - 1 && (r -= wt(pool[i])) > 0) i++; picks.push(pool.splice(i, 1)[0]); }
   if (!picks.length) { toast("익힐 비급이 더 없다"); done(); return; }   // every 비급 learned and breath full
-  $("chTitle").textContent = "비급을 고르라";
+  $("chTitle").textContent = "비급을 골라라";
   const box = $("cards"); box.innerHTML = "";
   for (const c of picks) {
     const b = document.createElement("button"); b.className = "card" + (c.combo ? " combo" : c.tf ? " tfc" : "");
     const vi = pv(c);
     b.innerHTML = (c.combo ? (vi.icon2 ? `<i class="ic duo" style="--ic:var(--chosik-${vi.icon});--ic2:var(--chosik-${vi.icon2})"></i>` : `<i class="ic" style="--ic:var(--chosik-${vi.icon})"></i>`) + `<em class="tag">조합 · ${c.combo.map(id => pv(CHOSIK.find(o => o.id === id)).name).join(" + ")}</em>` : `<i class="ic" style="--ic:var(--chosik-${vi.icon})"></i>` + (c.tf ? `<em class="tag tfx">변형 · ${TF_NAME[c.tf]}</em>` : "")) + `<b class="nm"></b><span class="han"></span><span class="ds"></span>`;
     const sk = SCHOOL_OF[c.id]; if (sk) { const S = SCHOOLS[sk], n = schoolN(sk) + 1, t = document.createElement("em"); t.className = "sch" + ([2, 4, 6].includes(n) ? " wake" : ""); t.style.setProperty("--sc", S.col);
-      t.textContent = `${S.han} ${S.name} ${n}` + ([2, 4, 6].includes(n) ? ` · 공명 ${TIER_SHORT[sk][n / 2 - 1]}` : ""); b.appendChild(t); }
+      t.textContent = `● ${S.name} ${n}` + ([2, 4, 6].includes(n) ? ` · 공명 ${TIER_SHORT[sk][n / 2 - 1]}` : ""); b.appendChild(t); }
     const v = pv(c); b.querySelector(".nm").textContent = v.name; b.querySelector(".han").textContent = v.han; b.querySelector(".ds").textContent = v.desc;
     b.addEventListener("click", () => {
       run.perks = run.perks || [];
@@ -1058,14 +1058,14 @@ function showChoice(kind) {   // kind: "madang" after a cleared 마당, "cycle" 
 const SIMBEOP_START = () => (SIMBEOP.find(m => m.id === run.simbeop) || {}).start;
 function discardScreen(kind) { // trade a 비급 that no longer fits the build for one breath
   const rows = (run.perks || []).filter(id => SCHOOL_OF[id] && id !== SIMBEOP_START()).map(id => { const c = pv(CHOSIK.find(o => o.id === id)), S = SCHOOLS[SCHOOL_OF[id]];
-    return bdRow(`${S.han} ${c.name}`, c.desc, null, "버리기", () => { run.perks = run.perks.filter(x => x !== id); run.breath = Math.min(breathCap(), run.breath + 1); run.discarded = true; saveRun(); toast(`${c.name}을 버리고 숨을 얻었다`); showChoice(kind); }); });
+    return bdRow(`● ${c.name} · ${S.name}`, c.desc, null, "버리기", () => { run.perks = run.perks.filter(x => x !== id); run.breath = Math.min(breathCap(), run.breath + 1); run.discarded = true; saveRun(); toast(`${c.name}을 버리고 숨을 얻었다`); showChoice(kind); }); });
   board("비급 버리기", "하나를 버리면 숨 하나를 되찾는다", rows, [["그만두기", () => showChoice(kind)]]);
 }
 function showOmen() {   // the rule for the coming turn: two omens drawn at random, or a calm one
   const rnd = mulberry((run.seed ^ ((run.cycle || 0) * 7477)) >>> 0), pool = OMENS.filter(o => !o.calm), picks = [];
   while (picks.length < 2) picks.push(pool.splice((rnd() * pool.length) | 0, 1)[0]);
   picks.push(OMENS.find(o => o.calm));
-  $("chTitle").textContent = "징조를 고르라";
+  $("chTitle").textContent = "징조를 골라라";
   $("chMadang").textContent = `${(run.cycle || 0) + 1}번째 판 · ${SEASON[season()].name}`;
   const box = $("cards"); box.innerHTML = "";
   for (const o of picks) {
@@ -1233,7 +1233,7 @@ function shot(d, arrow) {
   if (!P.onGround && P.vy > 60) P.vy = 60;
   if (req.dash) startDash(d);
   Music.sfx(strike ? "strike" : "slash");
-  if (strike) flash = 0.06;
+  if (strike) { flash = 0.06; if (onBeat) beatHitAt = performance.now(); }
   { const tx = P.x + P.w / 2 + d.x * 40, ty = P.y + P.h / 2 + d.y * 34, n = strike ? 12 : 8, gild = masteryLv(wpn()) >= 5;   // ink (and gold for 일격) thrown off the blade's path
     for (let i = 0; i < n; i++) { const a = Math.atan2(d.y, d.x) + (Math.random() - .5) * 1.6, v = 120 + Math.random() * 260; parts.push({ x: tx, y: ty, vx: Math.cos(a) * v, vy: Math.sin(a) * v - 40, life: .35, max: .35, c: strike ? (i % 3 ? SEAL : "#e8b84a") : gild && i % 3 === 0 ? "#e8b84a" : (i % 4 ? LV.pal.fig : "#6b6670"), s: 1.5 + Math.random() * 2.5 }); }
     if (strike) addFx("perkfx", PF.spark, tx, ty, 40, { life: .2, rot: Math.random() * 6.28, grow: .6 }); }
@@ -1242,15 +1242,18 @@ let kegs = [], rings = [], killCam = 0, cutLines = [];
 function killCamOn(e) {
   const x = e.x + e.w / 2, y = e.y + e.h / 2, d = P.dashDir || { x: P.face, y: 0 };
   killCam = Math.max(killCam, .55); hitstop = Math.max(hitstop, .05); shake = Math.max(shake, 6); Music.sfx("strike");
-  cutLines.push({ x, y, a: Math.atan2(d.y, d.x), t: 0, life: .6 });
+  cutLines.push({ x, y, a: Math.atan2(d.y, d.x), t: 0, life: .7 });
+  seals.push({ x, y: e.y + 2, t: 0, rot: (Math.random() - .5) * .3, ch: "斬", big: true });
+  if (SPR.vis) addFx("vis", VIS.splat, x, y, 90, { life: .7, grow: .35, ay: .5, rot: Math.random() * 6.28 });
   for (let i = 0; i < 34; i++) { const a = Math.atan2(d.y, d.x) + (Math.random() - .5) * 1.4, v = 120 + Math.random() * 520; parts.push({ x, y, vx: Math.cos(a) * v, vy: Math.sin(a) * v - 60, life: .8, max: .8, c: i % 5 ? SEAL : "#7a0d12", s: 2 + Math.random() * 4.5 }); }
   bleed(x, y, d, true); seals.push({ x, y: e.y + 6, t: 0, rot: (Math.random() - .5) * .4 });
 }
-function drawCutLines() { // the cut runs on across the whole screen, a vermilion hairline
-  for (const c of cutLines) { const k = c.t / c.life, L = 900 * Math.min(1, c.t / .08), w = 1 - k;
+function drawCutLines() { // a short wet cut of blood across the body, drawn in one stroke
+  for (const c of cutLines) { const k = c.t / c.life, grow = Math.min(1, c.t / .07), w = 1 - Math.max(0, k - .4) / .6;
     ctx.save(); ctx.translate(c.x, c.y); ctx.rotate(c.a); ctx.globalAlpha = w;
-    ctx.fillStyle = SEAL; ctx.beginPath(); ctx.moveTo(-L, 0); ctx.lineTo(0, -4 * w - 1); ctx.lineTo(L, 0); ctx.lineTo(0, 4 * w + 1); ctx.closePath(); ctx.fill();
-    ctx.fillStyle = "rgba(255,240,220,.9)"; ctx.fillRect(-L * .7, -.6, L * 1.4, 1.2); ctx.restore(); }
+    if (SPR.vis) { const f = SPR.vis.f[VIS.cut], L = 150 * grow; drawSprite("vis", VIS.cut, 0, 0, L / f.w, false, .5, false, .45); }
+    else { const L = 75 * grow; ctx.fillStyle = SEAL; ctx.beginPath(); ctx.moveTo(-L, 0); ctx.lineTo(0, -5); ctx.lineTo(L, 0); ctx.lineTo(0, 5); ctx.closePath(); ctx.fill(); }
+    ctx.restore(); }
   ctx.globalAlpha = 1;
 }
 function ringFx(x, y, r, col, life) { rings.push({ x, y, r, col, t: 0, life }); }
@@ -1496,6 +1499,7 @@ function bleed(x, y, dir, big) { // blood burst + spray along the blow + a pool 
   addFx("fx", FX.burst, x, y, big ? 96 : 64, { life: big ? .7 : .45, rot: Math.random() * 6.28, grow: .5 });
   addFx("fx", FX.spray, x, y, big ? 50 : 34, { life: .5, rot: Math.atan2(dir.y, dir.x), ay: .5, grow: .6 });
   addFx("fx", FX.drops, x + dir.x * 20, y - 6, 26, { life: .6, rot: Math.random() * 6.28 });
+  if (SPR.vis) { addFx("vis", VIS.splat, x, y, big ? 80 : 56, { life: .55, grow: .4, ay: .5, rot: Math.random() * 6.28 }); addFx("vis", VIS.drops, x + dir.x * 26, y + 6, big ? 40 : 28, { life: .7, grow: .1, ay: .5, rot: Math.atan2(dir.y, dir.x) }); }
   const fy = findFloor(x, y); if (fy != null && LV.stains.length < 160) LV.stains.push({ x, y: fy + 2, pool: true, w: big ? 70 : 46, rot: 0 });
 }
 function puff(x, y, n) { for (let i = 0; i < n; i++) parts.push({ x, y, vx: (Math.random() - 0.5) * 140, vy: -Math.random() * 80, life: .3, max: .3, c: LV.pal.foe, s: 2 }); }
@@ -2018,7 +2022,7 @@ function frame(now) {
   for (const p of parts) { p.x += p.vx * rdt; p.y += p.vy * rdt; p.vy += 600 * rdt; p.life -= rdt; }
   parts = parts.filter(p => p.life > 0);
   for (const g of ghosts) g.age += rdt; ghosts = ghosts.filter(g => g.age < g.life);
-  for (const s of seals) s.t += rdt; seals = seals.filter(s => s.t < 0.7);
+  for (const s of seals) s.t += rdt; seals = seals.filter(s => s.t < (s.ch ? 1.1 : 0.7));
   for (const v of vfx) v.t += rdt; vfx = vfx.filter(v => v.t < v.life);
   for (const b of beams) b.t += rdt; beams = beams.filter(b => b.t < b.life); for (const b of bolts) b.t += rdt; bolts = bolts.filter(b => b.t < b.life); for (const r of rings) r.t += rdt; rings = rings.filter(r => r.t < r.life); for (const c of cutLines) c.t += rdt; cutLines = cutLines.filter(c => c.t < c.life); killCam = Math.max(0, killCam - rdt);
   if (state === "play") for (const c of clones) { c.t -= rdt; if (c.t <= 0) { // 분광: the shadow strikes once, then is gone
@@ -2043,7 +2047,7 @@ function setHud() {
   const hb = $("hBreath"); hb.innerHTML = ""; hb.classList.toggle("inf", mode === "tutorial");
   if (mode !== "tutorial") for (let i = 0; i < Math.max(3, run.breath); i++) { const d = document.createElement("i"); if (i >= run.breath) d.className = "lost"; hb.appendChild(d); }
   const hs = $("hSchool"); if (hs) { hs.innerHTML = ""; if (mode !== "tutorial") for (const k in SCHOOLS) { const n = schoolN(k); if (!n) continue; const S = SCHOOLS[k], el = document.createElement("span");
-    el.style.setProperty("--sc", S.col); el.className = n >= 2 ? "on" : ""; el.innerHTML = `<b></b><i></i>`; el.querySelector("b").textContent = S.han; el.querySelector("i").textContent = n; el.title = `${S.name} ${n} · ${S.tiers.filter((_, i) => n >= i * 2 + 2).join(" / ") || "공명 없음"}`; hs.appendChild(el); }
+    el.style.setProperty("--sc", S.col); el.className = n >= 2 ? "on" : ""; el.innerHTML = Array.from({ length: Math.min(n, 6) }, (_, i) => `<i class="bd${i < n - n % 2 ? " on" : ""}"></i>`).join("") + (n > 6 ? `<em>+${n - 6}</em>` : ""); el.title = `${S.name} ${n} · ${S.tiers.filter((_, i) => n >= i * 2 + 2).join(" / ") || "공명 없음"}`; hs.appendChild(el); }
     hs.hidden = !hs.children.length; }
   hudCache = "";
 }
@@ -2355,6 +2359,15 @@ function render(rdt) {
   ctx.globalAlpha = 1;
   // 일격 seals
   for (const s of seals) {
+    if (s.ch) { // a stamped character: vermilion block, carved frame, paper-white 斬 — it lands hard and stays a moment
+      const a = s.t < .06 ? s.t / .06 : 1 - Math.max(0, s.t - .7) / .4, sc = s.t < .06 ? 2 - s.t / .06 : 1 + Math.max(0, .1 - s.t) * .6, z = s.big ? 46 : 30;
+      ctx.save(); ctx.translate(s.x, s.y - 30); ctx.rotate(s.rot); ctx.scale(sc, sc); ctx.globalAlpha = Math.max(0, a);
+      ctx.fillStyle = "rgba(23,22,26,.35)"; ctx.fillRect(-z / 2 + 3, -z / 2 + 3, z, z);
+      ctx.fillStyle = SEAL; ctx.fillRect(-z / 2, -z / 2, z, z);
+      if (SPR.vis) drawSprite("vis", VIS.seal, 0, 0, z * 1.08 / SPR.vis.f[VIS.seal].h, false, .5, false, .5);
+      ctx.fillStyle = "#f6f0e2"; ctx.font = `700 ${Math.round(z * .62)}px "Song Myung", serif`; ctx.textAlign = "center"; ctx.textBaseline = "middle"; ctx.fillText(s.ch, 0, 1);
+      ctx.restore(); ctx.textAlign = "left"; continue;
+    }
     if (SPR.fx) {
       const a = s.t < .08 ? s.t / .08 : 1 - Math.max(0, s.t - .35) / .35, sc = s.t < .08 ? 1.7 - s.t / .08 * .7 : 1;
       ctx.save(); ctx.translate(s.x, s.y - 22); ctx.rotate(s.rot); ctx.globalAlpha = Math.max(0, a);
@@ -2443,6 +2456,8 @@ function drawBackdrop(pal) {
   const camX = cam.x || 0, camY = cam.y || 0;
   const lh = LV ? LV.h * T : 512;
   ctx.setTransform(DPR, 0, 0, DPR, 0, 0);
+  { const by = H * .8 + (lh - camY) * .22 * .5 * SCALE, g = ctx.createLinearGradient(0, Math.min(H * .55, by - H * .25), 0, H);   // under the far hills: mist thickening toward the gorge, never bare paper
+    g.addColorStop(0, `rgba(${pal.wash},0)`); g.addColorStop(.55, `rgba(${pal.wash},${pal.night ? .08 : .1})`); g.addColorStop(1, `rgba(${pal.wash},${pal.night ? .18 : .26})`); ctx.fillStyle = g; ctx.fillRect(0, 0, W, H); }
   const layers = [["far", .08, pal.farA, .58, .66], ["mid", .22, pal.midA, .8, .78]];
   layers.forEach(([key, f, alpha, bottom, hFrac], li) => {
     const yoff = (lh - camY) * f * .5 * SCALE;
@@ -2488,6 +2503,7 @@ function drawTrail() {
   }
   ctx.globalAlpha = 1; ctx.lineCap = "butt";
 }
+let beatHitAt = 0;   // when the last 일격 landed, for the burst on the ring
 function drawBeatBar(pal) {
   // drums slide in at an even spacing and are struck as they reach the ring on the left: that moment is the 일격 window
   const def = Music.def; if (!def) return;
@@ -2502,7 +2518,11 @@ function drawBeatBar(pal) {
   }
   else uiPatch(5, mx - 46, y - 30, gap * ahead + 92, 60, pal.night ? .5 : .9);
   const near = Math.abs(Music.offBeat(pos)) < strikeWin();
-  uiPatch(0, mx - 25, y - 25, 50, 50, near && !omen("goyo") ? 1 : .55);                      // judgement ring
+  if (SPR.vis) { const ph = ((pos / bl) % 1 + 1) % 1, pulse = 1 + Math.max(0, .18 - Math.min(ph, 1 - ph)) * 1.4;   // the ring swells as each beat lands
+    ctx.globalAlpha = near && !omen("goyo") ? 1 : .7; drawSprite("vis", VIS.ring, mx, y, 56 * pulse / SPR.vis.f[VIS.ring].h, false, .5, false, .5);
+    if (beatHitAt && performance.now() - beatHitAt < 300) { const k = (performance.now() - beatHitAt) / 300; ctx.globalAlpha = 1 - k; drawSprite("vis", VIS.burst, mx, y, (60 + k * 50) / SPR.vis.f[VIS.burst].h, false, .5, false, .5); }
+    ctx.globalAlpha = 1; }
+  else uiPatch(0, mx - 25, y - 25, 50, 50, near && !omen("goyo") ? 1 : .55);                      // judgement ring
   if (omen("goyo")) return;   // 고요: the drums are heard, not seen
   const k0 = Math.floor(pos / bl) - 1;
   for (let k = k0 + ahead + 1; k >= k0; k--) {
@@ -2511,7 +2531,9 @@ function drawBeatBar(pal) {
     const strong = ((k % def.beats) + def.beats) % def.beats === 0, hit = Math.abs(dt) < strikeWin(), past = dt < -strikeWin();
     const size = (strong ? 38 : 28) * (hit ? 1.18 : 1), i = hit ? HUD.struck : strong ? HUD.bigDrum : HUD.drum;
     ctx.globalAlpha = past ? Math.max(0, 1 + dt / bl * 3) : Math.min(1, 1.15 - Math.max(0, dt / bl - 2.5));
-    if (!SPR.hudsolid || !drawSprite("hudsolid", i, x, y, size / SPR.hudsolid.f[i].h, false, .5, false, .5)) {
+    if (SPR.vis) { const vi = strong ? VIS.bigDrum : VIS.drum, sz = (strong ? 40 : 30) * (hit ? 1.25 : 1); drawSprite("vis", vi, x, y, sz / SPR.vis.f[vi].h, false, .5, false, .5);
+      if (hit) { ctx.strokeStyle = "rgba(232,184,74,.9)"; ctx.lineWidth = 2.5; ctx.beginPath(); ctx.arc(x, y, sz * .56, 0, 6.283); ctx.stroke(); } }   // the drum on the ring glows gold
+    else if (!SPR.hudsolid || !drawSprite("hudsolid", i, x, y, size / SPR.hudsolid.f[i].h, false, .5, false, .5)) {
       ctx.fillStyle = hit ? SEAL : pal.text; ctx.beginPath(); ctx.arc(x, y, size / 3, 0, Math.PI * 2); ctx.fill();
     }
   }
@@ -3152,6 +3174,7 @@ const CHARS = [
   { id: "munyeo", name: "무녀", han: "巫女", desc: "부채로 탄을 두 배 세게 되받아치고, 공중에서 한 번 더 뛴다. 베는 범위는 좁다" },
   { id: "posu", name: "포수", han: "砲手", desc: "일격이 화승총 한 발이 되어 멀리 꿰뚫는다(쏜 뒤 두 박자 장전). 보통 베기는 총검 찌르기" }];
 const chr = id => !!(run && run.char === id);
+const VIS = { cut: 0, splat: 1, ring: 2, drum: 3, bigDrum: 4, burst: 5, stroke: 6, seal: 7, drops: 8 };   // blood, stamps and the beat bar, painted to read at a glance
 const MU_AX = [.57, .63, .61, .61, .54, .57, .57, .59, .58, .55, .62, .6, .44, .46, .49, .53], PO_AX = [.48, .5, .49, .47, .48, .47, .46, .51, .46, .42, .51, .43, .42, .47, .53, .39];   // 무녀·포수: same 16 moves as the swordsman's hero3
 const CF = (k) => chr("munyeo") ? { dragon: ["mfx", 4], bloom: ["mfx", 5], clone: ["mfx", 8] }[k] : chr("posu") ? { dragon: ["pfx", 4], bloom: ["pfx", 2], clone: ["pfx", 7] }[k] : null;   // each hand's own picture of a shared gift
 const dirFx = d => ({ rot: d.x < 0 ? Math.atan2(d.y, d.x) - Math.PI : Math.atan2(d.y, d.x), flip: d.x < 0 });
