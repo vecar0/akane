@@ -194,6 +194,15 @@ const Music = (() => {
         case "die": jing(t); kung(t, 1.3); break;                                                   // 징
         case "lantern": [330, 392, 494].forEach((f, i) => gayageum(t + i * .07, f, .5, .07)); break;  // 가야금 arpeggio
         case "seal": bak(t); setTimeout(() => this.bak(), 260); break;
+        case "roar": {   // 포효: a throat of sawtooth shaken by a fast tremble, its mouth opening then closing, over breath and a drum
+          kung(t, 1.4); const o = ac.createOscillator(), o2 = ac.createOscillator(), lf = ac.createOscillator(), lg = ac.createGain(), f = ac.createBiquadFilter(), g = ac.createGain(), am = ac.createGain();
+          o.type = "sawtooth"; o2.type = "sawtooth"; o.frequency.setValueAtTime(92, t); o.frequency.linearRampToValueAtTime(128, t + .35); o.frequency.exponentialRampToValueAtTime(64, t + 1.3);
+          o2.frequency.setValueAtTime(61, t); o2.frequency.exponentialRampToValueAtTime(44, t + 1.3);
+          lf.type = "square"; lf.frequency.setValueAtTime(26, t); lf.frequency.linearRampToValueAtTime(18, t + 1.3); lg.gain.value = .45; am.gain.value = .55; lf.connect(lg).connect(am.gain);
+          f.type = "lowpass"; f.Q.value = 4; f.frequency.setValueAtTime(260, t); f.frequency.exponentialRampToValueAtTime(1400, t + .3); f.frequency.exponentialRampToValueAtTime(320, t + 1.3);
+          g.gain.setValueAtTime(0.0001, t); g.gain.exponentialRampToValueAtTime(.55, t + .08); g.gain.setValueAtTime(.55, t + .7); g.gain.exponentialRampToValueAtTime(0.0001, t + 1.35);
+          o.connect(am); o2.connect(am); am.connect(f).connect(g).connect(master); for (const x of [o, o2, lf]) { x.start(t); x.stop(t + 1.4); }
+          noise(t + .02, 1.1, 520, "bandpass", .32, 1.4); break; }
       }
     }
   };
