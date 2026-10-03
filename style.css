@@ -259,3 +259,10 @@ body.padEdit #stickZone, body.padEdit #swipeZone { pointer-events: none; }
 /* 다시 시작: a long press fills the button; letting go early cancels */
 #bRestart.hold { background-image: linear-gradient(90deg, rgba(195, 22, 28, .45) var(--p, 0%), transparent var(--p, 0%)); }
 #bRestart small { font-size: 11px; opacity: .7; }
+
+/* 첫 사용 안내: a small card under the top bar, gone by itself (or on a tap) */
+#tip { position: absolute; left: 50%; top: calc(env(safe-area-inset-top, 0px) + 92px); transform: translateX(-50%); max-width: min(420px, 86vw); padding: 9px 14px 8px; border-radius: 8px; background: rgba(23, 22, 26, .88); color: var(--paper); text-align: center; display: grid; gap: 3px; pointer-events: auto; z-index: 5; opacity: 0; transition: opacity .3s; }
+#tip.on { opacity: 1; }
+#tip b { font-family: var(--f-head); font-size: 15px; color: #e8b84a; font-weight: 400; }
+#tip span { font-size: 12.5px; line-height: 1.45; }
+#tip small { font-size: 11.5px; color: #e9a19a; }

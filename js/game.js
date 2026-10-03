@@ -3,7 +3,7 @@
 "use strict";
 const T = 32;
 const $ = id => document.getElementById(id);
-const cv = $("cv"), ctx = cv.getContext("2d", { alpha: false });   // opaque canvas: cheaper to composite on phones
+const cv = $("cv"); let ctx = cv.getContext("2d", { alpha: false });   // let: the ground is baked by pointing ctx at an offscreen canvas for a moment   // opaque canvas: cheaper to composite on phones
 let W = 0, H = 0, DPR = 1, SCALE = 1;
 const MOBILE = matchMedia("(pointer:coarse)").matches || /Android|iPhone|iPad/i.test(navigator.userAgent);
 const LITE = () => localStorage.getItem("chungo.lite") === "1";
@@ -406,8 +406,8 @@ function inkInverted(img) { // night palette: grey ink becomes bone white, colou
 function drawSprite(sheet, i, x, y, sc, flip, ax = .5, night = false, ay = 1) {
   const s = SPR[sheet]; if (!s || !s.f[i]) return false;
   const f = s.f[i], w = f.w * sc, h = f.h * sc, img = night && s.inv ? s.inv : s.img;
-  ctx.save(); ctx.translate(x, y); if (flip) ctx.scale(-1, 1);
-  ctx.drawImage(img, f.x, f.y, f.w, f.h, -w * ax, -h * ay, w, h); ctx.restore(); return true;
+  if (!flip) { ctx.drawImage(img, f.x, f.y, f.w, f.h, x - w * ax, y - h * ay, w, h); return true; }   // no save/restore: the most common draw stays cheap
+  ctx.translate(x, y); ctx.scale(-1, 1); ctx.drawImage(img, f.x, f.y, f.w, f.h, -w * ax, -h * ay, w, h); ctx.scale(-1, 1); ctx.translate(-x, -y); return true;
 }
 const HERO_H = 58, FOE_H = 62; // drawn heights in world units (hitboxes stay smaller, which reads as fair)
 const kOf = (sheet, ref, worldH) => SPR[sheet] ? worldH / SPR[sheet].f[ref].h : 0;
@@ -959,7 +959,8 @@ function enterMadang() {
   Music.menuBgm(false);
   // map already loaded by showInterlude
   deadIds = new Set(run.dead || []); cpSave = null;
-  if (run.cp < 0 && mode !== "tutorial") store.set("stage", run);   // 다시 시작 returns here: the gate as it was when you walked in
+  if (run.cp < 0 && mode !== "tutorial") store.set("stage", run);
+  setTimeout(weaponTip, 1200);   // 다시 시작 returns here: the gate as it was when you walked in
   if (run.cp >= 0 && LV.cps[run.cp]) {
     const c = LV.cps[run.cp]; c.on = true;
     cpSave = { x: c.x - 9, y: c.y - 30.01, dead: new Set(deadIds), idx: run.cp };
@@ -1375,12 +1376,12 @@ function spr(sheet, i, x, y, h, flip = false) { const S = SPR[sheet]; if (!S || 
 function sprW(sheet, i, h) { const S = SPR[sheet]; return S && S.f[i] ? S.f[i].w * h / S.f[i].h : 0; }
 function banner(text, col, sub) { bossBanner = { text, col, sub, t: 0 }; }
 function sealArena(e, on) { // a talisman barrier closes both sides of the arena while the guardian lives
-  if (!on) { if (LV && LV.seal) { for (const x of [LV.seal.x0, LV.seal.x1]) for (let y = 0; y <= LV.seal.y1; y++) LV.grid[y * LV.w + x] = 0; LV.seal = null; } return; }
+  if (!on) { if (LV && LV.seal) { for (const x of [LV.seal.x0, LV.seal.x1]) for (let y = 0; y <= LV.seal.y1; y++) LV.grid[y * LV.w + x] = 0; LV.seal = null; LV.gridVer = (LV.gridVer || 0) + 1; } return; }
   const d = LV.defs.find(o => o.id === e.id); if (!d || LV.seal) return;
   const x0 = d.tx - 18, x1 = d.tx + 7, px = Math.floor((P.x + P.w / 2) / T);
   if (x0 < 1 || x1 >= LV.w - 1 || px <= x0 || px >= x1) return;
   for (const x of [x0, x1]) for (let y = 0; y <= d.ty; y++) if (LV.grid[y * LV.w + x] !== 0) return;   // only where the arena is open sky
-  for (const x of [x0, x1]) for (let y = 0; y <= d.ty; y++) LV.grid[y * LV.w + x] = 1;
+  for (const x of [x0, x1]) for (let y = 0; y <= d.ty; y++) LV.grid[y * LV.w + x] = 1; LV.gridVer = (LV.gridVer || 0) + 1;
   LV.seal = { x0, x1, y1: d.ty, t: 0 };
 }
 function killCamOn(e) {
@@ -2059,7 +2060,8 @@ const viaMua = () => !!(P && P.aimDash && !P.tapDash);   // the cut came out of 
 function chainAdd(n) { if (!P) return; const g0 = Math.min(5, P.chain || 0); P.chain = (P.chain || 0) + n; P.chainPop = .25; if (Math.min(5, P.chain) > g0) Music.sfx("lantern"); }
 function addQi(n) { // 천고 기운: won by fighting well — 일섬, 간파, 과녁
   if (mode === "tutorial" || !run) return; const before = run.qi || 0; run.qi = Math.min(100, before + n * .6 * (oath("jangdan") ? 2 : 1) * (1 + .15 * Math.min(8, (P && P.chain) || 0)));
-  if (before < 100 && run.qi >= 100) { toast(MOBILE ? "천고 기운이 찼다 · 태극 북을 누르면 천고난무" : "천고 기운이 찼다 · 태극 북을 누르거나 Q"); Music.jing(); }
+  if (before < 100 && run.qi >= 100) { if (META.tips && META.tips.chungo) toast(MOBILE ? "천고 기운이 찼다 · 태극 북을 눌러 천고난무" : "천고 기운이 찼다 · 태극 북 또는 Q");
+    else tipOnce("chungo", "천고난무", "북이 다 찼다 — 주변 적을 한 번에 벤다. 원할 때 쓴다", MOBILE ? "아래 태극 북을 누르기" : "태극 북 클릭 또는 Q"); Music.jing(); }
 }
 let chungoFx = null;
 function chungo() { // 천고난무: the full drum. Time stops; ink lines are laid from foe to foe; then, all at once, they fall
@@ -2532,6 +2534,7 @@ function frame(now) {
   clones = clones.filter(c => c.t > 0);
   shake = Math.max(0, shake - rdt * 40); flash = Math.max(0, flash - rdt);
   if (toastT > 0) { toastT -= rdt; if (toastT <= 0) $("toast").classList.remove("on"); }
+  if (tipT > 0 || $("tip").classList.contains("on")) { tipT -= rdt; if (tipT <= 0) { $("tip").classList.remove("on"); setTimeout(() => { if (tipT <= 0) $("tip").hidden = true; }, 320); } }
   const inv = !!(P && (P.focus || killCam > 0) && state === "play");
   Music.setRate(inv ? .45 : 1);
   if (inv !== cvInverted) { cvInverted = inv; document.body.classList.toggle("night", inv); }
@@ -2562,6 +2565,17 @@ function updateHud() {
   if (key === hudCache) return; hudCache = key;
   $("hTime").textContent = t + (showFps ? ` · ${fpsNow}fps ${workMs.toFixed(0)}ms ${Math.round(1000 / vsyncMs)}Hz ${DPR}x${GPU_SOFT ? " SW" : ""}` : ""); $("pip").classList.toggle("on", pip); $("bHook").classList.toggle("ready", hk);
 }
+let tipT = 0;
+function tip(title, desc, keys) { // 첫 사용 안내: shown once per thing, for a few seconds
+  $("tipT").textContent = title; $("tipD").textContent = desc; $("tipK").textContent = keys || ""; const el = $("tip"); el.hidden = false; requestAnimationFrame(() => el.classList.add("on")); tipT = 6.5; }
+function tipOnce(id, title, desc, keys) { META.tips = META.tips || {}; if (META.tips[id]) return; META.tips[id] = 1; saveMeta(); tip(title, desc, keys); }
+const WTIP = {   // how each weapon's own move is done, by the rules it plays by
+  hwando: ["원이 점이 될 때 보통 베기로 베면 적 뒤로 넘어간다", MOBILE ? "화면을 그어 베기" : "J 베기"],
+  ssang: ["빠르게 이어 베면 기세가 쌓이고, 다섯 번째는 X자 일격", MOBILE ? "연달아 긋기" : "J 연타"],
+  woldo: ["공중에서 아래로 베면 내리꽂힌다 — 땅에 꽂히면 충격파", MOBILE ? "공중에서 아래로 긋기" : "공중에서 S + J"],
+  baldo: ["베기를 누르고 있으면 시간이 느려지며 모인다 — 오래 모으면 붉은 일격", MOBILE ? "누른 채 기다렸다 떼기" : "J를 누른 채 기다렸다 떼기"] };
+function weaponTip() { if (mode === "tutorial" || !run) return; const w = WEAPONS[wpn()], t = WTIP[wrule()]; if (t) tipOnce("w_" + wpn(), `${w.name} · ${w.desc.split(" — ")[0]}`, t[0], t[1]); }
+$("tip").addEventListener("pointerdown", e => { e.stopPropagation(); tipT = 0; });
 function toast(msg) { const el = $("toast"); el.textContent = msg; el.classList.add("on"); toastT = 1.6; }
 function buzz(ms) { try { navigator.vibrate && navigator.vibrate(ms); } catch (e) {} }
 
@@ -2575,6 +2589,78 @@ function makePaper() {
   g.strokeStyle = "rgba(0,0,0,.05)"; g.lineWidth = 0.6;
   for (let i = 0; i < 40; i++) { g.beginPath(); const x = Math.random() * 256, y = Math.random() * 256; g.moveTo(x, y); g.quadraticCurveTo(x + 10, y + Math.random() * 10, x + 20 + Math.random() * 30, y + (Math.random() - .5) * 8); g.stroke(); }
   paperPat = ctx.createPattern(c, "repeat");
+}
+function drawGround(pal, ssn, x0, x1, y0, y1, R) { // the rock, its painted face, giwa bands, edges, ledges and thorns over one region of the world — static, so it is baked
+  const SC = LV.scenery;
+  // tiles: all visible rock in one path, filled once with the stone texture
+  const stone = pattern("tex-stone", 0.5), giwa = pattern("tex-giwa", 0.094), rock = new Path2D();
+  for (let ty = y0; ty <= y1; ty++) for (let tx = x0; tx <= x1; tx++) if (LV.grid[ty * LV.w + tx] === 1 && !(LV.slabTiles && LV.slabTiles.has(ty * LV.w + tx))) rock.rect(tx * T - .3, ty * T - .3, T + .6, T + .6);
+  const granite = pattern("tex-slab", 0.45);
+  ctx.fillStyle = pal.tile; ctx.fill(rock);
+  if (SPR.pillars) { // ground built from the same painted rock columns as the pillars, so both read as one cliff
+    const pf = SPR.pillars.f, colW = 70, img = bake(pal.night ? SPR.pillars.inv : SPR.pillars.img, .8, 1.15);
+    ctx.save(); ctx.clip(rock); if (pal.night) ctx.globalAlpha = .45;
+    const cx0 = Math.floor(R.wx0 / colW) - 1, cx1 = Math.ceil(R.wx1 / colW) + 1;
+    for (let c = cx0; c <= cx1; c++) {
+      const hsh = (c * 2654435761) >>> 0, i = hsh % 3, f = pf[i], w = colW * 1.35, segH = w * f.h / f.w, off = (hsh >>> 8) % 97;
+      const rowH = segH - 10; // one spacing for both the start row and the step, so rows stay put as the camera moves
+      for (let y = Math.floor((R.wy0 - off) / rowH) * rowH + off - rowH; y < R.wy1 + segH; y += rowH) {
+        ctx.save(); ctx.translate(c * colW + colW / 2, y); if ((hsh >>> 3) & 1) ctx.scale(-1, 1); ctx.drawImage(img, f.x, f.y, f.w, f.h, -w / 2, 0, w, segH); ctx.restore();
+      }
+    }
+    ctx.restore(); ctx.globalAlpha = 1;
+  } else if (granite) { // painted granite face, darkening with depth; night keeps it dim
+    ctx.globalAlpha = pal.night ? .35 : 1; ctx.fillStyle = granite; ctx.fill(rock); ctx.globalAlpha = 1;
+  } else if (stone) { ctx.globalAlpha = pal.rim ? .8 : 1; ctx.fillStyle = stone; ctx.fill(rock); ctx.globalAlpha = 1; }
+  if (SC && SPR.pillars) for (const c of SC.pillars) if (c.g && c.x + c.w > R.wx0 && c.x - c.w < R.wx1) drawPillar(c, pal);   // grounded pillars over the rock but under every giwa band
+  for (let ty = y0; ty <= y1; ty++) for (let tx = x0; tx <= x1; tx++) {
+    const v = LV.grid[ty * LV.w + tx], px = tx * T, py = ty * T;
+    if (v === 1) {
+      if (tileAt(tx, ty - 1) !== 1 && giwa) {
+        // giwa eave band along exposed tops, overhanging open ends a little
+        const l = tileAt(tx - 1, ty) !== 1 || tileAt(tx - 1, ty - 1) === 1 ? 3 : 0, r = tileAt(tx + 1, ty) !== 1 || tileAt(tx + 1, ty - 1) === 1 ? 3 : 0;
+        ctx.fillStyle = pal.tile; ctx.fillRect(px - l, py - 4, T + l + r, 12);
+        ctx.save(); ctx.translate(0, py - .8); ctx.fillStyle = giwa; ctx.fillRect(px - l, -3.2, T + l + r, 9); ctx.restore(); // align a cap row to the eave
+        ctx.fillStyle = pal.tile; ctx.fillRect(px - l, py + 5, T + l + r, 2.5);
+        if (pal.rim) { ctx.fillStyle = pal.rim; ctx.fillRect(px - l, py - 4.5, T + l + r, 1); }
+        if (ssn === 2) { ctx.fillStyle = pal.night ? "rgba(236,230,216,.5)" : "rgba(250,250,252,.92)"; ctx.fillRect(px - l, py - 6.5, T + l + r, 3); }
+      } else if (tileAt(tx, ty - 1) !== 1) {
+        const s = (tx * 73 + ty * 31) % 7;
+        ctx.beginPath(); ctx.moveTo(px - .5, py + 2); ctx.lineTo(px + 6 + s, py - 1.5); ctx.lineTo(px + 18, py + .5 - s * .2); ctx.lineTo(px + T + .5, py - 1); ctx.lineTo(px + T + .5, py + 3); ctx.closePath(); ctx.fill();
+        if (pal.rim) { ctx.fillStyle = pal.rim; ctx.fillRect(px, py - 1, T, 1.2); }
+      }
+      for (const sd of [-1, 1]) if (tileAt(tx + sd, ty) !== 1 && granite && !(LV.slabTiles && LV.slabTiles.has(ty * LV.w + tx))) { // dark ink edge where the rock face turns away
+        const gx = sd < 0 ? px : px + T - 7, gg = ctx.createLinearGradient(gx, 0, gx + 7, 0);
+        gg.addColorStop(sd < 0 ? 0 : 1, "rgba(15,14,16,.75)"); gg.addColorStop(sd < 0 ? 1 : 0, "rgba(15,14,16,0)"); ctx.fillStyle = gg; ctx.fillRect(gx, py, 7, T);
+      }
+      if (pal.rim && (tileAt(tx - 1, ty) !== 1 || tileAt(tx + 1, ty) !== 1)) { // stone-rubbing speckle on exposed sides
+        ctx.fillStyle = pal.rim; const sx = tileAt(tx - 1, ty) !== 1 ? px : px + T - 1.5;
+        for (let i = 0; i < 4; i++) ctx.fillRect(sx, py + ((tx * 13 + ty * 7 + i * 9) % T), 1.5, 2 + (i % 2) * 2);
+      }
+    } else if (v === 3 && tileAt(tx - 1, ty) !== 3) { // one painted ledge per run of '=' tiles
+      let n = 1; while (tileAt(tx + n, ty) === 3) n++;
+      const i = LV.ledgeStone ? P2.ledge : P2.plank, f = SPR.props2 && SPR.props2.f[i];
+      if (f) { const segN = Math.max(1, Math.round(n / 4)), segW = n * T / segN, hh = segW * f.h / f.w;
+        for (let k = 0; k < segN; k++) ctx.drawImage(pal.night ? SPR.props2.inv : SPR.props2.img, f.x, f.y, f.w, f.h, px + k * segW - 2, py - 3, segW + 4, Math.min(hh, LV.ledgeStone ? 30 : 26)); }
+      else { ctx.fillStyle = pal.tile; ctx.fillRect(px, py, n * T, 6); }
+    } else if (v === 2 && SPR.objects) {
+      const f = SPR.objects.f[OBJ.thorns];
+      drawSprite("objects", OBJ.thorns, px + T / 2 + ((tx * 7) % 5) - 2, py + T + 3, (T + 10) / f.w, tx % 2 === 1, .5, pal.night);
+    } else if (v === 2) {
+      ctx.fillStyle = pal.tile; ctx.beginPath();
+      for (let i = 0; i < 4; i++) { ctx.moveTo(px + i * 8, py + T); ctx.lineTo(px + i * 8 + 3 + (i % 2), py + 11); ctx.lineTo(px + i * 8 + 8, py + T); }
+      ctx.fill(); ctx.fillStyle = SEAL; for (let i = 0; i < 4; i++) ctx.fillRect(px + i * 8 + 2.5 + (i % 2), py + 11, 1.5, 3);
+    }
+  }
+}
+function bakeGround(gc, key, c, CW, top, hh, k, pal, ssn) { // paint one chunk of ground into its own canvas, at screen resolution
+  const cvs = document.createElement("canvas"); cvs.width = Math.ceil((CW + 4) * k); cvs.height = Math.ceil(hh * k); const g = cvs.getContext("2d");
+  const main = ctx; ctx = g; try { g.setTransform(cvs.width / (CW + 4), 0, 0, cvs.height / hh, -(c * CW - 2) * cvs.width / (CW + 4), -top * cvs.height / hh);
+    const x0 = Math.max(0, Math.floor(c * CW / T) - 1), x1 = Math.min(LV.w - 1, Math.ceil((c + 1) * CW / T) + 1);
+    g.beginPath(); g.rect(c * CW - 2, top, CW + 4, hh); g.clip();
+    drawGround(pal, ssn, x0, x1, 0, LV.h - 1, { wx0: c * CW - 2, wx1: (c + 1) * CW + 2, wy0: top, wy1: top + hh }); } finally { ctx = main; }
+  gc.set(key + "#" + c, { cv: cvs, used: performance.now() });
+  if (gc.size > (MOBILE ? 7 : 12)) { let old = null; for (const [kk, v] of gc) if (!old || v.used < old[1].used) old = [kk, v]; gc.delete(old[0]); }   // keep memory small: drop the stalest
 }
 function render(rdt) {
   if (!paperPat) makePaper();
@@ -2653,70 +2739,15 @@ function render(rdt) {
       ctx.fillStyle = pal.tile; for (let yy = l.y0 + 10; yy < l.y1; yy += 24) { ctx.beginPath(); ctx.moveTo(l.x - 5, yy); ctx.lineTo(l.x + 5, yy + 5); ctx.lineTo(l.x - 5, yy + 9); ctx.lineTo(l.x - 3, yy + 5); ctx.fill(); }
     } else if (laserWarn(l) && Math.floor(performance.now() / 60) % 2) { ctx.fillStyle = "rgba(195,22,28,.55)"; ctx.fillRect(l.x - .6, l.y0, 1.2, l.y1 - l.y0); }
   }
-  // tiles: all visible rock in one path, filled once with the stone texture
-  const stone = pattern("tex-stone", 0.5), giwa = pattern("tex-giwa", 0.094), rock = new Path2D();
-  for (let ty = y0; ty <= y1; ty++) for (let tx = x0; tx <= x1; tx++) if (LV.grid[ty * LV.w + tx] === 1 && !(LV.slabTiles && LV.slabTiles.has(ty * LV.w + tx))) rock.rect(tx * T - .3, ty * T - .3, T + .6, T + .6);
-  const granite = pattern("tex-slab", 0.45);
-  ctx.fillStyle = pal.tile; ctx.fill(rock);
-  if (SPR.pillars) { // ground built from the same painted rock columns as the pillars, so both read as one cliff
-    const pf = SPR.pillars.f, colW = 70, img = bake(pal.night ? SPR.pillars.inv : SPR.pillars.img, .8, 1.15);
-    ctx.save(); ctx.clip(rock); if (pal.night) ctx.globalAlpha = .45;
-    const cx0 = Math.floor((cam.x - vw / 2) / colW) - 1, cx1 = Math.ceil((cam.x + vw / 2) / colW) + 1;
-    for (let c = cx0; c <= cx1; c++) {
-      const hsh = (c * 2654435761) >>> 0, i = hsh % 3, f = pf[i], w = colW * 1.35, segH = w * f.h / f.w, off = (hsh >>> 8) % 97;
-      const rowH = segH - 10; // one spacing for both the start row and the step, so rows stay put as the camera moves
-      for (let y = Math.floor((cam.y - vh / 2 - off) / rowH) * rowH + off - rowH; y < cam.y + vh / 2 + segH; y += rowH) {
-        ctx.save(); ctx.translate(c * colW + colW / 2, y); if ((hsh >>> 3) & 1) ctx.scale(-1, 1); ctx.drawImage(img, f.x, f.y, f.w, f.h, -w / 2, 0, w, segH); ctx.restore();
-      }
-    }
-    ctx.restore(); ctx.globalAlpha = 1;
-    const sh = ctx.createLinearGradient(0, cam.y - vh / 2, 0, cam.y + vh / 2); sh.addColorStop(0, "rgba(20,18,16,0)"); sh.addColorStop(1, "rgba(20,18,16,.3)");
-    ctx.fillStyle = sh; ctx.fill(rock);
-  } else if (granite) { // painted granite face, darkening with depth; night keeps it dim
-    ctx.globalAlpha = pal.night ? .35 : 1; ctx.fillStyle = granite; ctx.fill(rock); ctx.globalAlpha = 1;
-    const sh = ctx.createLinearGradient(0, cam.y - vh / 2, 0, cam.y + vh / 2); sh.addColorStop(0, "rgba(20,18,16,0)"); sh.addColorStop(1, "rgba(20,18,16,.35)");
-    ctx.fillStyle = sh; ctx.fill(rock);
-  } else if (stone) { ctx.globalAlpha = pal.rim ? .8 : 1; ctx.fillStyle = stone; ctx.fill(rock); ctx.globalAlpha = 1; }
-  if (SC && SPR.pillars) for (const c of SC.pillars) if (c.g && Math.abs(c.x - cam.x) < vw / 2 + c.w) drawPillar(c, pal);   // grounded pillars over the rock but under every giwa band
-  for (let ty = y0; ty <= y1; ty++) for (let tx = x0; tx <= x1; tx++) {
-    const v = LV.grid[ty * LV.w + tx], px = tx * T, py = ty * T;
-    if (v === 1) {
-      if (tileAt(tx, ty - 1) !== 1 && giwa) {
-        // giwa eave band along exposed tops, overhanging open ends a little
-        const l = tileAt(tx - 1, ty) !== 1 || tileAt(tx - 1, ty - 1) === 1 ? 3 : 0, r = tileAt(tx + 1, ty) !== 1 || tileAt(tx + 1, ty - 1) === 1 ? 3 : 0;
-        ctx.fillStyle = pal.tile; ctx.fillRect(px - l, py - 4, T + l + r, 12);
-        ctx.save(); ctx.translate(0, py - .8); ctx.fillStyle = giwa; ctx.fillRect(px - l, -3.2, T + l + r, 9); ctx.restore(); // align a cap row to the eave
-        ctx.fillStyle = pal.tile; ctx.fillRect(px - l, py + 5, T + l + r, 2.5);
-        if (pal.rim) { ctx.fillStyle = pal.rim; ctx.fillRect(px - l, py - 4.5, T + l + r, 1); }
-        if (ssn === 2) { ctx.fillStyle = pal.night ? "rgba(236,230,216,.5)" : "rgba(250,250,252,.92)"; ctx.fillRect(px - l, py - 6.5, T + l + r, 3); }
-      } else if (tileAt(tx, ty - 1) !== 1) {
-        const s = (tx * 73 + ty * 31) % 7;
-        ctx.beginPath(); ctx.moveTo(px - .5, py + 2); ctx.lineTo(px + 6 + s, py - 1.5); ctx.lineTo(px + 18, py + .5 - s * .2); ctx.lineTo(px + T + .5, py - 1); ctx.lineTo(px + T + .5, py + 3); ctx.closePath(); ctx.fill();
-        if (pal.rim) { ctx.fillStyle = pal.rim; ctx.fillRect(px, py - 1, T, 1.2); }
-      }
-      for (const sd of [-1, 1]) if (tileAt(tx + sd, ty) !== 1 && granite && !(LV.slabTiles && LV.slabTiles.has(ty * LV.w + tx))) { // dark ink edge where the rock face turns away
-        const gx = sd < 0 ? px : px + T - 7, gg = ctx.createLinearGradient(gx, 0, gx + 7, 0);
-        gg.addColorStop(sd < 0 ? 0 : 1, "rgba(15,14,16,.75)"); gg.addColorStop(sd < 0 ? 1 : 0, "rgba(15,14,16,0)"); ctx.fillStyle = gg; ctx.fillRect(gx, py, 7, T);
-      }
-      if (pal.rim && (tileAt(tx - 1, ty) !== 1 || tileAt(tx + 1, ty) !== 1)) { // stone-rubbing speckle on exposed sides
-        ctx.fillStyle = pal.rim; const sx = tileAt(tx - 1, ty) !== 1 ? px : px + T - 1.5;
-        for (let i = 0; i < 4; i++) ctx.fillRect(sx, py + ((tx * 13 + ty * 7 + i * 9) % T), 1.5, 2 + (i % 2) * 2);
-      }
-    } else if (v === 3 && tileAt(tx - 1, ty) !== 3) { // one painted ledge per run of '=' tiles
-      let n = 1; while (tileAt(tx + n, ty) === 3) n++;
-      const i = LV.ledgeStone ? P2.ledge : P2.plank, f = SPR.props2 && SPR.props2.f[i];
-      if (f) { const segN = Math.max(1, Math.round(n / 4)), segW = n * T / segN, hh = segW * f.h / f.w;
-        for (let k = 0; k < segN; k++) ctx.drawImage(pal.night ? SPR.props2.inv : SPR.props2.img, f.x, f.y, f.w, f.h, px + k * segW - 2, py - 3, segW + 4, Math.min(hh, LV.ledgeStone ? 30 : 26)); }
-      else { ctx.fillStyle = pal.tile; ctx.fillRect(px, py, n * T, 6); }
-    } else if (v === 2 && SPR.objects) {
-      const f = SPR.objects.f[OBJ.thorns];
-      drawSprite("objects", OBJ.thorns, px + T / 2 + ((tx * 7) % 5) - 2, py + T + 3, (T + 10) / f.w, tx % 2 === 1, .5, pal.night);
-    } else if (v === 2) {
-      ctx.fillStyle = pal.tile; ctx.beginPath();
-      for (let i = 0; i < 4; i++) { ctx.moveTo(px + i * 8, py + T); ctx.lineTo(px + i * 8 + 3 + (i % 2), py + 11); ctx.lineTo(px + i * 8 + 8, py + T); }
-      ctx.fill(); ctx.fillStyle = SEAL; for (let i = 0; i < 4; i++) ctx.fillRect(px + i * 8 + 2.5 + (i % 2), py + 11, 1.5, 3);
-    }
-  }
+  // tiles: the ground is static, so it is painted once into chunks and stamped; a chunk not yet baked falls back to painting live
+  { const k2 = SCALE * DPR, key = (pal === NIGHT ? "n" : "d") + ssn + "|" + (LV.gridVer || 0) + "|" + k2.toFixed(3) + "|" + ["pillars", "objects", "props2"].map(n => SPR[n] ? 1 : 0).join("") + ["tex-stone", "tex-giwa", "tex-slab"].map(n => IMG[n] ? 1 : 0).join(""), CW = 512, top = -96, hh = LV.h * T + 192;
+    const gc = LV._gc || (LV._gc = new Map()), c0 = Math.floor((cam.x - vw / 2) / CW), c1 = Math.floor((cam.x + vw / 2) / CW);
+    let ready = true; for (let c = c0; c <= c1; c++) if (!gc.has(key + "#" + c)) ready = false;
+    if (!ready) { for (let c = c0; c <= c1; c++) if (!gc.has(key + "#" + c)) { bakeGround(gc, key, c, CW, top, hh, k2, pal, ssn); break; }   // one per frame
+      drawGround(pal, ssn, x0, x1, y0, y1, { wx0: cam.x - vw / 2, wx1: cam.x + vw / 2, wy0: cam.y - vh / 2, wy1: cam.y + vh / 2 }); }
+    else for (let c = c0; c <= c1; c++) { const e = gc.get(key + "#" + c); e.used = performance.now(); ctx.drawImage(e.cv, c * CW - 2, top, CW + 4, hh); }   // chunks overlap by 2px so no seam shows
+    if (SPR.pillars || pattern("tex-slab", .45)) { const rock = new Path2D(); for (let ty = y0; ty <= y1; ty++) for (let tx = x0; tx <= x1; tx++) if (LV.grid[ty * LV.w + tx] === 1 && !(LV.slabTiles && LV.slabTiles.has(ty * LV.w + tx))) rock.rect(tx * T - .3, ty * T - .3, T + .6, T + .6);
+      const sh = ctx.createLinearGradient(0, cam.y - vh / 2, 0, cam.y + vh / 2); sh.addColorStop(0, "rgba(20,18,16,0)"); sh.addColorStop(1, `rgba(20,18,16,${SPR.pillars ? .3 : .35})`); ctx.fillStyle = sh; ctx.fill(rock); } }   // depth shading follows the camera, so it stays live
   if (SC && SPR.pines) { ctx.globalAlpha = .8; for (const p of SC.front) if (visible(p.x)) for (let r = 1; r > 0; r--) drawSprite("pines", p.i, p.x, p.y + 6, p.h / SPR.pines.f[p.i].h, p.flip, .5, pal.night); ctx.globalAlpha = 1; }
   const sealed = bossAlive();
   for (const d of drumsInPlay()) if (visible(d.x)) { // 천고 on a lacquered stand, pulsing on the beat; dim while its guardian stands
@@ -2981,7 +3012,7 @@ function drawWeather(ssn, tt, pal) { // screen-space weather: 여름 비, 가을
     }
     ctx.stroke(); return;
   }
-  const n = ssn === 2 ? 80 : 34;
+  const n = Math.round((ssn === 2 ? 80 : 34) * (MOBILE ? .55 : 1));   // phones: fewer flakes, same feel
   for (let i = 0; i < n; i++) {
     const sp = ssn === 2 ? 40 + (i % 5) * 12 : 55 + (i % 4) * 14, sway = Math.sin(tt * (1 + i % 3 * .4) + i) * (ssn === 2 ? 14 : 30);
     const x = wrap(i * 173.3 + sway + tt * (14 - wind * 260) - cam.x * .5, W + 40) - 20, y = wrap(i * 97.1 + tt * sp, H + 40) - 20;
