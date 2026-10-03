@@ -247,3 +247,11 @@ body.padEdit #stickZone, body.padEdit #swipeZone { pointer-events: none; }
 .card-ready .card { background-color: transparent; box-shadow: none; filter: drop-shadow(0 5px 7px rgba(23,22,26,.28)); }
 .card-ready .card.combo, .card-ready .card.sel { box-shadow: none; filter: drop-shadow(0 0 2px var(--seal)) drop-shadow(0 0 5px rgba(195,22,28,.5)); }
 .card-ready .card.tfc { box-shadow: none; filter: drop-shadow(0 0 2px var(--jjok)) drop-shadow(0 0 5px rgba(39,70,106,.5)); }
+/* 숨: painted drops in red, so a lost one is seen at a glance */
+.ui-ready #hBreath i { width: 13px; height: 18px; background: #c3161c; -webkit-mask: var(--ui-drop) center / contain no-repeat; mask: var(--ui-drop) center / contain no-repeat; }
+.ui-ready #hBreath i.lost { background: rgba(60,56,50,.35); -webkit-mask-image: var(--ui-drop-o); mask-image: var(--ui-drop-o); }
+.night #hBreath i.lost { background: rgba(236,230,216,.4); }
+#hBreath i.gone { animation: breathGone .7s ease-out; }
+#hBreath.hurt { animation: breathShake .45s; }
+@keyframes breathGone { 0% { background: #ff2a2a; transform: scale(1.9); filter: drop-shadow(0 0 6px #ff2a2a); } 100% { transform: scale(1); } }
+@keyframes breathShake { 0%, 100% { transform: translateX(0); } 20% { transform: translateX(-5px); } 40% { transform: translateX(5px); } 60% { transform: translateX(-3px); } 80% { transform: translateX(2px); } }
