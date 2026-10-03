@@ -406,6 +406,26 @@ function loadGate(sheets, imgs, then, label) {
   tick();
 }
 const BASE_IMGS = ["far", "mid", "tex-paper", "tex-stone", "tex-giwa"];
+// 처음 켤 때: download every asset once (several at a time), so no gate, guardian or hand has to wait later.
+// Sheets held in memory stay as before (the lazy ones are only fetched into the cache here, not decoded).
+function bootLoad() {
+  const el = $("loading"), bar = $("ldBar"), txt = $("ldTxt"), t0 = performance.now();
+  const urls = []; for (const n of LAZY_SHEETS) urls.push(`assets/sprites/${n}.json`, `assets/sprites/${n}.webp`);   // the core sheets and textures are already on their way through their own loaders — fetching them twice would only double the download
+  urls.push("assets/lore.webp", "assets/tex-granite.webp", "assets/audio/bgm.mp3?v=572");
+  const core = ALL_SHEETS.filter(n => !LAZY_SHEETS.has(n));
+  let got = 0, q = urls.slice();
+  const one = async u => { for (let a = 0; a < 4; a++) { try { const r = await fetch(u); if (r.ok) { await r.arrayBuffer(); break; } } catch (e) {} await new Promise(r => setTimeout(r, 800 * (a + 1))); } got++; };
+  const worker = async () => { while (q.length) await one(q.shift()); };
+  Promise.all(Array.from({ length: 6 }, worker));   // six at a time, alongside the core loaders: fast on phones without choking the connection
+  el.hidden = false; txt.textContent = "먹을 가는 중";
+  const tick = () => { const dec = core.filter(n => SPR[n]).length + BASE_IMGS.filter(k => IMG[k]).length, decT = core.length + BASE_IMGS.length;
+    const prog = (got + dec) / (urls.length + decT); bar.style.width = Math.round(prog * 100) + "%";
+    const done = got >= urls.length && dec >= decT;
+    if (done || performance.now() - t0 > 45000) { if (!done) toast("그림 일부를 받지 못했다 — 받는 대로 바뀐다"); for (const n of LAZY_SHEETS) sheetTry[n] = 0; setTimeout(() => { el.hidden = true; }, 150); return; }
+    txt.textContent = performance.now() - t0 > 10000 ? `연결이 느리다 · ${Math.round(prog * 100)}%` : `먹을 가는 중 · ${Math.round(prog * 100)}%`;
+    setTimeout(tick, 100); };
+  tick();
+}
 function playSheets() { const ch = (run && run.char) || "mumyeong", out = ALL_SHEETS.filter(n => !LAZY_SHEETS.has(n)).concat(CHAR_SHEETS[ch] || []);
   if (run && mode !== "tutorial" && (run.tower || run.m === LAST_M)) out.push(...bossSheets(bossKindOf(run)));
   return [...new Set(out)]; }
@@ -2331,7 +2351,7 @@ function bossPerform(e, a, I) {
     case "inhale": { e.suck = false; const zone = { x: e.face > 0 ? ecx : ecx - 110, y: f - 70, w: 110, h: 70 }; Music.sfx("kill"); if (hurtsPlayer() && overlap(zone, P)) { lastHitDir = { x: e.face, y: -.3 }; die(); } break; }
     case "scrap": for (let i = 0; i < 5; i++) lob(e, ecx + e.face * 30, e.y + 10, pcx + (i - 2) * 55, f - 10, .8 + i * .05, { scrap: true }); Music.sfx("shoot"); break;
     case "claw": addFx("bvfx", BV.crescent, ecx + e.face * 60, f - 34, 90, { life: .3, flip: e.face < 0, grow: .2 }); for (let i = 0; i < 3; i++) { const at = songPos + i * bl * .5; addHaz("claw", e.face > 0 ? ecx + 10 : ecx - 120, f - 64, 110, 64, at, at + .15); } Music.sfx("slash"); break;
-    case "roar": addFx("bvfx", BV.ring, ecx, e.y + e.h / 2, 140, { life: .6, grow: 1.4, a: .8 }); shake = 14; Music.sfx("die"); if (Math.abs(pcx - ecx) < 360) { P.vx = Math.sign(pcx - ecx || 1) * 560; P.dashCd = Math.max(P.dashCd, bl * 1.5); } if (c >= 1) haz.push({ kind: "ring", x: ecx, y: e.y + e.h / 2, at: songPos, speed: 320, max: 240 }); break;
+    case "roar": addFx("bvfx", BV.ring, ecx, e.y + e.h / 2, 140, { life: .6, grow: 1.4, a: .8 }); shake = 14; Music.sfx("die"); if (Math.abs(pcx - ecx) < 360) { P.vx = Math.sign(pcx - ecx || 1) * 560; P.dashCd = Math.max(P.dashCd, bl * 1.5); } break;   // the roar only pushes you back — it does not wound
     case "fan": case "fan2": { const n = a === "fan2" || e.mask === 2 ? 2 : 1;
       for (let i = 0; i < n; i++) { const ang = Math.atan2(pcy - (e.y + 20), pcx - ecx) + (n > 1 ? (i - .5) * .5 : 0), sp = 430 * slowShot(); bullets.push({ x: ecx + e.face * 16, y: e.y + 20, vx: Math.cos(ang) * sp, vy: Math.sin(ang) * sp, owner: e, friendly: false, life: 3.5, fan: true, boom: .7, t: 0 }); }
       Music.sfx("slash"); break; }
@@ -2390,7 +2410,7 @@ function stepBoss(e, dt, pcx, pcy, dist, live) {
       if (e.mv > 4 && groundPt(ahead, e.y + e.h + 4) && !solidPt(ahead, e.y + e.h - 10)) { moveX(e, e.face * e.mv * dt); e.walkT = .12; e.wph = (e.wph || 0) + e.mv * dt / Math.max(22, e.w * .55); } else if (!go) e.mv = Math.max(0, e.mv - sp * 6 * dt); else e.mv = 0;
     }
     if (live && songPos >= e.nextAt && e.stagT <= 0) {
-      if (!e.raged && e.hp <= e.maxHp / 2) { e.raged = true; roar = { t: 0, e }; P.focus = false; Music.muffle(false); P.dashT = 0; shake = 14; Music.sfx("roar");
+      if (!e.raged && e.hp <= e.maxHp / 2) { e.raged = true; roar = { t: 0, e }; P.focus = false; Music.muffle(false); P.dashT = 0; P.invT = Math.max(P.invT || 0, 2.2); for (const b of bullets) if (!b.friendly) b.life = 0; haz = haz.filter(z => z.at > songPos + 2); shake = 14; Music.sfx("roar");   // no harm comes while it roars
         for (let i = 0; i < 3; i++) bleed(ecx + (i - 1) * 24, e.y + 20 + i * 10, { x: i - 1, y: -.5 }, true); }
       const pool = e.raged || cyc() >= 2 /* from the third turn a guardian knows all its moves */ ? [...B.pool(c), ...(RAGE_ADD[e.kind] || [])] : B.pool(c); let a = pool[(e.n = (e.n || 0) + 1) % pool.length];
       if ((a === "slam" || a === "club" || a === "inhale") && dist > 280) a = e.kind === "sumun" ? (c >= 1 ? "volley" : "charge") : e.kind === "dokkaebi" ? "coins" : "scrap";
@@ -4035,5 +4055,5 @@ resize();
 toMenu();
 P = null; cam.x = 600; cam.y = 300;
 requestAnimationFrame(t => { last = t; requestAnimationFrame(frame); });
-loadGate(ALL_SHEETS.filter(n => !LAZY_SHEETS.has(n)), BASE_IMGS, () => {}, "먹을 가는 중");   // boot: the menu waits for the ink
+bootLoad();   // boot: every picture and sound is fetched before the menu opens
 })();
