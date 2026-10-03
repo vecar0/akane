@@ -719,7 +719,7 @@ function buildMadangMap(seed, m, cy = 0, omIn = null, arena = m === 4, crowd = 0
   const omList = Array.isArray(omIn) ? omIn : [omIn], om = omList.includes("gyeopjul") ? "gyeopjul" : omList.includes("gunse") || crowd ? "gunse" : omIn;
   const rng = mulberry(seed ^ Math.imul(m + 1, 0x9E3779B1) ^ Math.imul(cy, 0x85EBCA6B));   // each turn of the tower lays out fresh
   const rows = START_PIECE.slice();
-  const used = new Set();
+  const used = new Set(), cyF = ctl ? Math.floor(cy / 4) : cy;   // more guards each turn; in the 탑 every fourth floor counts as a turn
   const tiers = MADANG[m].tiers.slice();
   for (let i = tiers.length - 1; i > 0; i--) { const j = (rng() * (i + 1)) | 0; [tiers[i], tiers[j]] = [tiers[j], tiers[i]]; }   // fresh order every run
   for (const tier of tiers) {
@@ -742,10 +742,10 @@ function buildMadangMap(seed, m, cy = 0, omIn = null, arena = m === 4, crowd = 0
       else if ((ch === "L" || ch === "M") && rng() < .5) c[y][x] = ch === "L" ? "M" : "L";
     }
     // extra guard on open ground in about half the pieces
-    for (let extra = (om === "gunse" ? 2 : 1) + crowd + (ctl ? 0 : Math.min(4, cy)); extra > 0; extra--) if (rng() < .45 + .08 * m + (om === "gunse" ? .35 : 0) + (ctl ? 0 : .1 * Math.min(3, cy))) /* each turn of 천고 brings more guards; the 탑 asks for hands instead */ for (let tries = 0; tries < 8; tries++) {
+    for (let extra = (om === "gunse" ? 2 : 1) + crowd + Math.min(4, cyF); extra > 0; extra--) if (rng() < .45 + .08 * m + (om === "gunse" ? .35 : 0) + .1 * Math.min(3, cyF)) /* each turn of 천고 brings more guards; the 탑 asks for hands instead */ for (let tries = 0; tries < 8; tries++) {
       const x = 3 + ((rng() * (c[0].length - 6)) | 0);
       let y = 2; while (y < 15 && c[y][x] === " ") y++;
-      if (y < 15 && c[y][x] === "#" && c[y - 1][x] === " " && c[y - 2][x] === " " && !(cy && !ctl ? c[y - 1].slice(Math.max(0, x - 2), x + 3) : c[y - 1]).some(ch => "gshdmrpak".includes(ch))) { /* later turns: guards may share a stretch of ground, just not stand on top of each other */ c[y - 1][x] = m >= 2 && rng() < .35 ? "h" : rng() < .5 ? "p" : "g"; break; }
+      if (y < 15 && c[y][x] === "#" && c[y - 1][x] === " " && c[y - 2][x] === " " && !(cyF ? c[y - 1].slice(Math.max(0, x - 2), x + 3) : c[y - 1]).some(ch => "gshdmrpak".includes(ch))) { /* later turns: guards may share a stretch of ground, just not stand on top of each other */ c[y - 1][x] = m >= 2 && rng() < .35 ? "h" : rng() < .5 ? "p" : "g"; break; }
     }
     for (let y = 0; y < 16; y++) rows[y] += c[y].join("");
   }
