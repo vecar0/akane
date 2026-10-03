@@ -1956,28 +1956,28 @@ function drawKanAura(e) { // behind the body: ink rising as the blow gathers
   const big = e.type === "b"; ctx.globalAlpha = on ? .6 + .15 * Math.sin(performance.now() / 50) : pre * .45;
   drawSprite("kfx", KF.aura, e.x + e.w / 2, e.y + e.h + 4, e.h * (big ? 1.3 : 1.6) / SPR.kfx.f[KF.aura].h, false, .5, false, 1); ctx.globalAlpha = 1;
 }
-function drawKanFlash(e, tt) { // 간파 ring: a brush circle closes on the weak point; locked tight it turns gold — that is the moment
-  if (!SPR.kfx) return; const pre = preFlash(e), on = isFlashing(e), big = e.type === "b", f = e.face || 1;
+function taegeukSwirl(R, rot, w, a, col) { // one comma of the 태극: a tapering brush stroke curling inward
+  const N = 18, sweep = Math.PI * 1.15;
+  ctx.lineCap = "round"; ctx.strokeStyle = col;
+  for (let i = 0; i < N; i++) { const t0 = i / N, t1 = (i + 1) / N, th0 = rot + t0 * sweep, th1 = rot + t1 * sweep, r0 = R * (1 - .55 * t0), r1 = R * (1 - .55 * t1);
+    ctx.globalAlpha = a * (1 - t0 * .55); ctx.lineWidth = Math.max(.6, w * (1 - t0 * .85));
+    ctx.beginPath(); ctx.moveTo(Math.cos(th0) * r0, Math.sin(th0) * r0); ctx.lineTo(Math.cos(th1) * r1, Math.sin(th1) * r1); ctx.stroke(); }
+}
+function drawKanFlash(e, tt) { // 간파: two strokes, red and indigo, turn like a 태극 and wind into the weak point — tight at the centre is the moment
+  const pre = preFlash(e), on = isFlashing(e), big = e.type === "b", f = e.face || 1;
   if (!on && e.flashOn) { e.flashOn = false; e.lastBlow = songPos; }
   if (!pre && !on) return;
-  const cx = e.x + e.w / 2 + (big ? 0 : f * 2), cy = e.y + e.h * (big ? .38 : .42), mua = P && P.focus, rf = SPR.kfx.f[KF.ring];
-  const R0 = (big ? 170 : 96) * (mua ? 1.2 : 1), R1 = (big ? 62 : 30) * (mua ? 1.2 : 1);
+  const cx = e.x + e.w / 2 + (big ? 0 : f * 2), cy = e.y + e.h * (big ? .38 : .42), mua = P && P.focus, t = blowAt(e);
+  const u = Math.max(0, Math.min(1, (songPos - (t - FLASH - CLOSE)) / (CLOSE + FLASH)));   // 0 when the swirl appears, 1 when the blow lands
+  const R0 = (big ? 150 : 84) * (mua ? 1.2 : 1), Rend = (big ? 30 : 13) * (mua ? 1.2 : 1), R = R0 + (Rend - R0) * (1 - Math.pow(1 - u, 1.6));
+  const spin = tt * (3 + 9 * u), w = (big ? 7 : 4.2) * (mua ? 1.25 : 1) * (on ? 1.35 : .8 + .4 * u), a = on ? 1 : .35 + .6 * pre;
+  if (on && !e.flashOn) { e.flashOn = true; if (Math.hypot(e.x - P.x, e.y - P.y) < 520) { flashDim = .05; Music.sfx("clang"); } }
   ctx.save(); ctx.translate(cx, cy);
-  if (!on) {   // closing in: wide and faint, tightening, a second ring trailing behind it
-    const k = pre * pre, r = R0 + (R1 - R0) * k;
-    for (const [rr, a, sp] of [[r, .35 + .55 * pre, 1], [r * 1.35 + 10, .2 * pre, -1.4]]) { ctx.save(); ctx.rotate(tt * 2.4 * sp); ctx.globalAlpha = a; drawSprite("kfx", KF.ring, 0, 0, rr * 2 / rf.h, false, .5, false, .5); ctx.restore(); }
-    ctx.restore(); ctx.globalAlpha = 1; return;
-  }
-  if (!e.flashOn) { e.flashOn = true; if (Math.hypot(e.x - P.x, e.y - P.y) < 520) { flashDim = .06; Music.sfx("clang"); }
-    addFx("kfx", KF.flakes, cx, cy, R1 * 3.2, { life: .35, grow: .4, a: .8 }); }   // locking on: a spray of gold leaf
-  const t = blowAt(e), q = Math.max(0, Math.min(1, (songPos - (t - FLASH)) / FLASH)), r = R1 * (1 - .4 * q), pulse = 1 + .08 * Math.sin(tt * 40);
-  ctx.save(); ctx.rotate(-tt * 5); ctx.globalAlpha = 1; drawSprite("kfx", KF.ring, 0, 0, r * 2 * pulse / rf.h, false, .5, false, .5); ctx.restore();
-  ctx.strokeStyle = `rgba(232,184,74,${.9 - .4 * q})`; ctx.lineWidth = (big ? 4 : 2.6) * (mua ? 1.3 : 1); ctx.beginPath(); ctx.arc(0, 0, r * .86 * pulse, 0, Math.PI * 2); ctx.stroke();   // gold: now
-  ctx.strokeStyle = "rgba(195,22,28,.9)"; ctx.lineWidth = 1.6; ctx.beginPath(); ctx.arc(0, 0, r * .86, -Math.PI / 2, -Math.PI / 2 + Math.PI * 2 * (1 - q)); ctx.stroke();   // and how long it lasts
-  ctx.globalAlpha = .9; drawSprite("kfx", KF.star, 0, 0, r * .9 / SPR.kfx.f[KF.star].h, false, .5, false, .5);
+  taegeukSwirl(R, spin, w, a, SEAL); taegeukSwirl(R, spin + Math.PI, w, a, JJOK);
+  if (on) { ctx.globalAlpha = .35 + .25 * Math.sin(tt * 30); ctx.fillStyle = SEAL; ctx.beginPath(); ctx.arc(0, 0, R * .32, 0, Math.PI * 2); ctx.fill(); }   // the eye of it, beating
   ctx.restore(); ctx.globalAlpha = 1;
-  if (mua && P) { const px = P.x + P.w / 2, py = P.y + P.h / 2, L = Math.hypot(cx - px, cy - py);   // 무아경: a dotted stroke shows the way in
-    if (L < 360 && L > 30) { const g = SPR.kfx.f[KF.guide]; ctx.save(); ctx.translate(px, py); ctx.rotate(Math.atan2(cy - py, cx - px)); ctx.globalAlpha = .75; ctx.drawImage(SPR.kfx.img, g.x, g.y, g.w, g.h, 18, -5, L - 36 - r, 10); ctx.restore(); ctx.globalAlpha = 1; } }
+  if (mua && P && on) { const px = P.x + P.w / 2, py = P.y + P.h / 2, L = Math.hypot(cx - px, cy - py), g = SPR.kfx && SPR.kfx.f[KF.guide];   // 무아경: a dotted stroke shows the way in
+    if (g && L < 360 && L > 30) { ctx.save(); ctx.translate(px, py); ctx.rotate(Math.atan2(cy - py, cx - px)); ctx.globalAlpha = .7; ctx.drawImage(SPR.kfx.img, g.x, g.y, g.w, g.h, 18, -5, L - 36 - R, 10); ctx.restore(); ctx.globalAlpha = 1; } }
 }
 const viaMua = () => !!(P && P.aimDash && !P.tapDash);   // the cut came out of 무아경
 function chainAdd(n) { if (!P) return; const g0 = Math.min(5, P.chain || 0); P.chain = (P.chain || 0) + n; P.chainPop = .25; if (Math.min(5, P.chain) > g0) Music.sfx("lantern"); }
