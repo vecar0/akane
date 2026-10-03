@@ -57,8 +57,6 @@ button:focus-visible { outline: 2px solid var(--jjok); outline-offset: 2px; }
 #bDash { width: 78px; height: 78px; right: calc(env(safe-area-inset-right, 0px) + 238px); bottom: calc(env(safe-area-inset-bottom, 0px) + 81px); color: var(--jjok); }
 #bHook { width: 62px; height: 62px; right: calc(env(safe-area-inset-right, 0px) + 176px); bottom: calc(env(safe-area-inset-bottom, 0px) + 287px); opacity: .35; color: var(--jjok); }
 #bHook.ready { opacity: 1; }
-#bDrum { width: 70px; height: 70px; right: calc(env(safe-area-inset-right, 0px) + 300px); bottom: calc(env(safe-area-inset-bottom, 0px) + 190px); color: #c3161c; font-size: 17px; display: none; }
-#bDrum.ready { display: grid; animation: kitePulse .6s ease-in-out infinite alternate; box-shadow: inset 0 0 0 3px rgba(195, 22, 28, .8); }
 #bHook::after { inset: -3px; }   /* it sits where swipes pass: catch only its own ring */
 #bHook:not(.ready) { pointer-events: none; }   /* nothing to hook: a stroke that starts here is a slash */
 body:not(.touch) #pad { display: none; }

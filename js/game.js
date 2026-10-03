@@ -140,61 +140,61 @@ const H2 = { idle: [0, 1, 2], guard: 3, start: 4, skid: 5, takeoff: 6, apex: 7, 
 const CHOSIK = [
   { id: "sum", name: "숨", han: "息", kind: "생존", desc: "숨 하나를 되찾는다", icon: 8, repeat: true },
   // 일섬 — pick one: what the aimed dash becomes
-  { id: "d_far", name: "원섬", han: "遠閃", kind: "일섬", desc: "일섬이 1.8배 멀리 날아가고, 베는 폭이 두 배 넓어진다", icon: 201 },
-  { id: "d_sunbo", name: "순보", han: "瞬步", kind: "일섬", desc: "무아경을 풀 때 겨눈 쪽 가까이(7칸) 적이 있으면 그 등 뒤로 순간이동하며 벤다 — 우두머리에겐 온전한 일격이 아니고, 뒤에 잠깐 대시를 못 쓴다", icon: 850 },
-  { id: "d_sun", name: "연환", han: "連環", kind: "일섬", desc: "일섬으로 적을 베면 공중 대시가 하나 더 쌓이고, 곧바로 다시 무아경에 든다 (대시를 누르면 날아간다)", icon: 4 },
-  { id: "d_jeong", name: "정중동", han: "靜中動", kind: "일섬", desc: "무아경이 더 느리게 흐르고 기력이 덜 닳으며, 겨눈 쪽의 적에게 겨냥이 저절로 붙는다", icon: 106 },
-  { id: "d_pajuk", name: "파죽", han: "破竹", kind: "일섬", desc: "연속 처치가 이어질수록 일섬이 길고 넓어진다 — 등급마다 15%씩, 다섯 등급이면 1.75배", icon: 860 },
-  { id: "d_hyeol", name: "혈섬", han: "血閃", kind: "일섬", desc: "숨이 적을수록 일섬이 길고 넓어진다 — 숨 둘이면 1.4배, 하나면 1.8배", icon: 861 },
-  { id: "d_giseom", name: "기섬", han: "氣閃", kind: "일섬", desc: "일섬으로 벤 적마다 천고 기운이 두 배로 차고, 천고난무가 두 명을 더(열 명까지) 벤다", icon: 862 },
-  { id: "d_dangong", name: "단공", han: "斷空", kind: "일섬", desc: "일섬이 지나가는 길의 적 탄을 모두 베어 없앤다 — 튕길 수 없는 붉은 탄까지", icon: 863 },
-  { id: "d_charge", name: "축기", han: "蓄氣", kind: "일섬", desc: "0.8초를 꽉 채워 놓으면 대시가 멈춘 자리에서 참격파가 겨눈 쪽으로 멀리 날아가 일격으로 벤다. 너무 일찍 놓으면 대시가 짧다", icon: 506 },
-  { id: "d_bounce", name: "반섬", han: "反閃", kind: "일섬", desc: "일섬이 벽이나 바닥에 부딪히면 한 번 튕겨 나가며 계속 벤다", icon: 508 },
-  { id: "d_chain", name: "뇌인", han: "雷引", kind: "일섬", desc: "일섬으로 적을 쓰러뜨리면 번개가 가장 가까운 적 하나에게 튀어 함께 벤다", icon: 606 },
+  { id: "d_far", name: "원섬", han: "遠閃", kind: "일섬", desc: "일섬이 1.8배 멀리, 두 배 넓게 벤다", icon: 201 },
+  { id: "d_sunbo", name: "순보", han: "瞬步", kind: "일섬", desc: "무아경을 풀면 가까운 적의 등 뒤로 순간이동해 벤다", icon: 850 },
+  { id: "d_sun", name: "연환", han: "連環", kind: "일섬", desc: "일섬으로 베면 공중 대시 +1, 곧바로 다시 무아경", icon: 4 },
+  { id: "d_jeong", name: "정중동", han: "靜中動", kind: "일섬", desc: "무아경이 더 느리고 기력이 덜 닳으며, 겨냥이 적에게 붙는다", icon: 106 },
+  { id: "d_pajuk", name: "파죽", han: "破竹", kind: "일섬", desc: "연속 처치가 오를수록 일섬이 길고 넓어진다 (최대 1.75배)", icon: 860 },
+  { id: "d_hyeol", name: "혈섬", han: "血閃", kind: "일섬", desc: "숨이 적을수록 일섬이 길고 넓어진다 (숨 하나면 1.8배)", icon: 861 },
+  { id: "d_giseom", name: "기섬", han: "氣閃", kind: "일섬", desc: "일섬 처치 시 천고 기운 2배, 천고난무가 10명까지 벤다", icon: 862 },
+  { id: "d_dangong", name: "단공", han: "斷空", kind: "일섬", desc: "일섬이 지나간 길의 탄을 지운다 — 붉은 탄까지", icon: 863 },
+  { id: "d_charge", name: "축기", han: "蓄氣", kind: "일섬", desc: "0.8초 꽉 모았다 놓으면 참격파가 날아가 일격으로 벤다", icon: 506 },
+  { id: "d_bounce", name: "반섬", han: "反閃", kind: "일섬", desc: "일섬이 벽·바닥에 한 번 튕겨 계속 벤다", icon: 508 },
+  { id: "d_chain", name: "뇌인", han: "雷引", kind: "일섬", desc: "일섬 처치 시 번개가 옆의 적 하나를 함께 벤다", icon: 606 },
   // 무녀 일섬 — her aimed dash already turns back every shot it brushes
-  { id: "m_wind", name: "회오리 길", han: "旋風路", kind: "일섬", only: "munyeo", desc: "일섬이 지나간 길에 회오리가 0.8초 남아, 닿는 적을 베고 탄을 지운다 — 지운 탄 하나마다 천고 기운이 찬다", icon: 604 },
-  { id: "m_talis", name: "부적 세 장", han: "三符", kind: "일섬", only: "munyeo", desc: "무아경을 풀면 겨눈 쪽으로 부적 세 장을 부채꼴로 날려 일격으로 벤다. 부적이 붙은 우두머리는 0.8초 동안 빈틈을 드러낸다 (그 사이 베면 간파)", icon: 705 },
-  { id: "m_bell", name: "방울 굿", han: "鈴굿", kind: "일섬", only: "munyeo", desc: "일섬이 멈춘 자리에서 방울이 울려 둘레의 적을 1초 굳히고, 굳힌 적 하나마다 무아경 기력이 찬다", icon: 707 },
-  { id: "m_moon", name: "달맞이", han: "迎月", kind: "일섬", only: "munyeo", desc: "일섬이 멈춘 자리에 달빛 고리가 퍼져 둘레의 적을 베고 탄을 지운다 — 지운 탄만큼 연속 처치가 오른다(셋까지)", icon: 708 },
-  { id: "m_float", name: "강신", han: "降神", kind: "일섬", only: "munyeo", desc: "일섬이 끝나면 0.7초 동안 떠 있는다 — 그 사이 다시 겨눌 수 있고, 떠 있는 동안 간파하면 천고 기운이 더 찬다", icon: 710 },
-  { id: "m_soul", name: "넋 분신", han: "分魂", kind: "일섬", only: "munyeo", desc: "일섬 0.35초 뒤, 넋이 같은 길을 한 번 더 지나며 벤다. 넋이 스친 적은 1초 동안 빈틈을 드러낸다", icon: 712 },
+  { id: "m_wind", name: "회오리 길", han: "旋風路", kind: "일섬", only: "munyeo", desc: "일섬 길에 회오리가 남아 적을 베고 탄을 지운다 (탄마다 천고 기운)", icon: 604 },
+  { id: "m_talis", name: "부적 세 장", han: "三符", kind: "일섬", only: "munyeo", desc: "무아경을 풀면 부적 세 장이 날아가 일격으로 벤다", icon: 705 },
+  { id: "m_bell", name: "방울 굿", han: "鈴굿", kind: "일섬", only: "munyeo", desc: "일섬 끝에 방울이 울려 주변 적을 굳히고 기력을 채운다", icon: 707 },
+  { id: "m_moon", name: "달맞이", han: "迎月", kind: "일섬", only: "munyeo", desc: "일섬 끝에 달빛 고리가 적을 베고 탄을 지운다 (지운 만큼 연속 처치)", icon: 708 },
+  { id: "m_float", name: "강신", han: "降神", kind: "일섬", only: "munyeo", desc: "일섬 뒤 0.7초 떠서 다시 겨눌 수 있다", icon: 710 },
+  { id: "m_soul", name: "넋 분신", han: "分魂", kind: "일섬", only: "munyeo", desc: "0.35초 뒤 넋이 같은 길을 한 번 더 벤다", icon: 712 },
   // 포수 일섬 — releasing the aim fires the matchlock and the recoil throws him the other way (reloading: a bayonet lunge instead)
-  { id: "p_slug", name: "대구경", han: "大口徑", kind: "일섬", only: "posu", desc: "일발이 굵어져 넓은 줄을 꿰뚫고, 반동이 1.4배 세진다. 꿰뚫은 적 하나마다 연속 처치가 오른다", icon: 753 },
-  { id: "p_scatter", name: "산탄", han: "散彈", kind: "일섬", only: "posu", desc: "일발이 다섯 갈래로 퍼진다 (멀리 가지 못한다). 맞은 적은 밀려나며 잠깐 굳는다", icon: 754 },
-  { id: "p_burst", name: "작렬탄", han: "炸裂彈", kind: "일섬", only: "posu", desc: "일발이 처음 닿은 곳에서 터져 둘레의 적을 베고 탄까지 지운다", icon: 758 },
-  { id: "p_ricochet", name: "도탄", han: "跳彈", kind: "일섬", only: "posu", desc: "일발이 벽에 한 번 튕겨 꺾여 나가고, 튕긴 일발은 일격이 된다", icon: 824 },
-  { id: "p_quick", name: "속사", han: "速射", kind: "일섬", only: "posu", desc: "장전이 한 박자로 줄고, 일발로 적을 쓰러뜨리거나 간파하면 곧바로 장전된다", icon: 794 },
-  { id: "p_charge", name: "착검 돌격", han: "着劍突擊", kind: "일섬", only: "posu", desc: "쏜 뒤 반동으로 물러나는 대신, 총검을 앞세워 쏜 쪽으로 돌진하며 벤다. 돌격으로 쓰러뜨린 적은 천고 기운을 두 배로 준다", icon: 767 },
+  { id: "p_slug", name: "대구경", han: "大口徑", kind: "일섬", only: "posu", desc: "일발이 굵어져 넓게 꿰뚫는다 (꿰뚫은 적마다 연속 처치)", icon: 753 },
+  { id: "p_scatter", name: "산탄", han: "散彈", kind: "일섬", only: "posu", desc: "일발이 다섯 갈래로 퍼지고, 맞은 적은 밀려나 굳는다", icon: 754 },
+  { id: "p_burst", name: "작렬탄", han: "炸裂彈", kind: "일섬", only: "posu", desc: "일발이 처음 닿은 곳에서 터져 주변 적과 탄을 지운다", icon: 758 },
+  { id: "p_ricochet", name: "도탄", han: "跳彈", kind: "일섬", only: "posu", desc: "일발이 벽에 한 번 튕기고, 튕긴 탄은 일격이 된다", icon: 824 },
+  { id: "p_quick", name: "속사", han: "速射", kind: "일섬", only: "posu", desc: "장전이 빨라지고, 처치·간파하면 바로 장전된다", icon: 794 },
+  { id: "p_charge", name: "착검 돌격", han: "着劍突擊", kind: "일섬", only: "posu", desc: "쏜 뒤 물러나지 않고 총검으로 돌진한다 (처치 시 천고 기운 2배)", icon: 767 },
   // 방어 — pick one: what happens when a blow finds you (every character)
-  { id: "d_reflect", name: "역탄", han: "逆彈", kind: "방어", desc: "튕기기 판정이 두 배 너그러워지고, 튕겨 낸 탄은 쏜 적에게 되날아가 일격으로 벤다 (일섬이 스친 탄도 되돌아간다)", icon: 864 },
-  { id: "d_gihyeol", name: "기혈", han: "氣血", kind: "방어", desc: "천고 기운이 절반 넘게 차 있으면, 맞아도 숨 대신 천고 기운을 모두 잃는다", icon: 865 },
-  { id: "d_gise", name: "기세", han: "氣勢", kind: "방어", desc: "연속 처치가 3등급 이상이면, 맞아도 숨 대신 연속 처치가 끊긴다", icon: 866 },
-  { id: "d_nakbeop", name: "낙법", han: "落法", kind: "방어", desc: "구덩이나 가시에 빠져도 숨을 잃지 않고 마지막으로 디딘 땅으로 돌아온다 (관문마다 두 번)", icon: 867 },
-  { id: "d_ganggi", name: "호신강기", han: "護身罡氣", kind: "방어", desc: "숨을 잃는 순간 둘레의 적 탄이 모두 사라지고, 1.5초 동안 몸에 닿는 탄을 베어 낸다", icon: 868 },
-  { id: "d_janmyeong", name: "잔명", han: "殘命", kind: "방어", desc: "숨을 모두 잃을 일격을 관문마다 한 번 버티고 숨 하나로 일어난다", icon: 869 },
+  { id: "d_reflect", name: "역탄", han: "逆彈", kind: "방어", desc: "튕기기가 쉬워지고, 튕긴 탄은 일격으로 되돌아간다", icon: 864 },
+  { id: "d_gihyeol", name: "기혈", han: "氣血", kind: "방어", desc: "천고 기운이 절반 넘으면, 맞을 때 숨 대신 기운을 잃는다", icon: 865 },
+  { id: "d_gise", name: "기세", han: "氣勢", kind: "방어", desc: "연속 처치 3 이상이면, 맞을 때 숨 대신 연속 처치가 끊긴다", icon: 866 },
+  { id: "d_nakbeop", name: "낙법", han: "落法", kind: "방어", desc: "구덩이·가시에 빠져도 숨을 잃지 않는다 (관문마다 두 번)", icon: 867 },
+  { id: "d_ganggi", name: "호신강기", han: "護身罡氣", kind: "방어", desc: "숨을 잃으면 주변 탄이 사라지고 1.5초 탄을 막는다", icon: 868 },
+  { id: "d_janmyeong", name: "잔명", han: "殘命", kind: "방어", desc: "죽을 일격을 관문마다 한 번 버틴다", icon: 869 },
   // 간파 — pick one: what reading a blow gives back (every character)
-  { id: "d_myeong", name: "명경지수", han: "明鏡止水", kind: "간파", desc: "간파의 원이 0.15초 더 오래 맞물려 있다 — 손으로도 받아치기 쉬워진다", icon: 842 },
-  { id: "d_beat", name: "간섬", han: "看閃", kind: "간파", desc: "간파하면 공중 대시가 하나 더 쌓이고, 천고 기운이 두 배로 찬다", icon: 208 },
-  { id: "d_zanshin", name: "잔심", han: "殘心", kind: "간파", desc: "간파하면 0.7초 동안 둘레(8칸)의 다른 적들도 빈틈을 드러낸다 — 그 사이 베면 그것도 간파다", icon: 870 },
-  { id: "d_tan", name: "탄베기", han: "斬彈", kind: "간파", desc: "간파하는 순간 둘레의 적 탄이 모두 베여 사라진다", icon: 102 },
-  { id: "d_freeze", name: "정지", han: "停止", kind: "간파", desc: "간파하면 1.2초 동안 모든 적 탄이 그 자리에 멈춘다", icon: 302 },
-  { id: "d_ward", name: "검막", han: "劍幕", kind: "간파", desc: "간파한 뒤 1.5초 동안 몸 둘레로 날아드는 탄을 베어 낸다", icon: 848 },
-  { id: "d_breathe", name: "기공", han: "氣功", kind: "간파", desc: "간파하면 무아경 기력이 가득 차고, 연속 처치가 두 등급 오른다", icon: 871 },
-  { id: "d_breath", name: "혈로", han: "血路", kind: "간파", desc: "간파 다섯 번마다 숨 하나를 되찾는다", icon: 104 },
-  { id: "d_calm", name: "평정", han: "平靜", kind: "간파", desc: "숨이 하나만 남으면 간파의 원이 두 배 오래 맞물리고, 무아경이 두 배 오래 이어진다", icon: 303 },
+  { id: "d_myeong", name: "명경지수", han: "明鏡止水", kind: "간파", desc: "간파 타이밍이 0.15초 넉넉해진다", icon: 842 },
+  { id: "d_beat", name: "간섬", han: "看閃", kind: "간파", desc: "간파하면 공중 대시 +1, 천고 기운 2배", icon: 208 },
+  { id: "d_zanshin", name: "잔심", han: "殘心", kind: "간파", desc: "간파하면 주변 적들도 잠깐 간파할 수 있게 된다", icon: 870 },
+  { id: "d_tan", name: "탄베기", han: "斬彈", kind: "간파", desc: "간파하는 순간 주변 탄이 모두 사라진다", icon: 102 },
+  { id: "d_freeze", name: "정지", han: "停止", kind: "간파", desc: "간파하면 1.2초 동안 모든 탄이 멈춘다", icon: 302 },
+  { id: "d_ward", name: "검막", han: "劍幕", kind: "간파", desc: "간파 뒤 1.5초 동안 몸에 닿는 탄을 막는다", icon: 848 },
+  { id: "d_breathe", name: "기공", han: "氣功", kind: "간파", desc: "간파하면 기력이 가득 차고 연속 처치 +2", icon: 871 },
+  { id: "d_breath", name: "혈로", han: "血路", kind: "간파", desc: "간파 다섯 번마다 숨 하나 회복", icon: 104 },
+  { id: "d_calm", name: "평정", han: "平靜", kind: "간파", desc: "숨이 하나 남으면 간파 타이밍과 무아경이 두 배", icon: 303 },
   // 이동 — pick two
-  { id: "d_air", name: "비연", han: "飛燕", kind: "이동", desc: "공중 대시가 하나 더 생긴다 — 공중에서 일섬을 두 번 쓸 수 있다", icon: 207 },
+  { id: "d_air", name: "비연", han: "飛燕", kind: "이동", desc: "공중 대시 +1", icon: 207 },
   { id: "d_jump", name: "허공답보", han: "虛空踏步", kind: "이동", desc: "공중에서 한 번 더 뛴다", icon: 101 },
-  { id: "d_hover", name: "부동", han: "不動", kind: "이동", desc: "공중에서 무아경에 든 동안 그 자리에 멈춰 선다 — 떨어지지 않고 느긋하게 겨눈다", icon: 6 },
-  { id: "d_wall", name: "벽호공", han: "壁虎功", kind: "이동", desc: "벽을 두 배 오래 타고, 벽에 붙어서도 무아경에 들 수 있다", icon: 206 },
-  { id: "d_bisang", name: "비상", han: "飛上", kind: "이동", desc: "벽을 차고 뛰면 공중 대시가 다시 차고, 하나 더 쌓인다", icon: 844 },
-  { id: "d_kite", name: "연 입경", han: "鳶入境", kind: "이동", desc: "연으로 솟구치면 곧바로 무아경에 든다 (대시를 누르면 날아간다)", icon: 300 },
-  { id: "d_jilbo", name: "질풍보", han: "疾風步", kind: "이동", desc: "연속 처치 등급마다 8%씩 빨리 달린다 — 다섯 등급이면 1.4배", icon: 872 },
-  { id: "d_cheonbo", name: "천보", han: "天步", kind: "이동", desc: "천고 기운이 절반 넘게 차 있으면 공중 대시가 하나 더 생긴다", icon: 873 },
-  { id: "d_glide", name: "활공", han: "滑空", kind: "이동", desc: "떨어질 때 점프를 누르고 있으면 천천히 미끄러진다", icon: 205 },
-  { id: "p_rocket", name: "포 반동", han: "砲反動", kind: "이동", only: "posu", desc: "반동이 1.4배 세다 — 땅에서 아래로 쏘면 높이 솟구친다", icon: 771 },
-  { id: "m_cloud", name: "구름 걸음", han: "雲步", kind: "이동", only: "munyeo", desc: "공중 도약을 할 때마다 무아경이 0.3초 더 이어진다 (다음 무아경 한 번)", icon: 721 },
-  { id: "d_sasl", name: "연사슬", han: "鳶鎖", kind: "이동", desc: "연을 적에게도 걸어 끌어당기고 잠깐 굳힌다", icon: 845 }
+  { id: "d_hover", name: "부동", han: "不動", kind: "이동", desc: "공중 무아경 동안 그 자리에 멈춘다", icon: 6 },
+  { id: "d_wall", name: "벽호공", han: "壁虎功", kind: "이동", desc: "벽을 두 배 오래 타고, 벽에서도 무아경에 든다", icon: 206 },
+  { id: "d_bisang", name: "비상", han: "飛上", kind: "이동", desc: "벽차기 하면 공중 대시가 다시 차고 +1", icon: 844 },
+  { id: "d_kite", name: "연 입경", han: "鳶入境", kind: "이동", desc: "연으로 솟구치면 바로 무아경에 든다", icon: 300 },
+  { id: "d_jilbo", name: "질풍보", han: "疾風步", kind: "이동", desc: "연속 처치가 오를수록 빨리 달린다 (최대 1.4배)", icon: 872 },
+  { id: "d_cheonbo", name: "천보", han: "天步", kind: "이동", desc: "천고 기운이 절반 넘으면 공중 대시 +1", icon: 873 },
+  { id: "d_glide", name: "활공", han: "滑空", kind: "이동", desc: "떨어질 때 점프를 누르고 있으면 천천히 내려온다", icon: 205 },
+  { id: "p_rocket", name: "포 반동", han: "砲反動", kind: "이동", only: "posu", desc: "반동이 1.4배 — 아래로 쏘면 높이 솟구친다", icon: 771 },
+  { id: "m_cloud", name: "구름 걸음", han: "雲步", kind: "이동", only: "munyeo", desc: "공중 도약마다 다음 무아경이 0.3초 길어진다", icon: 721 },
+  { id: "d_sasl", name: "연사슬", han: "鳶鎖", kind: "이동", desc: "연을 적에게 걸어 끌어당기고 굳힌다", icon: 845 }
 ];
 for (const id of ["d_far", "d_sunbo", "d_sun", "d_jeong", "d_pajuk", "d_hyeol", "d_giseom", "d_dangong", "d_charge", "d_bounce", "d_chain"]) CHOSIK.find(c => c.id === id).only = "mumyeong";   // the swordsman's aimed dash
 const SLOT = { 일섬: 1, 방어: 1, 간파: 1, 이동: 2 }, SLOT_ORDER = ["일섬", "방어", "간파", "이동"];
@@ -303,18 +303,18 @@ const SIMBEOP = [
 const simb = k => !!(run && run.simbeop === k);
 // 무기: chosen when a run starts; each changes how the basic cut works
 const WEAPONS = {
-  hwando: { name: "환도", han: "環刀", desc: "받아치기 — 보통 베기로 간파하면 그 적의 등 뒤로 번쩍 넘어가며 벤다(잠깐 무적). 탄 튕기기가 1.5배 너그럽고, 공중에서 베면 공중 대시가 한 번 다시 찬다", R: 1, reach: 0, cd: .2, dur: .14 },
-  ssang: { name: "쌍검", han: "雙劍", desc: "몰아치기 — 잇따라 벨수록 기세가 쌓인다(최대 다섯). 셋이면 다음 일섬이 넓게 휘몰아치고, 다섯 번째 베기는 X자로 갈라 둘레의 탄까지 벤다. 땅에서도 연속 처치가 오래 이어진다", R: .82, reach: -2, cd: .09, dur: .1 },
-  woldo: { name: "월도", han: "月刀", desc: "낙월 — 공중에서 아래로 베면 내리꽂힌다. 무언가를 치면 튕겨 오르며 공중 대시가 차고, 땅에 꽂히면 충격파가 둘레의 적을 굳히고 탄을 지운다. 방패를 무시하고 밀쳐낸다", R: 1.55, reach: 16, cd: .4, dur: .22 },
-  baldo: { name: "발도", han: "拔刀", desc: "일도 — 베기를 누르고 있으면 시간이 느려지며 원이 차오른다. 다 찬 뒤 떼면 돌진하며 베고, 더 오래(0.75초) 모으면 붉은 일격이 되어 길의 탄을 모두 베고 공중 대시가 찬다. 붉은 일격으로 간파하면 천고 기운이 크게 찬다", R: .72, reach: 0, cd: .25, dur: .14 },
+  hwando: { name: "환도", han: "環刀", desc: "받아치기 — 보통 베기로 간파하면 적의 등 뒤로 넘어가며 벤다. 탄 튕기기가 쉽다", R: 1, reach: 0, cd: .2, dur: .14 },
+  ssang: { name: "쌍검", han: "雙劍", desc: "몰아치기 — 이어 벨수록 기세가 쌓이고, 다섯 번째 베기는 X자 일격. 연속 처치가 오래 간다", R: .82, reach: -2, cd: .09, dur: .1 },
+  woldo: { name: "월도", han: "月刀", desc: "낙월 — 공중에서 아래로 베면 내리꽂힌다. 치면 튕겨 오르고, 땅에 꽂히면 충격파", R: 1.55, reach: 16, cd: .4, dur: .22 },
+  baldo: { name: "발도", han: "拔刀", desc: "일도 — 베기를 누르고 있으면 시간이 느려지며 모인다. 꽉 모아 놓으면 붉은 일격 돌진", R: .72, reach: 0, cd: .25, dur: .14 },
   // 무녀의 무구 — her own hand, her own reach (kind: which sword's rules it borrows)
-  buchae: { ch: "munyeo", name: "부채", han: "扇", desc: "받아치기 — 펼친 부채로 넓게 쓸어 탄을 되받아친다. 부채로 간파하면 그 적의 등 뒤로 번쩍 넘어가고, 공중에서 치면 공중 대시가 한 번 찬다", R: 1.12, reach: -4, cd: .2, dur: .16, fx: "fan" },
-  bangul: { ch: "munyeo", kind: "ssang", ring: true, name: "방울", han: "鈴", desc: "몰아치기 — 흔들 때마다 몸 둘레로 방울 소리가 퍼져 베고 기세가 쌓인다. 셋이면 일섬이 휘몰아치고, 다섯 번째는 X자로 갈라 탄까지 벤다", R: 1.05, reach: 0, cd: .11, dur: .14, fx: "bell", cost: 150 },
-  singal: { ch: "munyeo", kind: "woldo", name: "신칼", han: "神刀", desc: "낙월 — 오방색 띠를 단 무구 칼. 공중에서 아래로 내려치면 내리꽂혀, 치면 튕겨 오르고 땅에 꽂히면 충격파가 인다", R: 1.5, reach: 14, cd: .38, dur: .22, fx: "streamer", cost: 180 },
+  buchae: { ch: "munyeo", name: "부채", han: "扇", desc: "받아치기 — 부채로 넓게 쓸어 탄을 되받아친다. 간파하면 적의 등 뒤로 넘어간다", R: 1.12, reach: -4, cd: .2, dur: .16, fx: "fan" },
+  bangul: { ch: "munyeo", kind: "ssang", ring: true, name: "방울", han: "鈴", desc: "몰아치기 — 흔들 때마다 방울 소리가 주변을 벤다. 다섯 번째는 X자 일격", R: 1.05, reach: 0, cd: .11, dur: .14, fx: "bell", cost: 150 },
+  singal: { ch: "munyeo", kind: "woldo", name: "신칼", han: "神刀", desc: "낙월 — 공중에서 아래로 내려치면 내리꽂힌다. 땅에 꽂히면 충격파", R: 1.5, reach: 14, cd: .38, dur: .22, fx: "streamer", cost: 180 },
   // 포수의 병기
-  chonggeom: { ch: "posu", name: "총검", han: "銃劍", desc: "받아치기 — 총 끝의 칼로 길게 찌른다. 찔러 간파하면 그 적의 등 뒤로 번쩍 넘어가고, 공중에서 찌르면 공중 대시가 한 번 찬다", R: 1, reach: 0, cd: .2, dur: .13, fx: "thrust" },
-  gakgung: { ch: "posu", kind: "baldo", bow: true, name: "각궁", han: "角弓", desc: "일도 — 시위를 당기는 동안 시간이 느려진다. 원이 다 차면 놓아 끝까지 꿰뚫는 화살을 쏘고, 더 오래(0.75초) 당기면 일격이 되며 공중 대시가 찬다", R: .8, reach: 0, cd: .22, dur: .13, fx: "thrust", cost: 150 },
-  chang: { ch: "posu", kind: "woldo", name: "창", han: "槍", desc: "낙월 — 멀리 닿는 긴 찌르기. 공중에서 아래로 찌르면 내리꽂혀, 치면 튕겨 오르고 땅에 꽂히면 충격파가 인다", R: .85, reach: 44, cd: .32, dur: .18, fx: "spear", cost: 180 }
+  chonggeom: { ch: "posu", name: "총검", han: "銃劍", desc: "받아치기 — 총검으로 길게 찌른다. 간파하면 적의 등 뒤로 넘어간다", R: 1, reach: 0, cd: .2, dur: .13, fx: "thrust" },
+  gakgung: { ch: "posu", kind: "baldo", bow: true, name: "각궁", han: "角弓", desc: "일도 — 시위를 당기는 동안 시간이 느려진다. 꽉 당기면 꿰뚫는 일격 화살", R: .8, reach: 0, cd: .22, dur: .13, fx: "thrust", cost: 150 },
+  chang: { ch: "posu", kind: "woldo", name: "창", han: "槍", desc: "낙월 — 멀리 닿는 찌르기. 아래로 찌르면 내리꽂히고, 땅에 꽂히면 충격파", R: .85, reach: 44, cd: .32, dur: .18, fx: "spear", cost: 180 }
 };
 const wpn = () => (run && run.weapon && WEAPONS[run.weapon]) ? run.weapon : "hwando";
 const wk = () => WEAPONS[wpn()].kind || wpn();   // the rules a weapon plays by
@@ -611,6 +611,12 @@ zone.addEventListener("pointerup", stickEnd); zone.addEventListener("pointercanc
 // swipe to slash: direction = stroke direction; a long fast stroke becomes a dash-slash.
 // The 일격 judgement uses the moment the finger landed.
 const swipes = new Map(), swipeZone = $("swipeZone");
+let drumHit = null;
+window.addEventListener("pointerdown", e => {   // 천고난무: touch (or click) the full drum
+  if (!drumHit || state !== "play" || document.body.classList.contains("padEdit")) return;
+  if (Math.hypot(e.clientX - drumHit.x, e.clientY - drumHit.y) > drumHit.r) return;
+  e.preventDefault(); e.stopPropagation(); Music.unlock(); press.drum = 1;
+}, true);
 swipeZone.addEventListener("pointerdown", e => {
   Music.unlock(); e.preventDefault();
   try { swipeZone.setPointerCapture(e.pointerId); } catch (_) {}
@@ -953,6 +959,7 @@ function enterMadang() {
   Music.menuBgm(false);
   // map already loaded by showInterlude
   deadIds = new Set(run.dead || []); cpSave = null;
+  if (run.cp < 0 && mode !== "tutorial") store.set("stage", run);   // 다시 시작 returns here: the gate as it was when you walked in
   if (run.cp >= 0 && LV.cps[run.cp]) {
     const c = LV.cps[run.cp]; c.on = true;
     cpSave = { x: c.x - 9, y: c.y - 30.01, dead: new Set(deadIds), idx: run.cp };
@@ -2052,7 +2059,7 @@ const viaMua = () => !!(P && P.aimDash && !P.tapDash);   // the cut came out of 
 function chainAdd(n) { if (!P) return; const g0 = Math.min(5, P.chain || 0); P.chain = (P.chain || 0) + n; P.chainPop = .25; if (Math.min(5, P.chain) > g0) Music.sfx("lantern"); }
 function addQi(n) { // 천고 기운: won by fighting well — 일섬, 간파, 과녁
   if (mode === "tutorial" || !run) return; const before = run.qi || 0; run.qi = Math.min(100, before + n * .6 * (oath("jangdan") ? 2 : 1) * (1 + .15 * Math.min(8, (P && P.chain) || 0)));
-  if (before < 100 && run.qi >= 100) { toast(MOBILE ? "천고 기운이 찼다 · 북 버튼으로 원할 때 천고난무" : "천고 기운이 찼다 · Q 키로 원할 때 천고난무"); Music.jing(); }
+  if (before < 100 && run.qi >= 100) { toast(MOBILE ? "천고 기운이 찼다 · 태극 북을 누르면 천고난무" : "천고 기운이 찼다 · 태극 북을 누르거나 Q"); Music.jing(); }
 }
 let chungoFx = null;
 function chungo() { // 천고난무: the full drum. Time stops; ink lines are laid from foe to foe; then, all at once, they fall
@@ -2500,7 +2507,7 @@ function frame(now) {
     if (state === "play" && bossIntro) ts = 0.03;
     else if (state === "play" && roar) ts = 0.05;
     else if (hitstop > 0) { hitstop -= rdt; ts = 0.06; } else if (state === "play" && P.focus) ts = has("d_jeong") ? 0.07 : 0.12; else if (state === "play" && killCam > 0) ts = .32;
-    if (state === "play" && P && P.iaiHold && wk() === "baldo" && !P.focus && !bossIntro && !roar) ts = Math.min(ts, .55);   // 일도: the draw stills the world
+    if (state === "play" && P && P.iaiHold && wk() === "baldo" && !P.focus && !bossIntro && !roar && performance.now() - (P.iaiAt || 0) < 1500) ts = Math.min(ts, .55);   // only for the draw itself, not forever   // 일도: the draw stills the world
     if (state === "dead") ts = 0.3;
     const wdt = rdt * ts, n = Math.max(1, Math.ceil(wdt / (1 / 120))), sdt = wdt / n;
     for (let i = 0; i < n; i++) {
@@ -2553,7 +2560,7 @@ let hudCache = "";
 function updateHud() {
   const t = fmt(run.time), pip = (P.onGround || P.airDash > 0) && P.dashCd <= 0, hk = !!hookCand, key = t + pip + hk;
   if (key === hudCache) return; hudCache = key;
-  $("hTime").textContent = t + (showFps ? ` · ${fpsNow}fps ${workMs.toFixed(0)}ms ${Math.round(1000 / vsyncMs)}Hz ${DPR}x${GPU_SOFT ? " SW" : ""}` : ""); $("pip").classList.toggle("on", pip); $("bDrum").classList.toggle("ready", !!(run && mode !== "tutorial" && (run.qi || 0) >= 100 && !chungoFx)); $("bHook").classList.toggle("ready", hk);
+  $("hTime").textContent = t + (showFps ? ` · ${fpsNow}fps ${workMs.toFixed(0)}ms ${Math.round(1000 / vsyncMs)}Hz ${DPR}x${GPU_SOFT ? " SW" : ""}` : ""); $("pip").classList.toggle("on", pip); $("bHook").classList.toggle("ready", hk);
 }
 function toast(msg) { const el = $("toast"); el.textContent = msg; el.classList.add("on"); toastT = 1.6; }
 function buzz(ms) { try { navigator.vibrate && navigator.vibrate(ms); } catch (e) {} }
@@ -3058,6 +3065,7 @@ function drawBeatBar(pal) {
     if (!(SPR.vis && drawSprite("vis", big ? VIS.bigDrum : VIS.drum, x, y, sz / SPR.vis.f[big ? VIS.bigDrum : VIS.drum].h, false, .5, false, .5))) { ctx.fillStyle = lit >= 1 ? SEAL : pal.text; ctx.beginPath(); ctx.arc(x, y, sz / 3, 0, Math.PI * 2); ctx.fill(); }
     if (lit > 0 && lit < 1) { ctx.globalAlpha = 1; ctx.strokeStyle = "rgba(232,184,74,.9)"; ctx.lineWidth = 2.2; ctx.beginPath(); ctx.arc(x, y, sz * .56, -Math.PI / 2, -Math.PI / 2 + Math.PI * 2 * lit); ctx.stroke(); }
   }
+  drumHit = full ? { x: mx + ahead * gap, y, r: 40 } : null;   // the full 태극 drum is itself the button
   if (full) { const x = mx + ahead * gap, pulse = .6 + .4 * Math.sin(performance.now() / 120); ctx.globalAlpha = pulse;
     if (!(SPR.mech && drawSprite("mech", MECH.drum, x, y, 66 * (1 + .06 * pulse) / SPR.mech.f[MECH.drum].h, false, .5, false, .5))) { ctx.strokeStyle = "rgba(232,184,74,.95)"; ctx.lineWidth = 3; ctx.beginPath(); ctx.arc(x, y, 30, 0, Math.PI * 2); ctx.stroke(); }
     ctx.globalAlpha = 1; }
@@ -3529,7 +3537,7 @@ const shelfCap = () => 3 + Math.min(4, META.bld.bigeup);        // 비급첩 kep
 const perkName = id => (CHOSIK.find(c => c.id === id) || { name: id }).name;
 function bookLine(bk) { return `${WEAPONS[bk.weapon || "hwando"].name}${bk.oath ? " · " + OATHS.find(o => o.id === bk.oath).name : ""} · 비급 ${bk.perks.length} · 최고 ${bk.best || 0}층`; }
 // sealing: the run's 변형, weapon and oath come along; of the rest, only as many 비급 as the book can hold
-function sealScreen() {
+function sealScreen(after, title, sub) {   // after: where to go once sealed or skipped (a restart goes on to a new run)
   const r = sealable; if (!r) return;
   const rest = r.perks.filter(id => id !== "sum" && CHOSIK.some(c => c.id === id));
   const pick = new Set(fitPerks(rest));   // the same slots as in a run
@@ -3548,12 +3556,13 @@ function sealScreen() {
     const bk = { id: Date.now().toString(36), name: name.value.trim() || "이름 없는 첩", weapon: r.weapon || "hwando", oath: r.oath || null, char: r.char || "mumyeong", simbeop: r.simbeop || null, perks: [...pick], best: 0, made: todayKey() };
     if (replace != null) META.books.splice(replace, 1, bk); else META.books.push(bk);
     META.firsts.bookN = (META.firsts.bookN || 0) + 1; saveMeta(); sealable = null; $("bSeal").hidden = true; toast(`「${bk.name}」를 봉인했다`);
-    if (typeof gainStroke === "function") gainStroke("seal"); toMenu();
+    if (typeof gainStroke === "function") gainStroke("seal"); if (after) after(); else toMenu();
   };
   const rows = [name, chips, info];
   if (META.books.length >= shelfCap()) { const t = document.createElement("small"); t.textContent = "비급첩을 둘 자리가 없다. 하나를 골라 덮어쓴다."; rows.push(t);
     META.books.forEach((bk, i) => rows.push(bdRow(bk.name, bookLine(bk), null, "덮어쓰기", () => save(i)))); }
-  board("비급첩에 봉인", "이 판의 빌드에서 핵심만 골라 담는다", rows, META.books.length >= shelfCap() ? [["그만두기", () => showScreen("result")]] : [["봉인", () => save(null), true], ["그만두기", () => showScreen("result")]]);
+  const skip = () => { if (after) { sealable = null; after(); } else showScreen("result"); };
+  board(title || "비급첩에 봉인", sub || "이 판의 빌드에서 핵심만 골라 담는다", rows, META.books.length >= shelfCap() ? [[after ? "담지 않고 다시 시작" : "그만두기", skip]] : [["봉인", () => save(null), true], [after ? "담지 않고 다시 시작" : "그만두기", skip]]);
 }
 // 천고탑: pick a 비급첩, then climb until the breath runs out
 function towerScreen() {
@@ -3582,7 +3591,7 @@ function towerRest() {
   else { Music.stop(); showInterlude(); }
 }
 function towerNext() { // 천고 of this floor is cut: one floor up, another omen, and a rest every third floor
-  run.floor++; run.cycle = run.floor - 1; run.cp = -1; run.dead = []; run.cutDrums = []; run.honDouble = 0;
+  run.floor++; run.cycle = run.floor - 1; run.cp = -1; run.nakN = 0; run.janUsed = false; run.dead = []; run.cutDrums = []; run.honDouble = 0;
   if (typeof gainStroke === "function") gainStroke("floor", run.floor - 1);
   if (run.floor % 10 === 0 || run.floor > 1) { const pool = OMENS.filter(o => !o.calm && !run.omens.includes(o.id) && o.id !== "geupbak"); if (pool.length && run.floor > 1 && run.omens.length < 6) run.omens.push(pool[(Math.random() * pool.length) | 0].id); }
   saveRun(); state = "result"; Music.stop();
@@ -3792,8 +3801,8 @@ const masteryLv = w => Math.min(5, Math.floor(Math.sqrt((META.mastery[w] || 0) /
 // 새 검객 (after the ending): different hands on the same tower
 const CHARS = [
   { id: "mumyeong", name: "무명", han: "無名", desc: "이름 없는 검객. 모든 무기를 쓴다" },
-  { id: "munyeo", name: "무녀", han: "巫女", desc: "일섬이 스친 탄을 쏜 적에게 되받아친다. 공중에서 한 번 더 뛰고, 베는 범위는 좁다" },
-  { id: "posu", name: "포수", han: "砲手", desc: "무아경을 풀면 화승총을 쏘고 반동으로 튕겨 난다(두 박자 장전, 장전 중엔 총검 돌진). 보통 베기는 총검 찌르기" }];
+  { id: "munyeo", name: "무녀", han: "巫女", desc: "일섬이 스친 탄을 되받아친다. 공중 점프 +1, 베는 범위는 좁다" },
+  { id: "posu", name: "포수", han: "砲手", desc: "무아경을 풀면 총을 쏘고 반동으로 날아간다. 장전 중엔 총검 돌진" }];
 const chr = id => !!(run && run.char === id);
 const MV_AX = { mvrun: [.566, .631, .634, .635, .544, .63, .62, .639],   // the run sheet, aligned on the hat so the head rides level
   mv0: [.52, .6, .64, .62, .61, .61, .55, .61, .54, .48, .44, .59, .58, .61, .43, .45],   // body axis of each frame, so the feet stay put
@@ -3837,7 +3846,7 @@ function pauseGame() {
   for (const [k, v] of rows) { const a = document.createElement("span"), b = document.createElement("b"); a.textContent = k; b.textContent = v; st.append(a, b); }
   pauseBuild();
   $("bGiveUp").hidden = mode === "tutorial";
-  const canRe = mode !== "tutorial" && run && !run.daily && !run.tower; $("bRestart").hidden = !canRe; $("pRestartNote").hidden = !canRe; $("bRestart").style.setProperty("--p", "0%");
+  const canRe = mode !== "tutorial" && !!run; $("bRestart").hidden = !canRe; $("pRestartNote").hidden = !canRe; $("bRestart").style.setProperty("--p", "0%");
   showScreen("pause");
 }
 function pauseBuild() { // the build so far: hand and weapon, 심법, 서약, 공명, and every 비급 read in this hand's words
@@ -3868,11 +3877,13 @@ $("bToMenu").addEventListener("click", () => { saveRun(); toMenu(); });
 { // 다시 시작: held for two seconds, and the run is dropped without its rewards — a restart has to be meant
   const b = $("bRestart"); let t0 = null, raf = 0;
   const stop = () => { t0 = null; cancelAnimationFrame(raf); b.style.setProperty("--p", "0%"); };
-  const tick = () => { if (t0 == null) return; const q = Math.min(1, (performance.now() - t0) / 2000); b.style.setProperty("--p", (q * 100).toFixed(1) + "%");
-    if (q >= 1) { stop(); if (state !== "pause" || !run) return; store.del("run"); META.restarts = (META.restarts || 0) + 1; saveMeta(); Music.stop(); state = "menu"; showScreen(null); toast("이번 판을 지웠다 — 처음부터"); newRun(); return; } raf = requestAnimationFrame(tick); };
+  const tick = () => { if (t0 == null) return; const q = Math.min(1, (performance.now() - t0) / 800); b.style.setProperty("--p", (q * 100).toFixed(1) + "%");
+    if (q >= 1) { stop(); if (state !== "pause" || !run) return; const snap = store.get("stage", null);
+      if (!snap || snap.seed !== run.seed || snap.m !== run.m || (snap.cycle || 0) !== (run.cycle || 0) || (snap.floor || 0) !== (run.floor || 0)) { toast("이 관문은 처음부터 다시 할 수 없다"); return; }
+      Music.stop(); state = "menu"; showScreen(null); store.set("run", snap); toast("관문을 처음부터 다시"); continueRun(); return; } raf = requestAnimationFrame(tick); };
   b.addEventListener("pointerdown", e => { e.preventDefault(); t0 = performance.now(); tick(); });
   for (const ev of ["pointerup", "pointerleave", "pointercancel"]) b.addEventListener(ev, stop);
-  b.addEventListener("click", e => { if (t0 == null) toast("길게 눌러야 다시 시작한다"); });
+  b.addEventListener("click", e => { if (t0 == null) toast("길게 누르면 관문을 처음부터 다시 한다"); });
 }
 $("bPauseSet").addEventListener("click", () => openSettings("pause"));
 $("bSettings").addEventListener("click", () => openSettings("menu"));
