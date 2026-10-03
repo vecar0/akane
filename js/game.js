@@ -985,7 +985,7 @@ function showInterlude() {
   if (run.tower) { // 천고탑: every floor is a guardian's stage, crowded, with all the omens gathered so far
     const tier = [0, 2, 4][(run.floor - 1) % 3];
     $("iMeta").textContent = `천고탑 ${run.floor}층 · ${SEASON[season()].name} · ` + Music.JANGDAN[MADANG[tier].jd].name + " · " + "●".repeat(run.breath) + (run.omens.length ? " · 징조 " + run.omens.map(id => OMENS.find(o => o.id === id).name).join("·") : "");
-    loadMap(buildMadangMap(run.seed + run.floor * 7919, tier, run.cycle || 0, run.omens, true, Math.min(2, run.floor >> 3), Math.min(5, 1 + (run.floor >> 2))), PAL[tier]);   // higher floors: not more foes, harder ground LV.ledgeStone = tier >= 3;
+    loadMap(buildMadangMap(run.seed + run.floor * 7919, tier, run.cycle || 0, run.omens, true, Math.min(2, run.floor >> 3), Math.min(5, 1 + (run.floor >> 2))), PAL[tier]); LV.ledgeStone = tier >= 3;   // higher floors: harder ground
   } else
   loadMap(buildMadangMap(run.seed, MD(run.m), run.cycle || 0, run.omen), PAL[MD(run.m)]); LV.ledgeStone = MD(run.m) >= 3;
   if (isFinal() && LV.exit) { // the last 마당 ends at 천고 itself instead of a seal
@@ -994,6 +994,7 @@ function showInterlude() {
   showScreen("interlude");
   Music.unlock(); Music.stop(); Music.jing();
   setTimeout(() => $("bEnter").focus({ preventScroll: true }), 30);
+  needSheets(playSheets());   // start fetching this gate's pictures while the card is read
 }
 function enterMadang() {
   Music.menuBgm(false);
@@ -2391,7 +2392,7 @@ function stepBoss(e, dt, pcx, pcy, dist, live) {
     if (live && songPos >= e.nextAt && e.stagT <= 0) {
       if (!e.raged && e.hp <= e.maxHp / 2) { e.raged = true; roar = { t: 0, e }; P.focus = false; Music.muffle(false); P.dashT = 0; shake = 14; Music.sfx("roar");
         for (let i = 0; i < 3; i++) bleed(ecx + (i - 1) * 24, e.y + 20 + i * 10, { x: i - 1, y: -.5 }, true); }
-      const pool = e.raged || cyc() >= 2 ? [...B.pool(c), ...(RAGE_ADD[e.kind] || [])] : B.pool(c);   // from the third turn a guardian knows all its moves from the start let a = pool[(e.n = (e.n || 0) + 1) % pool.length];
+      const pool = e.raged || cyc() >= 2 /* from the third turn a guardian knows all its moves */ ? [...B.pool(c), ...(RAGE_ADD[e.kind] || [])] : B.pool(c); let a = pool[(e.n = (e.n || 0) + 1) % pool.length];
       if ((a === "slam" || a === "club" || a === "inhale") && dist > 280) a = e.kind === "sumun" ? (c >= 1 ? "volley" : "charge") : e.kind === "dokkaebi" ? "coins" : "scrap";
       if (a === "claw" && dist > 200) a = "leap";
       e.act = a; e.hitAt = (Math.floor(songPos / bl) + 1) * bl; if (e.hitAt - songPos < .45) e.hitAt += bl; e.actFrom = songPos;
@@ -2533,7 +2534,11 @@ const GPU_SOFT = (() => { try { const g = document.createElement("canvas").getCo
 if (GPU_SOFT && MOBILE) { dprCap = 1; setTimeout(resize, 0); }   // no GPU on this phone's browser: draw at native 1x from the start
 let showFps = localStorage.getItem("chungo.fps") === "1", fpsNow = 0, fpsAcc = 0, fpsCnt = 0;
 let vsyncMs = 16.7, lastTick = 0, workMs = 0;
-function frame(now) {
+let loopErrN = 0;
+function frame(now) { // the loop itself never dies: an error in one frame is logged once and the next frame still comes
+  try { frameBody(now); } catch (err) { if (loopErrN++ < 3) console.error(err); requestAnimationFrame(frame); }
+}
+function frameBody(now) {
   vsyncMs += (Math.min(40, now - lastTick) - vsyncMs) * .05; lastTick = now;   // the screen's own refresh, for the 진단 line
   if (now - last < 10) { requestAnimationFrame(frame); return; }   // 120Hz+ screens: draw every other refresh (a steady 60) instead of doubling the work
   const t0 = performance.now();
@@ -2584,7 +2589,7 @@ function frame(now) {
   const inv = !!(P && (P.focus || killCam > 0) && state === "play");
   Music.setRate(inv ? .45 : 1);
   if (inv !== cvInverted) { cvInverted = inv; document.body.classList.toggle("night", inv); }
-  try { render(rdt); } catch (err) { if (!frame.warned) { frame.warned = true; console.error(err); } }   // one bad draw must never stop the game loop
+  try { render(rdt); } catch (err) { if (loopErrN++ < 3) console.error(err); }   // one bad draw must never stop the game loop
   workMs += (performance.now() - t0 - workMs) * .1;
   requestAnimationFrame(frame);
 }
