@@ -243,3 +243,7 @@ body.padEdit #stickZone, body.padEdit #swipeZone { pointer-events: none; }
 .ch-held small { flex-basis: 100%; text-align: center; color: var(--seal); }
 .card .tag.kind { background: var(--jjok); }
 .card .ds { font-size: 13px; color: var(--ink); }
+/* the card is the torn paper itself: no square backing or square shadow behind its ragged edges */
+.card-ready .card { background-color: transparent; box-shadow: none; filter: drop-shadow(0 5px 7px rgba(23,22,26,.28)); }
+.card-ready .card.combo, .card-ready .card.sel { box-shadow: none; filter: drop-shadow(0 0 2px var(--seal)) drop-shadow(0 0 5px rgba(195,22,28,.5)); }
+.card-ready .card.tfc { box-shadow: none; filter: drop-shadow(0 0 2px var(--jjok)) drop-shadow(0 0 5px rgba(39,70,106,.5)); }
