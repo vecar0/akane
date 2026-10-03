@@ -364,7 +364,7 @@ function loadSheet(n) { // one atlas: frames JSON + image (ink-inverted copy for
 function bossSheets(kind) { const B = BOSSES[kind]; if (!B) return []; const out = ["bossfx", "bcal", "bvfx", "bname", B.sheet];
   for (const v of Object.values(BOSS_POSE[kind] || {})) out.push(v[0]); for (const a of BOSS_ANIM[kind] || []) out.push(a[0]); return out; }
 function needSheets(list) { for (const n of list) loadSheet(n); }   // phones: only the hand being played and the guardian being fought are held in memory
-for (const n of ["hero", "hero2", "foes", "objects", "ui", "fx", "hud", "hudsolid", "props", "props2", "rocks", "pines", "slabs", "pillars", "rogue", "roguea", "rogue2", "rogue3", "rogue4", "foes2", "bossA", "bossB", "bossfx", "bossC", "bossD", "bossE", "bossF", "hero3", "herofx", "slashfx", "perkfx", "weapons", "chars", "misc", "arms", "ic0", "ic1", "ic2", "ic3", "ic4", "ic5", "ic6", "ic7", "ic8", "ic9", "ic10", "ic11", "ic12", "ic13", "ic14", "ic15", "mu", "po", "mfx", "pfx", "vis", "guide", "mv0", "mv1", "mv2", "bcal", "bvfx", "bname", "mvrun", "mech", "foes3"]) if (!LAZY_SHEETS.has(n)) loadSheet(n);
+for (const n of ["hero", "hero2", "foes", "objects", "ui", "fx", "hud", "hudsolid", "props", "props2", "rocks", "pines", "slabs", "pillars", "rogue", "roguea", "rogue2", "rogue3", "rogue4", "foes2", "bossA", "bossB", "bossfx", "bossC", "bossD", "bossE", "bossF", "hero3", "herofx", "slashfx", "perkfx", "weapons", "chars", "misc", "arms", "ic0", "ic1", "ic2", "ic3", "ic4", "ic5", "ic6", "ic7", "ic8", "ic9", "ic10", "ic11", "ic12", "ic13", "ic14", "ic15", "mu", "po", "mfx", "pfx", "vis", "guide", "mv0", "mv1", "mv2", "bcal", "bvfx", "bname", "mvrun", "mech", "foes3", "kfx"]) if (!LAZY_SHEETS.has(n)) loadSheet(n);
 function inkInverted(img) { // night palette: grey ink becomes bone white, coloured accents stay as they are
   const c = document.createElement("canvas"); c.width = img.width; c.height = img.height; const g = c.getContext("2d"); g.drawImage(img, 0, 0);
   const id = g.getImageData(0, 0, c.width, c.height), d = id.data;
@@ -1312,6 +1312,8 @@ const RAGE_ADD = { sumun: ["volley", "summon"], gumiho: ["illusion", "foxfire"],
 // painted boss-fight sheets: stamps and words (bcal), effects (bvfx), each guardian's name in brush (bname)
 const BC = { gyeoljeon: 0, tobeol: 1, gyeoknu: 2, ganpa: 3, stroke: 4, redBurst: 5, inkBurst: 6, talisman: 7, enso: 8 };
 const BV = { rage: 0, quake: 1, curtain: 2, dizzy: 3, impact: 4, warn: 5, crescent: 6, dissolve: 7, ring: 8 };
+const KF = { bead: 0, cross: 1, star: 2, xcut: 3, guide: 4, aura: 5, fizzle: 6, flakes: 7, ring: 8 };   // 간파 sheet: the gathering bead, the cross flash, the crossed cut, the guide, the aura, the fizzle
+let flashDim = 0;
 const MECH = { glint: 0, chungo: 1, drum: 2, slash: 3, n1: 4, deflect: 9, fire: 10, bar: 11 };   // 간파 glint, 天鼓, the drum, the cut, 一~五, the parry spark, the red shot, the gauge stroke
 const BNAME = { sumun: 0, gumiho: 1, dokkaebi: 2, imugi: 3, wongwi: 4, jangseung: 5, haetae: 6, bulgasari: 7, baekho: 8, talchum: 9, cheongo: 10, shadow: 11 };
 function spr(sheet, i, x, y, h, flip = false) { const S = SPR[sheet]; if (!S || !S.f[i]) return false; return drawSprite(sheet, i, x, y, h / S.f[i].h, flip, .5, sheet === "bname" && nightNow(), .5); }   // a name in black ink turns bone-white on the inverted night
@@ -1743,7 +1745,11 @@ function playerHazards() {
 // one hit point per cut 천고 beyond the first; a plain cut removes one, an 일격 kills outright
 function hurtEnemy(e, strike, kind) {
   if (!e.alive || ghostly(e)) return;
-  const kan = isFlashing(e); if (kan) { strike = true; e.kanpa = true; e.kanMua = viaMua(); }
+  const kan = isFlashing(e); if (kan) { strike = true; e.kanpa = true; e.kanMua = viaMua();
+    const x = e.x + e.w / 2, y = e.y + e.h / 2, big = e.type === "b";   // 간파: the crossed cut, gold flakes, the world holds a beat
+    addFx("kfx", KF.xcut, x, y, big ? 150 : 90, { life: .4, grow: .15, rot: Math.random() * .6 - .3 }); addFx("kfx", KF.flakes, x, y, big ? 170 : 110, { life: .5, grow: .5 });
+    hitstop = Math.max(hitstop, .1); shake = Math.max(shake, 7); }
+  else if (e.lastBlow != null && songPos - e.lastBlow < .3) { addFx("kfx", KF.fizzle, e.x + e.w / 2, e.y + e.h * .35, 46, { life: .45, grow: .2, ay: .5 }); e.lastBlow = null; }   // just too late: a grey fizzle
   if (e.type === "a" && e.counter && kind === "il" && !kan && Math.sign(P.x + P.w / 2 - (e.x + e.w / 2)) === e.face) {   // 자객 받아치기: an 일섬 straight into his stance is turned on you
     addFx("mech", MECH.deflect, e.x + e.w / 2 + e.face * 14, e.y + 14, 60, { life: .3 }); Music.sfx("clang"); P.dashT = 0; lastHitDir = { x: e.face, y: -.4 }; die(); return; }   // 간파: any blow that lands on the glint
   if (e.ward && !strike) { // 무당's talisman takes the cut instead
@@ -1934,18 +1940,35 @@ function stepFoe3(e, dt, pcx, pcy, dist, live, bl) { // 순라 · 자객 · 북�
 function dashThrough(e) { if (state === "play" && P.dashT > 0 && overlap(e, P) && !P.dashHit.has(e.id)) { P.dashHit.add(e.id); dashHurt(e); } }
 let inChain = false;
 const FLASH = .35;   // the glint before a blow lands: long enough to answer by hand, longer still in 무아경 (the music slows)
-function isFlashing(e) {
-  if (!e || !e.alive) return false; const w = songPos;
-  if (e.type === "b") return !!e.act && !e.hidden && !["gamtu", "mask"].includes(e.act) && w >= e.hitAt - FLASH && w < e.hitAt + .06;
-  if (e.fireAt != null) return w >= e.fireAt - FLASH;
-  if (e.thrustAt != null) return w >= e.thrustAt - FLASH;
-  if (e.swingAt != null) return w >= e.swingAt - FLASH;
-  if (e.dashAt != null) return w >= e.dashAt - FLASH;
-  if (e.drumAt != null) return w >= e.drumAt - FLASH;
-  if (e.diveAt != null) return w >= e.diveAt - FLASH;
-  if (e.type === "m") return w >= e.castAt - FLASH && w < e.castAt + .06;
-  if (e.type === "r") return e.ph === "rise" && w >= e.nextAt - FLASH;
-  return false;
+function blowAt(e) { // when this foe's blow lands (null when nothing is coming)
+  if (!e || !e.alive) return null;
+  if (e.type === "b") return e.act && !e.hidden && !["gamtu", "mask"].includes(e.act) ? e.hitAt : null;
+  for (const k of ["fireAt", "thrustAt", "swingAt", "dashAt", "drumAt", "diveAt"]) if (e[k] != null) return e[k];
+  if (e.type === "m") return e.castAt;
+  if (e.type === "r") return e.ph === "rise" ? e.nextAt : null;
+  return null;
+}
+function isFlashing(e) { const t = blowAt(e); return t != null && songPos >= t - FLASH && songPos < t + .06; }
+function preFlash(e) { const t = blowAt(e); return t != null && songPos >= t - FLASH - .3 && songPos < t - FLASH ? (songPos - (t - FLASH - .3)) / .3 : 0; }
+function drawKanAura(e) { // behind the body: ink rising as the blow gathers
+  if (!SPR.kfx) return; const pre = preFlash(e), on = isFlashing(e); if (!pre && !on) return;
+  const big = e.type === "b"; ctx.globalAlpha = on ? .6 + .15 * Math.sin(performance.now() / 50) : pre * .45;
+  drawSprite("kfx", KF.aura, e.x + e.w / 2, e.y + e.h + 4, e.h * (big ? 1.3 : 1.6) / SPR.kfx.f[KF.aura].h, false, .5, false, 1); ctx.globalAlpha = 1;
+}
+function drawKanFlash(e, tt) { // over the body: the bead swelling at the blade, then the cross flash
+  if (!SPR.kfx) return; const pre = preFlash(e), on = isFlashing(e), big = e.type === "b", f = e.face || 1;
+  const tx = e.x + e.w / 2 + (big ? 0 : f * (e.w / 2 + 6)), ty = big ? e.y + e.h * .3 : e.y + e.h * .32;
+  if (!on) { if (e.flashOn) { e.flashOn = false; e.lastBlow = songPos; } }
+  if (pre && !on) { const sz = 6 + 16 * pre; drawSprite("kfx", KF.bead, tx, ty, sz / SPR.kfx.f[KF.bead].h, false, .5, false, .5); return; }
+  if (!on) return;
+  if (!e.flashOn) { e.flashOn = true; if (Math.hypot(e.x - P.x, e.y - P.y) < 520) { flashDim = .07; Music.sfx("clang"); } }
+  const t = blowAt(e), q = Math.max(0, Math.min(1, (songPos - (t - FLASH)) / FLASH)), mua = P && P.focus, pop = 1 + .35 * Math.max(0, 1 - q * 4);
+  const sz = (big ? 120 : 58) * (mua ? 1.35 : 1) * pop;
+  ctx.save(); ctx.translate(tx, ty); ctx.rotate(.15 * Math.sin(tt * 9));
+  drawSprite("kfx", KF.cross, 0, 0, sz / SPR.kfx.f[KF.cross].h, false, .5, false, .5);
+  ctx.rotate(-tt * 4); ctx.globalAlpha = .85; drawSprite("kfx", KF.star, 0, 0, sz * .55 / SPR.kfx.f[KF.star].h, false, .5, false, .5); ctx.restore(); ctx.globalAlpha = 1;
+  if (mua && P) { const px = P.x + P.w / 2, py = P.y + P.h / 2, L = Math.hypot(tx - px, ty - py);   // 무아경: a dotted stroke shows the way in
+    if (L < 360 && L > 30) { const g = SPR.kfx.f[KF.guide]; ctx.save(); ctx.translate(px, py); ctx.rotate(Math.atan2(ty - py, tx - px)); ctx.globalAlpha = .75; ctx.drawImage(SPR.kfx.img, g.x, g.y, g.w, g.h, 18, -5, L - 36, 10); ctx.restore(); ctx.globalAlpha = 1; } }
 }
 const viaMua = () => !!(P && P.aimDash && !P.tapDash);   // the cut came out of 무아경
 function chainAdd(n) { if (!P) return; const g0 = Math.min(5, P.chain || 0); P.chain = (P.chain || 0) + n; P.chainPop = .25; if (Math.min(5, P.chain) > g0) Music.sfx("lantern"); }
@@ -2662,14 +2685,14 @@ function render(rdt) {
   drawHazards(pal);
   for (const e of enemies) if (e.alive && (visible(e.x) || e.type === "b")) {
     if (e.hitT > 0 && Math.floor(e.hitT * 30) % 2) ctx.globalAlpha = .45;   // hit flicker
+    if (e.alive) { const ga = ctx.globalAlpha; drawKanAura(e); ctx.globalAlpha = ga; }
     drawEnemy(e, pal); ctx.globalAlpha = 1;
     if (e.stunT > 0) { ctx.strokeStyle = `rgba(214,170,60,${.5 + .3 * Math.sin(tt * 20)})`; ctx.lineWidth = 2; ctx.beginPath(); ctx.ellipse(e.x + e.w / 2, e.type === "d" ? e.y - 8 : e.y - 26, 12, 4, 0, 0, 7); ctx.stroke(); }   // frozen by moonlight / lightning
     if (e.ward) { // 무당's talisman hovering over the warded soldier
       const wy = e.type === "d" ? e.y - 22 : e.y - 46, bob = Math.sin(tt * 3 + e.id) * 2;
       if (!drawSprite("foes2", F2.ward, e.x + e.w / 2, wy + bob, 24 / (SPR.foes2 ? SPR.foes2.f[F2.ward].h : 1), false, .5, false, .5)) { ctx.strokeStyle = JJOK; ctx.lineWidth = 2; ctx.beginPath(); ctx.arc(e.x + e.w / 2, e.y + e.h / 2, 26, 0, 7); ctx.stroke(); }
     }
-    if (isFlashing(e) && SPR.mech) { const big = e.type === "b", k = 1 + .25 * Math.sin(tt * 40), gx = e.x + e.w / 2 + (big ? 0 : (e.face || 1) * 6), gy = big ? e.y + e.h * .3 : e.y + 6;   // 간파의 번뜩임
-      ctx.save(); ctx.translate(gx, gy); ctx.rotate(tt * 3); ctx.globalAlpha = .95; drawSprite("mech", MECH.glint, 0, 0, (big ? 70 : 34) * k / SPR.mech.f[MECH.glint].h, false, .5, false, .5); ctx.restore(); }
+    drawKanFlash(e, tt);
     if (e.maxHp > 1 && e.type !== "b") { // remaining hits as small ink drops over the head
       const top = e.type === "d" ? e.y - 10 : e.y - 34, cx = e.x + e.w / 2;
       for (let i = 0; i < e.maxHp; i++) { ctx.fillStyle = i < e.hp ? SEAL : "rgba(80,74,70,.35)"; ctx.beginPath(); ctx.arc(cx + (i - (e.maxHp - 1) / 2) * 7, top, 2.6, 0, 7); ctx.fill(); }
@@ -3232,6 +3255,7 @@ function drawNewFoe(e, pal, cx) {
 function drawCombatHud(pal) { // 기력 under the 숨, the chain's numeral at the right
   if (!P || !run || (state !== "play" && state !== "pause")) return;
   ctx.setTransform(DPR, 0, 0, DPR, 0, 0);
+  if (flashDim > 0) { ctx.fillStyle = `rgba(20,10,12,${flashDim * 3})`; ctx.fillRect(0, 0, W, H); flashDim = Math.max(0, flashDim - 1 / 60); }   // the screen draws a breath as a glint opens
   if (mode !== "tutorial") { const ki = Math.max(0, Math.min(1, P.ki ?? 1)), bx = 18, by = 54, bw = 104, bh = 10, f = SPR.mech && SPR.mech.f[MECH.bar];
     const low = ki < .25 && Math.sin(performance.now() / 90) > 0;
     ctx.font = `400 11px "Song Myung", serif`; ctx.fillStyle = pal.text; ctx.globalAlpha = .8; ctx.fillText("기력", bx, by + bh - 1);
