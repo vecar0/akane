@@ -83,7 +83,7 @@ const SEAL = "#c3161c", JJOK = "#27466a", JJOK_L = "#5f86b5";
 function gpuize(c, put) { if (window.createImageBitmap && c && c.getContext) createImageBitmap(c).then(put).catch(() => {}); return c; }
 const IMG = {}, PAT = {};
 let perfT = 0, perfN = 0, perfSlow = 0;   // frame-time watch for the automatic quality drop
-for (const k of ["tex-paper", "tex-stone", "tex-giwa", "tex-granite", "tex-slab"]) { let n = 0; const go = () => { const im = new Image(); im.onload = () => { IMG[k] = im; PAT[k] = null; }; im.onerror = () => { if (++n < 8) setTimeout(go, 1200 * n); }; im.src = "assets/" + k + ".webp"; }; go(); }
+for (const k of ["tex-paper", "tex-stone", "tex-giwa", "tex-granite", "tex-slab"]) { let n = 0; const go = () => { const im = new Image(); im.onload = () => { IMG[k] = im; PAT[k] = null; }; im.onerror = () => { ++n; setTimeout(go, Math.min(5000, 1200 * n)); }; im.src = "assets/" + k + ".webp"; }; go(); }
 function tintedPaper(ssn) { // paper texture with the season's colour multiplied in once
   const key = "tex-paper-" + ssn; if (PAT[key]) return PAT[key]; const im = IMG["tex-paper"]; if (!im) return null;
   if (!IMG[key]) { const c = document.createElement("canvas"); c.width = im.width; c.height = im.height; const g = c.getContext("2d"); g.drawImage(im, 0, 0); g.globalCompositeOperation = "multiply"; g.fillStyle = SEASON_TINT[ssn]; g.fillRect(0, 0, c.width, c.height); IMG[key] = c; }
@@ -94,7 +94,7 @@ function pattern(key, scale) { // world- or screen-anchored repeating pattern, b
   if (!PAT[key]) { PAT[key] = ctx.createPattern(IMG[key], "repeat"); PAT[key].setTransform(new DOMMatrix().scale(scale)); }
   return PAT[key];
 }
-for (const k of ["far", "mid"]) { let n = 0; const go = () => { const im = new Image(); im.onload = () => { IMG[k] = gpuize(softened(seamlessStrip(im), k === "far" ? 3 : 2), bm => { IMG[k] = bm; }); }; im.onerror = () => { if (++n < 8) setTimeout(go, 1200 * n); }; im.src = "assets/" + k + ".webp"; }; go(); }
+for (const k of ["far", "mid"]) { let n = 0; const go = () => { const im = new Image(); im.onload = () => { IMG[k] = gpuize(softened(seamlessStrip(im), k === "far" ? 3 : 2), bm => { IMG[k] = bm; }); }; im.onerror = () => { ++n; setTimeout(go, Math.min(5000, 1200 * n)); }; im.src = "assets/" + k + ".webp"; }; go(); }
 // Make a panorama wrap horizontally: the last 22% is cross-faded into the start, so tiling shows no cut or mirror.
 function softened(c, px) { // blur once at load, so the backdrop recedes behind the sharp pines and actors
   const o = document.createElement("canvas"); o.width = c.width; o.height = c.height; const g = o.getContext("2d");
@@ -387,7 +387,7 @@ function loadSheet(n) { // one atlas: frames JSON + image (ink-inverted copy for
     new Promise((res, rej) => { const im = new Image(); im.onload = () => res(im); im.onerror = rej; im.src = `assets/sprites/${n}.webp`; })
   ]).then(([f, img]) => { let inv = null; if (["hero", "hero2", "foes", "objects", "fx", "props", "props2", "rocks", "pines", "slabs", "pillars", "guide", "bname", "foes3"].includes(n)) try { inv = inkInverted(img); } catch (e) { inv = null; }   // short of canvas memory: keep the sheet, lose only its night copy
     SPR[n] = { f, img, inv };
-    if (SPR[n].inv) gpuize(SPR[n].inv, bm => { SPR[n].inv = bm; }); applyUiSprites(); }).catch(() => { sheetLoading.delete(n); const a = (sheetTry[n] = (sheetTry[n] || 0) + 1); if (a < 8) setTimeout(() => loadSheet(n), 1200 * a); });   // a failed load (offline blip, a deploy in progress) is tried again
+    if (SPR[n].inv) gpuize(SPR[n].inv, bm => { SPR[n].inv = bm; }); applyUiSprites(); }).catch(() => { sheetLoading.delete(n); const a = (sheetTry[n] = (sheetTry[n] || 0) + 1); setTimeout(() => loadSheet(n), Math.min(5000, 1200 * a)); });   // a failed load (offline blip, a deploy in progress) is tried again
 }
 const sheetTry = {};
 function bossSheets(kind) { const B = BOSSES[kind]; if (!B) return []; const out = ["bossfx", "bcal", "bvfx", "bname", B.sheet];
@@ -400,7 +400,7 @@ function loadGate(sheets, imgs, then, label) {
   for (const n of sheets) loadSheet(n);
   el.hidden = false; txt.textContent = label || "먹을 가는 중";
   const tick = () => { const l = left(), q = total ? 1 - l / total : 1; bar.style.width = Math.round(q * 100) + "%";
-    if (!l || performance.now() - t0 > 30000) { if (l) toast("그림 일부를 받지 못했다 — 받는 대로 바뀐다"); setTimeout(() => { el.hidden = true; then(); }, 150); return; }
+    if (!l) { setTimeout(() => { el.hidden = true; then(); }, 150); return; }
     if (performance.now() - t0 > 8000) txt.textContent = "연결이 느리다 · 조금만 기다려라";
     setTimeout(tick, 100); };
   tick();
@@ -414,15 +414,15 @@ function bootLoad() {
   urls.push("assets/lore.webp", "assets/tex-granite.webp", "assets/audio/bgm.mp3?v=572");
   const core = ALL_SHEETS.filter(n => !LAZY_SHEETS.has(n));
   let got = 0, q = urls.slice();
-  const one = async u => { for (let a = 0; a < 4; a++) { try { const r = await fetch(u); if (r.ok) { await r.arrayBuffer(); break; } } catch (e) {} await new Promise(r => setTimeout(r, 800 * (a + 1))); } got++; };
+  const one = async u => { for (let a = 0; ; a++) { try { const r = await fetch(u); if (r.ok) { await r.arrayBuffer(); break; } } catch (e) {} await new Promise(r => setTimeout(r, Math.min(5000, 800 * (a + 1)))); } got++; };   // keeps trying until it arrives
   const worker = async () => { while (q.length) await one(q.shift()); };
   Promise.all(Array.from({ length: 6 }, worker));   // six at a time, alongside the core loaders: fast on phones without choking the connection
   el.hidden = false; txt.textContent = "먹을 가는 중";
   const tick = () => { const dec = core.filter(n => SPR[n]).length + BASE_IMGS.filter(k => IMG[k]).length, decT = core.length + BASE_IMGS.length;
     const prog = (got + dec) / (urls.length + decT); bar.style.width = Math.round(prog * 100) + "%";
     const done = got >= urls.length && dec >= decT;
-    if (done || performance.now() - t0 > 45000) { if (!done) toast("그림 일부를 받지 못했다 — 받는 대로 바뀐다"); for (const n of LAZY_SHEETS) sheetTry[n] = 0; setTimeout(() => { el.hidden = true; }, 150); return; }
-    txt.textContent = performance.now() - t0 > 10000 ? `연결이 느리다 · ${Math.round(prog * 100)}%` : `먹을 가는 중 · ${Math.round(prog * 100)}%`;
+    if (done) { setTimeout(() => { el.hidden = true; }, 150); return; }   // no time limit: the menu opens only once everything is here
+    txt.textContent = performance.now() - t0 > 10000 ? `연결이 느리다 · 받는 중 ${Math.round(prog * 100)}%` : `먹을 가는 중 · ${Math.round(prog * 100)}%`;
     setTimeout(tick, 100); };
   tick();
 }
