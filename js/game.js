@@ -392,8 +392,26 @@ function loadSheet(n) { // one atlas: frames JSON + image (ink-inverted copy for
 const sheetTry = {};
 function bossSheets(kind) { const B = BOSSES[kind]; if (!B) return []; const out = ["bossfx", "bcal", "bvfx", "bname", B.sheet];
   for (const v of Object.values(BOSS_POSE[kind] || {})) out.push(v[0]); for (const a of BOSS_ANIM[kind] || []) out.push(a[0]); return out; }
+// 로딩: nothing starts until the pictures it needs are in — a bar fills while they arrive
+function loadGate(sheets, imgs, then, label) {
+  const el = $("loading"), bar = $("ldBar"), txt = $("ldTxt"), t0 = performance.now();
+  const left = () => sheets.filter(n => !SPR[n]).length + imgs.filter(k => !IMG[k]).length, total = sheets.length + imgs.length;
+  if (!left()) { el.hidden = true; then(); return; }
+  for (const n of sheets) loadSheet(n);
+  el.hidden = false; txt.textContent = label || "먹을 가는 중";
+  const tick = () => { const l = left(), q = total ? 1 - l / total : 1; bar.style.width = Math.round(q * 100) + "%";
+    if (!l || performance.now() - t0 > 30000) { if (l) toast("그림 일부를 받지 못했다 — 받는 대로 바뀐다"); setTimeout(() => { el.hidden = true; then(); }, 150); return; }
+    if (performance.now() - t0 > 8000) txt.textContent = "연결이 느리다 · 조금만 기다려라";
+    setTimeout(tick, 100); };
+  tick();
+}
+const BASE_IMGS = ["far", "mid", "tex-paper", "tex-stone", "tex-giwa"];
+function playSheets() { const ch = (run && run.char) || "mumyeong", out = ALL_SHEETS.filter(n => !LAZY_SHEETS.has(n)).concat(CHAR_SHEETS[ch] || []);
+  if (run && mode !== "tutorial" && (run.tower || run.m === LAST_M)) out.push(...bossSheets(bossKindOf(run)));
+  return [...new Set(out)]; }
 function needSheets(list) { for (const n of list) loadSheet(n); }   // phones: only the hand being played and the guardian being fought are held in memory
-for (const n of ["hero", "hero2", "foes", "objects", "ui", "fx", "hud", "hudsolid", "props", "props2", "rocks", "pines", "slabs", "pillars", "rogue", "roguea", "rogue2", "rogue3", "rogue4", "foes2", "bossA", "bossB", "bossfx", "bossC", "bossD", "bossE", "bossF", "hero3", "herofx", "slashfx", "perkfx", "weapons", "chars", "misc", "arms", "ic0", "ic1", "ic2", "ic3", "ic4", "ic5", "ic6", "ic7", "ic8", "ic9", "ic10", "ic11", "ic12", "ic13", "ic14", "ic15", "mu", "po", "mfx", "pfx", "vis", "guide", "mv0", "mv1", "mv2", "bcal", "bvfx", "bname", "mvrun", "mech", "foes3", "kfx", "kring", "wfx", "ic16"]) if (!LAZY_SHEETS.has(n)) loadSheet(n);
+const ALL_SHEETS = ["hero", "hero2", "foes", "objects", "ui", "fx", "hud", "hudsolid", "props", "props2", "rocks", "pines", "slabs", "pillars", "rogue", "roguea", "rogue2", "rogue3", "rogue4", "foes2", "bossA", "bossB", "bossfx", "bossC", "bossD", "bossE", "bossF", "hero3", "herofx", "slashfx", "perkfx", "weapons", "chars", "misc", "arms", "ic0", "ic1", "ic2", "ic3", "ic4", "ic5", "ic6", "ic7", "ic8", "ic9", "ic10", "ic11", "ic12", "ic13", "ic14", "ic15", "mu", "po", "mfx", "pfx", "vis", "guide", "mv0", "mv1", "mv2", "bcal", "bvfx", "bname", "mvrun", "mech", "foes3", "kfx", "kring", "wfx", "ic16"];
+for (const n of ALL_SHEETS) if (!LAZY_SHEETS.has(n)) loadSheet(n);
 function inkInverted(img) { // night palette: grey ink becomes bone white, coloured accents stay as they are
   const c = document.createElement("canvas"); c.width = img.width; c.height = img.height; const g = c.getContext("2d"); g.drawImage(img, 0, 0);
   const id = g.getImageData(0, 0, c.width, c.height), d = id.data;
@@ -3934,12 +3952,12 @@ function resumeGame() { if (state !== "pause") return; showScreen(null); Music.r
 
 $("bNew").addEventListener("click", () => newRun(false));
 $("bContinue").addEventListener("click", continueRun);
-$("bTut").addEventListener("click", startTutorial);
+$("bTut").addEventListener("click", () => { Music.unlock(); loadGate(playSheets(), BASE_IMGS, startTutorial, "수련터를 그리는 중"); });
 $("bTower").addEventListener("click", towerScreen);
 $("bSeal").addEventListener("click", sealScreen);
 $("bHermit").addEventListener("click", () => typeof hermitScreen === "function" && hermitScreen());
 $("bCodex").addEventListener("click", () => typeof codexScreen === "function" && codexScreen());
-$("bEnter").addEventListener("click", enterMadang);
+$("bEnter").addEventListener("click", () => loadGate(playSheets(), BASE_IMGS, enterMadang, "관문을 그리는 중"));
 $("bPause").addEventListener("click", pauseGame);
 $("bResume").addEventListener("click", resumeGame);
 $("bGiveUp").addEventListener("click", () => { state = "play"; endRun(false); $("rSub").textContent = stageName(run.m) + "에서 판을 내려놓았다."; });
@@ -4006,10 +4024,11 @@ $("bInstall").addEventListener("click", async () => { if (!installEvt) return; i
 const standalone = matchMedia("(display-mode: standalone)").matches || matchMedia("(display-mode: fullscreen)").matches || navigator.standalone;
 
 
-if (location.hash === "#debug") window.__dbg = { tp(tx, ty) { P.x = tx * T + 7; P.y = (ty + 1) * T - 30; P.vx = P.vy = 0; }, get state() { return state; }, get P() { return P; }, get LV() { return LV; }, get state2() { return state; }, get SC() { return LV.scenery; }, get E() { return enemies; }, get run() { return run; }, set hs(v) { hitstop = v; }, kill(e) { killEnemy(e); }, hurt(e, s, k) { hurtEnemy(e, s, k); }, die(k, d) { die(k, d); }, banner(a, b, c) { banner(a, b === "red" ? SEAL : JJOK, c); }, chungo() { chungo(); }, get songPos() { return songPos; }, get FLASH() { return FLASH; }, get hold() { return bulletHold; }, get bolts() { return bolts; }, get rings() { return rings; }, get B() { return bullets; }, get beams() { return beams; }, flashing: e => isFlashing(e) };
+if (location.hash === "#debug") window.__dbg = { get missing() { return ALL_SHEETS.filter(n => !LAZY_SHEETS.has(n) && !SPR[n]).concat(BASE_IMGS.filter(k => !IMG[k])); }, tp(tx, ty) { P.x = tx * T + 7; P.y = (ty + 1) * T - 30; P.vx = P.vy = 0; }, get state() { return state; }, get P() { return P; }, get LV() { return LV; }, get state2() { return state; }, get SC() { return LV.scenery; }, get E() { return enemies; }, get run() { return run; }, set hs(v) { hitstop = v; }, kill(e) { killEnemy(e); }, hurt(e, s, k) { hurtEnemy(e, s, k); }, die(k, d) { die(k, d); }, banner(a, b, c) { banner(a, b === "red" ? SEAL : JJOK, c); }, chungo() { chungo(); }, get songPos() { return songPos; }, get FLASH() { return FLASH; }, get hold() { return bulletHold; }, get bolts() { return bolts; }, get rings() { return rings; }, get B() { return bullets; }, get beams() { return beams; }, flashing: e => isFlashing(e) };
 window.addEventListener("pointerdown", () => Music.unlock(), { once: true, capture: true });   // first tap anywhere starts the sound
 resize();
 toMenu();
 P = null; cam.x = 600; cam.y = 300;
 requestAnimationFrame(t => { last = t; requestAnimationFrame(frame); });
+loadGate(ALL_SHEETS.filter(n => !LAZY_SHEETS.has(n)), BASE_IMGS, () => {}, "먹을 가는 중");   // boot: the menu waits for the ink
 })();

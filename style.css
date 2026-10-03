@@ -266,3 +266,13 @@ body.padEdit #stickZone, body.padEdit #swipeZone { pointer-events: none; }
 #tip b { font-family: var(--f-head); font-size: 15px; color: #e8b84a; font-weight: 400; }
 #tip span { font-size: 12.5px; line-height: 1.45; }
 #tip small { font-size: 11.5px; color: #e9a19a; }
+
+/* 로딩: paper, the name, and an ink bar that fills as the pictures arrive */
+#loading { position: fixed; inset: 0; z-index: 50; display: grid; place-items: center; background: var(--paper); }
+#loading[hidden] { display: none; }
+#loading .ld-in { display: grid; justify-items: center; gap: 6px; width: min(280px, 70vw); }
+#loading .ld-t { font-family: var(--f-head, serif); font-size: 44px; font-weight: 400; color: var(--ink); letter-spacing: .1em; }
+#loading .ld-h { font-family: var(--f-head, serif); font-size: 15px; color: #c3161c; margin-top: -6px; }
+#loading .ld-bar { width: 100%; height: 6px; margin-top: 14px; border-radius: 3px; background: rgba(23, 22, 26, .12); overflow: hidden; }
+#loading .ld-bar i { display: block; height: 100%; width: 0; background: linear-gradient(90deg, #17161a, #c3161c); border-radius: 3px; transition: width .15s; }
+#loading span { font-size: 12.5px; color: rgba(23, 22, 26, .6); }
