@@ -742,10 +742,10 @@ function buildMadangMap(seed, m, cy = 0, omIn = null, arena = m === 4, crowd = 0
       else if ((ch === "L" || ch === "M") && rng() < .5) c[y][x] = ch === "L" ? "M" : "L";
     }
     // extra guard on open ground in about half the pieces
-    for (let extra = (om === "gunse" ? 2 : 1) + crowd; extra > 0; extra--) if (rng() < .45 + .08 * m + (om === "gunse" ? .35 : 0)) for (let tries = 0; tries < 8; tries++) {
+    for (let extra = (om === "gunse" ? 2 : 1) + crowd + (ctl ? 0 : Math.min(4, cy)); extra > 0; extra--) if (rng() < .45 + .08 * m + (om === "gunse" ? .35 : 0) + (ctl ? 0 : .1 * Math.min(3, cy))) /* each turn of 천고 brings more guards; the 탑 asks for hands instead */ for (let tries = 0; tries < 8; tries++) {
       const x = 3 + ((rng() * (c[0].length - 6)) | 0);
       let y = 2; while (y < 15 && c[y][x] === " ") y++;
-      if (y < 15 && c[y][x] === "#" && c[y - 1][x] === " " && c[y - 2][x] === " " && !c[y - 1].some(ch => "gshdmrpak".includes(ch))) { c[y - 1][x] = m >= 2 && rng() < .35 ? "h" : rng() < .5 ? "p" : "g"; break; }
+      if (y < 15 && c[y][x] === "#" && c[y - 1][x] === " " && c[y - 2][x] === " " && !(cy && !ctl ? c[y - 1].slice(Math.max(0, x - 2), x + 3) : c[y - 1]).some(ch => "gshdmrpak".includes(ch))) { /* later turns: guards may share a stretch of ground, just not stand on top of each other */ c[y - 1][x] = m >= 2 && rng() < .35 ? "h" : rng() < .5 ? "p" : "g"; break; }
     }
     for (let y = 0; y < 16; y++) rows[y] += c[y].join("");
   }
@@ -1162,6 +1162,7 @@ function endRun(won) {
   $("rSub").textContent = run.tower ? (won ? "천고가 다시 울렸다." : `천고탑 ${run.floor}층에서 숨이 다했다.`) : won ? "천고는 아직 위에서 울린다." : stageName(run.m) + "에서 숨이 다했다.";
   $("rStats").innerHTML = "";
   const gain = runRewards(reached);
+  { const sn = store.get("stage", null); retryGain = !won && sn && sn.seed === run.seed && sn.m === run.m && (sn.cycle || 0) === (run.cycle || 0) && (sn.floor || 0) === (run.floor || 0) ? gain : null; $("bRetryGate").hidden = !retryGain; }   // 절명: the gate can be tried again — the rewards just given are taken back
   for (const [k, v] of [[run.tower ? "오른 층" : "넘은 관문", reached + (!run.tower && (run.cycle || 0) ? ` · ${run.cycle}번 천고를 벰` : "")], ["시간", fmt(run.time)], ["간파", (run.kanpa || 0) + "회"], ["벤 적", run.kills], ["얻은 혼", "+" + gain.hon + (gain.shard ? ` · 천고 조각 +${gain.shard}` : "")]]) {
     const a = document.createElement("span"), b = document.createElement("b"); a.textContent = k; b.textContent = v; $("rStats").append(a, b);
   }
@@ -1179,7 +1180,7 @@ function endRun(won) {
   if (mode !== "tutorial") { const w = wpn(); META.mastery[w] = (META.mastery[w] || 0) + run.kills; if ((run.aimK || 0) >= 40) META.firsts.beat = true; saveMeta(); checkTitles(); }
   showScreen("result");
 }
-let lastResult = null, sealable = null;
+let lastResult = null, sealable = null, retryGain = null;
 // 혼 for everything done, 천고 조각 for the rare things (cutting 천고, every tenth floor); 업 multiplies both
 function runRewards(reached) {
   const mult = 1 + .15 * (run.upPts || 0) + (run.honDouble || 0);
@@ -1323,9 +1324,10 @@ function shot(d, arrow) {
   if (full && WP.bow) {   // 각궁: a full draw always flies; drawn to the second ring it is an 일격 and the air comes back
     P.arrow = true; if (master) { strike = true; regainAir(); }
   } else if (full) {   // 발도: a full draw lunges forward cutting; drawn to the second ring it is the 일격 and the air comes back
-    const onBeat = master; P.iaiCut = onBeat; if (onBeat) { strike = true; regainAir(); } P.dashCd = 0; P.slashDir = d; P.tapDash = !onBeat;
-    startDash({ x: Math.abs(d.x) > .2 ? Math.sign(d.x) : P.face, y: Math.abs(d.x) > .2 ? 0 : 0 }, true); P.dashT = onBeat ? .22 : .16; P.trail = trailFx(P.x + P.w / 2, P.y + P.h / 2, P.x + P.w / 2, P.y + P.h / 2, onBeat ? 9 : 5, onBeat ? .55 : .35, onBeat ? WF2.iai : WF2.streak);
-    addFx("kring", onBeat ? KR.burst : KR.indigo, P.x + P.w / 2, P.y + P.h / 2, onBeat ? 120 : 80, { life: .35, grow: .4, a: .9 }); if (onBeat) { addFx("kring", KR.lock, P.x + P.w / 2, P.y + P.h / 2, 70, { life: .25, grow: .6, a: .8 }); shake = Math.max(shake, 6); }
+    const onBeat = master, inMua = P.focus; P.iaiCut = onBeat; if (onBeat) { strike = true; regainAir(); } P.dashCd = 0; P.tapDash = !onBeat;
+    if (inMua) { P.focus = false; P.focusTap = false; Music.muffle(false); d = aimDir(); P.aimedUntil = songPos + .45; }   // drawn in 무아경: the cut goes where you aim, in any direction
+    P.slashDir = d; startDash(inMua ? d : { x: Math.abs(d.x) > .2 ? Math.sign(d.x) : P.face, y: 0 }, true); P.dashT = onBeat ? .22 : .16; P.trail = trailFx(P.x + P.w / 2, P.y + P.h / 2, P.x + P.w / 2, P.y + P.h / 2, onBeat ? 9 : 5, onBeat ? .55 : .35, onBeat ? WF2.iai : WF2.streak);
+    addFx("kring", onBeat ? KR.burst : KR.indigo, P.x + P.w / 2, P.y + P.h / 2, onBeat ? 80 : 56, { life: .3, grow: .4, a: .85 }); if (onBeat) shake = Math.max(shake, 6);
   }
   run.slashes++; if (strike) run.strikes++;
   P.windBack = false; P.slashDir = d; P.slashT = P.slashDur = (req.dash ? 0.22 : WP.dur); P.slashCd = (has("yeongyeok") ? Math.min(.08, WP.cd) : WP.cd) * (oath("hyeon") ? .5 : 1) + (has("geommak") ? .1 : 0); P.strike = strike; P.clanged = new Set(); P.hitSet = new Set(); P.countered = false;
@@ -1663,7 +1665,8 @@ function frameInput(rdt) {
   if (P.focus && mode !== "tutorial" && P.focusT > TAP_T) P.ki = Math.max(0, (P.ki || 0) - rdt / (has("d_jeong") ? 2.4 : 1.6));   // and drains while time is held
   if (P.focus) { P.focusT += rdt;
     const release = P.focusTap ? press.dash : !held.dash, grounded = P.onGround && !P.focusGround;
-    if (release || P.focusT > focusLen() || grounded || (P.ki <= 0 && mode !== "tutorial")) { const tap = !P.focusTap && P.focusT < TAP_T;   // a tap is a plain quick dash: no slow, no 일격, shots still hit
+    if (release || (P.focusT > focusLen() && !(P.iaiHold && wk() === "baldo")) || grounded || (P.ki <= 0 && mode !== "tutorial")) {   // a 발도 draw held in 무아경 keeps the world slow (기력 still drains)
+ const tap = !P.focusTap && P.focusT < TAP_T;   // a tap is a plain quick dash: no slow, no 일격, shots still hit
       P.focus = false; P.focusTap = false; P.focusGround = false; Music.muffle(false); P.tapDash = tap; if (!tap) P.aimedUntil = songPos + .45;
       P.beatDash = false; P.cloudT = 0; if (!tap && !P.onGround) P.aimChain = (P.aimChain || 0) + 1;   // shorter next time, until the feet touch ground
       if (!tap && wrule() === "ssang" && (P.gise || 0) >= 3 && songPos - (P.giseAt ?? -9) < 3) { P.giseDash = P.gise; P.gise = 0; if (!P.onGround) P.airDash++; ringFx(P.x + P.w / 2, P.y + P.h / 2, 60, "rgba(195,22,28,.9)", .3); }   // 기세: the built-up momentum rides the dash
@@ -3243,11 +3246,11 @@ function drawPlayer(pal) {
     ctx.strokeStyle = "rgba(23,22,26,.25)"; ctx.lineWidth = 2; ctx.beginPath(); ctx.arc(cx, P.y - 14, 6, 0, 6.283); ctx.stroke(); ctx.strokeStyle = SEAL; ctx.beginPath(); ctx.arc(cx, P.y - 14, 6, -Math.PI / 2, -Math.PI / 2 + k * 6.283); ctx.stroke(); }
   if (P.iaiHold && wk() === "baldo" && state !== "dead") { const held = (performance.now() - (P.iaiAt || 0)) / 1000, cy = P.y + P.h / 2, now = performance.now();   // 일도: an indigo ring gathers in, turns to a doubled blue-and-red ring once drawn, and locks black-and-red when the red strike is ready
     const st = held >= IAI_MASTER ? 2 : held >= IAI_FULL ? 1 : 0;
-    if (st > (P.iaiStage || 0)) { if (st === 2) { addFx("kring", KR.burst, cx, cy, 96, { life: .3, grow: .35, a: .85 }); Music.sfx("clang"); shake = Math.max(shake, 3); } else addFx("kring", KR.indigo, cx, cy, 80, { life: .25, grow: .3, a: .6 }); } P.iaiStage = st;
+    if (st > (P.iaiStage || 0)) { if (st === 2) { addFx("kring", KR.burst, cx, cy, 64, { life: .28, grow: .3, a: .8 }); Music.sfx("clang"); shake = Math.max(shake, 3); } else addFx("kring", KR.indigo, cx, cy, 56, { life: .22, grow: .25, a: .5 }); } P.iaiStage = st;
     const ring = (fr, r, a, rot = 0) => { if (!SPR.kring) return; ctx.save(); ctx.globalAlpha = a; ctx.translate(cx, cy); ctx.rotate(rot); drawSprite("kring", fr, 0, 0, r * 2 / SPR.kring.f[fr].h, false, .5, false, .5); ctx.restore(); };
-    if (st === 0) { const q = held / IAI_FULL; ring(KR.indigo, 74 - 36 * q, .25 + .6 * q, q * 1.2); }
-    else if (st === 1) { const q = (held - IAI_FULL) / (IAI_MASTER - IAI_FULL); ring(KR.double, 44 + Math.sin(now / 70) * 1.5, .8, now / 900); ring(KR.dot, 4 + 4 * q, .5 + .3 * q); }
-    else { const pl = 1 + Math.sin(now / 55) * .05; ring(KR.lock, 50 * pl, .72, -now / 700); ring(KR.dot, 8, .8); }
+    if (st === 0) { const q = held / IAI_FULL; ring(KR.indigo, 46 - 18 * q, .25 + .55 * q, q * 1.2); }
+    else if (st === 1) ring(KR.double, 29 + Math.sin(now / 70), .75, now / 900);
+    else { const pl = 1 + Math.sin(now / 55) * .04; ring(KR.thin, 31 * pl, .95, -now / 700); ring(KR.indigo, 36 * pl, .55, now / 500); }   // ready: a thin red ring inside a thin indigo one
     ctx.globalAlpha = 1; } else if (P.iaiStage) P.iaiStage = 0;
   if (P.orbit && state !== "dead" && (chr("munyeo") || chr("posu"))) for (let i = 0; i < P.orbit.n; i++) { const a = P.orbit.a + i * Math.PI * 2 / P.orbit.n, ox = cx + Math.cos(a) * 46, oy = P.y + P.h / 2 + Math.sin(a) * 40;   // talismans for her, balls of shot for him
     ctx.save(); ctx.translate(ox, oy); ctx.globalAlpha = Math.min(1, P.orbit.t * 3);
@@ -3933,6 +3936,10 @@ $("bPause").addEventListener("click", pauseGame);
 $("bResume").addEventListener("click", resumeGame);
 $("bGiveUp").addEventListener("click", () => { state = "play"; endRun(false); $("rSub").textContent = stageName(run.m) + "에서 판을 내려놓았다."; });
 $("bToMenu").addEventListener("click", () => { saveRun(); toMenu(); });
+$("bRetryGate").addEventListener("click", () => {   // 절명 → back to the door of this gate, as you first walked in; what the ended run paid out is returned
+  const sn = store.get("stage", null); if (!sn || !retryGain) return;
+  META.hon = Math.max(0, META.hon - retryGain.hon); META.shard = Math.max(0, META.shard - retryGain.shard); saveMeta(); retryGain = null; sealable = null;
+  store.set("run", sn); state = "menu"; showScreen(null); toast("관문을 처음부터 다시"); continueRun(); });
 { // 다시 시작: held for two seconds, and the run is dropped without its rewards — a restart has to be meant
   const b = $("bRestart"); let t0 = null, raf = 0;
   const stop = () => { t0 = null; cancelAnimationFrame(raf); b.style.setProperty("--p", "0%"); };
