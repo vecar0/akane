@@ -83,7 +83,7 @@ const SEAL = "#c3161c", JJOK = "#27466a", JJOK_L = "#5f86b5";
 function gpuize(c, put) { if (window.createImageBitmap && c && c.getContext) createImageBitmap(c).then(put).catch(() => {}); return c; }
 const IMG = {}, PAT = {};
 let perfT = 0, perfN = 0, perfSlow = 0;   // frame-time watch for the automatic quality drop
-for (const k of ["tex-paper", "tex-stone", "tex-giwa", "tex-granite", "tex-slab"]) { const im = new Image(); im.onload = () => { IMG[k] = im; PAT[k] = null; }; im.src = "assets/" + k + ".webp"; }
+for (const k of ["tex-paper", "tex-stone", "tex-giwa", "tex-granite", "tex-slab"]) { let n = 0; const go = () => { const im = new Image(); im.onload = () => { IMG[k] = im; PAT[k] = null; }; im.onerror = () => { if (++n < 8) setTimeout(go, 1200 * n); }; im.src = "assets/" + k + ".webp"; }; go(); }
 function tintedPaper(ssn) { // paper texture with the season's colour multiplied in once
   const key = "tex-paper-" + ssn; if (PAT[key]) return PAT[key]; const im = IMG["tex-paper"]; if (!im) return null;
   if (!IMG[key]) { const c = document.createElement("canvas"); c.width = im.width; c.height = im.height; const g = c.getContext("2d"); g.drawImage(im, 0, 0); g.globalCompositeOperation = "multiply"; g.fillStyle = SEASON_TINT[ssn]; g.fillRect(0, 0, c.width, c.height); IMG[key] = c; }
@@ -94,7 +94,7 @@ function pattern(key, scale) { // world- or screen-anchored repeating pattern, b
   if (!PAT[key]) { PAT[key] = ctx.createPattern(IMG[key], "repeat"); PAT[key].setTransform(new DOMMatrix().scale(scale)); }
   return PAT[key];
 }
-for (const k of ["far", "mid"]) { const im = new Image(); im.onload = () => { IMG[k] = gpuize(softened(seamlessStrip(im), k === "far" ? 3 : 2), bm => { IMG[k] = bm; }); }; im.src = "assets/" + k + ".webp"; }
+for (const k of ["far", "mid"]) { let n = 0; const go = () => { const im = new Image(); im.onload = () => { IMG[k] = gpuize(softened(seamlessStrip(im), k === "far" ? 3 : 2), bm => { IMG[k] = bm; }); }; im.onerror = () => { if (++n < 8) setTimeout(go, 1200 * n); }; im.src = "assets/" + k + ".webp"; }; go(); }
 // Make a panorama wrap horizontally: the last 22% is cross-faded into the start, so tiling shows no cut or mirror.
 function softened(c, px) { // blur once at load, so the backdrop recedes behind the sharp pines and actors
   const o = document.createElement("canvas"); o.width = c.width; o.height = c.height; const g = o.getContext("2d");
@@ -385,9 +385,11 @@ function loadSheet(n) { // one atlas: frames JSON + image (ink-inverted copy for
   Promise.all([
     fetch(`assets/sprites/${n}.json`).then(r => r.json()),
     new Promise((res, rej) => { const im = new Image(); im.onload = () => res(im); im.onerror = rej; im.src = `assets/sprites/${n}.webp`; })
-  ]).then(([f, img]) => { SPR[n] = { f, img, inv: ["hero", "hero2", "foes", "objects", "fx", "props", "props2", "rocks", "pines", "slabs", "pillars", "guide", "bname", "foes3"].includes(n) ? inkInverted(img) : null };
-    if (SPR[n].inv) gpuize(SPR[n].inv, bm => { SPR[n].inv = bm; }); applyUiSprites(); }).catch(() => { sheetLoading.delete(n); });
+  ]).then(([f, img]) => { let inv = null; if (["hero", "hero2", "foes", "objects", "fx", "props", "props2", "rocks", "pines", "slabs", "pillars", "guide", "bname", "foes3"].includes(n)) try { inv = inkInverted(img); } catch (e) { inv = null; }   // short of canvas memory: keep the sheet, lose only its night copy
+    SPR[n] = { f, img, inv };
+    if (SPR[n].inv) gpuize(SPR[n].inv, bm => { SPR[n].inv = bm; }); applyUiSprites(); }).catch(() => { sheetLoading.delete(n); const a = (sheetTry[n] = (sheetTry[n] || 0) + 1); if (a < 8) setTimeout(() => loadSheet(n), 1200 * a); });   // a failed load (offline blip, a deploy in progress) is tried again
 }
+const sheetTry = {};
 function bossSheets(kind) { const B = BOSSES[kind]; if (!B) return []; const out = ["bossfx", "bcal", "bvfx", "bname", B.sheet];
   for (const v of Object.values(BOSS_POSE[kind] || {})) out.push(v[0]); for (const a of BOSS_ANIM[kind] || []) out.push(a[0]); return out; }
 function needSheets(list) { for (const n of list) loadSheet(n); }   // phones: only the hand being played and the guardian being fought are held in memory
@@ -771,6 +773,7 @@ function buildMadangMap(seed, m, cy = 0, omIn = null, arena = m === 4, crowd = 0
 
 let LV = null;
 function loadMap(map, pal, hints) {
+  freeGround(LV);   // the old gate's baked ground goes with it
   const h = map.length, w = Math.max(...map.map(r => r.length));
   const grid = new Uint8Array(w * h);
   const lv = { w, h, grid, pal, hints: hints || [], defs: [], points: [], targets: [], cps: [], lasers: [], start: null, exit: null, stains: [] };
@@ -2563,7 +2566,7 @@ function frame(now) {
   const inv = !!(P && (P.focus || killCam > 0) && state === "play");
   Music.setRate(inv ? .45 : 1);
   if (inv !== cvInverted) { cvInverted = inv; document.body.classList.toggle("night", inv); }
-  render(rdt);
+  try { render(rdt); } catch (err) { if (!frame.warned) { frame.warned = true; console.error(err); } }   // one bad draw must never stop the game loop
   workMs += (performance.now() - t0 - workMs) * .1;
   requestAnimationFrame(frame);
 }
@@ -2678,14 +2681,16 @@ function drawGround(pal, ssn, x0, x1, y0, y1, R) { // the rock, its painted face
     }
   }
 }
+let groundOff = false;
+function freeGround(lv) { if (lv && lv._gc) { for (const v of lv._gc.values()) v.cv.width = v.cv.height = 0; lv._gc.clear(); } }
 function bakeGround(gc, key, c, CW, top, hh, k, pal, ssn) { // paint one chunk of ground into its own canvas, at screen resolution
-  const cvs = document.createElement("canvas"); cvs.width = Math.ceil((CW + 4) * k); cvs.height = Math.ceil(hh * k); const g = cvs.getContext("2d");
+  const cvs = document.createElement("canvas"); cvs.width = Math.ceil((CW + 4) * k); cvs.height = Math.ceil(hh * k); let g = null; try { g = cvs.getContext("2d"); } catch (e) {} if (!g) { groundOff = true; cvs.width = cvs.height = 0; return; }   // out of canvas memory: paint the ground live from now on
   const main = ctx; ctx = g; try { g.setTransform(cvs.width / (CW + 4), 0, 0, cvs.height / hh, -(c * CW - 2) * cvs.width / (CW + 4), -top * cvs.height / hh);
     const x0 = Math.max(0, Math.floor(c * CW / T) - 1), x1 = Math.min(LV.w - 1, Math.ceil((c + 1) * CW / T) + 1);
     g.beginPath(); g.rect(c * CW - 2, top, CW + 4, hh); g.clip();
     drawGround(pal, ssn, x0, x1, 0, LV.h - 1, { wx0: c * CW - 2, wx1: (c + 1) * CW + 2, wy0: top, wy1: top + hh }); } finally { ctx = main; }
   gc.set(key + "#" + c, { cv: cvs, used: performance.now() });
-  if (gc.size > (MOBILE ? 7 : 12)) { let old = null; for (const [kk, v] of gc) if (!old || v.used < old[1].used) old = [kk, v]; gc.delete(old[0]); }   // keep memory small: drop the stalest
+  while (gc.size > (MOBILE ? 4 : 10)) { let old = null; for (const [kk, v] of gc) if (!old || v.used < old[1].used) old = [kk, v]; old[1].cv.width = old[1].cv.height = 0; gc.delete(old[0]); }   // iOS frees canvas memory only when the canvas is emptied   // keep memory small: drop the stalest
 }
 function render(rdt) {
   if (!paperPat) makePaper();
@@ -2765,10 +2770,11 @@ function render(rdt) {
     } else if (laserWarn(l) && Math.floor(performance.now() / 60) % 2) { ctx.fillStyle = "rgba(195,22,28,.55)"; ctx.fillRect(l.x - .6, l.y0, 1.2, l.y1 - l.y0); }
   }
   // tiles: the ground is static, so it is painted once into chunks and stamped; a chunk not yet baked falls back to painting live
-  { const k2 = SCALE * DPR, key = (pal === NIGHT ? "n" : "d") + ssn + "|" + (LV.gridVer || 0) + "|" + k2.toFixed(3) + "|" + ["pillars", "objects", "props2"].map(n => SPR[n] ? 1 : 0).join("") + ["tex-stone", "tex-giwa", "tex-slab"].map(n => IMG[n] ? 1 : 0).join(""), CW = 512, top = -96, hh = LV.h * T + 192;
+  { const k2 = Math.min(SCALE * DPR, MOBILE ? 1.25 : 2), key = (pal === NIGHT ? "n" : "d") + ssn + "|" + (LV.gridVer || 0) + "|" + k2.toFixed(3) + "|" + ["pillars", "objects", "props2"].map(n => SPR[n] ? 1 : 0).join("") + ["tex-stone", "tex-giwa", "tex-slab"].map(n => IMG[n] ? 1 : 0).join(""), CW = 512, top = -96, hh = LV.h * T + 192;
     const gc = LV._gc || (LV._gc = new Map()), c0 = Math.floor((cam.x - vw / 2) / CW), c1 = Math.floor((cam.x + vw / 2) / CW);
     let ready = true; for (let c = c0; c <= c1; c++) if (!gc.has(key + "#" + c)) ready = false;
-    if (!ready) { for (let c = c0; c <= c1; c++) if (!gc.has(key + "#" + c)) { bakeGround(gc, key, c, CW, top, hh, k2, pal, ssn); break; }   // one per frame
+    if (groundOff) ready = false;
+    if (!ready) { for (let c = c0; c <= c1; c++) if (!groundOff && !gc.has(key + "#" + c)) { bakeGround(gc, key, c, CW, top, hh, k2, pal, ssn); break; }   // one per frame
       drawGround(pal, ssn, x0, x1, y0, y1, { wx0: cam.x - vw / 2, wx1: cam.x + vw / 2, wy0: cam.y - vh / 2, wy1: cam.y + vh / 2 }); }
     else for (let c = c0; c <= c1; c++) { const e = gc.get(key + "#" + c); e.used = performance.now(); ctx.drawImage(e.cv, c * CW - 2, top, CW + 4, hh); }   // chunks overlap by 2px so no seam shows
     if (SPR.pillars || pattern("tex-slab", .45)) { const rock = new Path2D(); for (let ty = y0; ty <= y1; ty++) for (let tx = x0; tx <= x1; tx++) if (LV.grid[ty * LV.w + tx] === 1 && !(LV.slabTiles && LV.slabTiles.has(ty * LV.w + tx))) rock.rect(tx * T - .3, ty * T - .3, T + .6, T + .6);
@@ -3366,7 +3372,7 @@ function drawEnemy(e, pal) {
     const hh = e.type === "k" ? 66 : e.type === "a" ? 58 : 62, ref = e.type === "k" ? 6 : e.type === "a" ? 3 : 0, k = hh / SPR.foes3.f[ref].h;
     if (e.counter) { ctx.globalAlpha = .55 + .2 * Math.sin(performance.now() / 70); ctx.strokeStyle = SEAL; ctx.lineWidth = 2; ctx.beginPath(); ctx.ellipse(cx, e.y + e.h - 2, 26, 6, 0, 0, Math.PI * 2); ctx.stroke(); ctx.globalAlpha = 1; }
     drawSprite("foes3", fr, cx, e.y + e.h + 1, k, e.face < 0, .5, pal.night); return; }
-  if (SPR.foes) {
+  if (SPR.foes && FOE[e.type]) {   // 순라·자객·북잡이 whose sheet has not arrived yet fall through to the plain figure below
     const fr = FOE[e.type], now = performance.now();
     if (e.type === "d") { drawSprite("foes", fr[Math.sin(now / 90 + e.id) > 0 ? 0 : 1], cx, e.y + e.h + 12, kOf("foes", 0, FOE_H) * .6, e.vx < 0, .5, pal.night); return; }
     if (e.fireAt != null) { // aim line from the musket muzzle
