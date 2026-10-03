@@ -1747,7 +1747,7 @@ function hurtEnemy(e, strike, kind) {
   if (!e.alive || ghostly(e)) return;
   const kan = isFlashing(e); if (kan) { strike = true; e.kanpa = true; e.kanMua = viaMua();
     const x = e.x + e.w / 2, y = e.y + e.h / 2, big = e.type === "b";   // 간파: the crossed cut, gold flakes, the world holds a beat
-    addFx("kfx", KF.xcut, x, y, big ? 150 : 90, { life: .4, grow: .15, rot: Math.random() * .6 - .3 }); addFx("kfx", KF.flakes, x, y, big ? 170 : 110, { life: .5, grow: .5 });
+    addFx("kfx", KF.xcut, x, y, big ? 150 : 90, { life: .4, grow: .15, rot: Math.random() * .6 - .3 }); addFx("kfx", KF.flakes, x, y, big ? 170 : 110, { life: .5, grow: .5 }); addFx("kfx", KF.ring, x, y, big ? 140 : 70, { life: .35, grow: 2.2, a: .9 });
     hitstop = Math.max(hitstop, .1); shake = Math.max(shake, 7); }
   else if (e.lastBlow != null && songPos - e.lastBlow < .3) { addFx("kfx", KF.fizzle, e.x + e.w / 2, e.y + e.h * .35, 46, { life: .45, grow: .2, ay: .5 }); e.lastBlow = null; }   // just too late: a grey fizzle
   if (e.type === "a" && e.counter && kind === "il" && !kan && Math.sign(P.x + P.w / 2 - (e.x + e.w / 2)) === e.face) {   // 자객 받아치기: an 일섬 straight into his stance is turned on you
@@ -1949,26 +1949,35 @@ function blowAt(e) { // when this foe's blow lands (null when nothing is coming)
   return null;
 }
 function isFlashing(e) { const t = blowAt(e); return t != null && songPos >= t - FLASH && songPos < t + .06; }
-function preFlash(e) { const t = blowAt(e); return t != null && songPos >= t - FLASH - .3 && songPos < t - FLASH ? (songPos - (t - FLASH - .3)) / .3 : 0; }
+const CLOSE = .5;   // the ring's approach before the glint opens
+function preFlash(e) { const t = blowAt(e); return t != null && songPos >= t - FLASH - CLOSE && songPos < t - FLASH ? (songPos - (t - FLASH - CLOSE)) / CLOSE : 0; }
 function drawKanAura(e) { // behind the body: ink rising as the blow gathers
   if (!SPR.kfx) return; const pre = preFlash(e), on = isFlashing(e); if (!pre && !on) return;
   const big = e.type === "b"; ctx.globalAlpha = on ? .6 + .15 * Math.sin(performance.now() / 50) : pre * .45;
   drawSprite("kfx", KF.aura, e.x + e.w / 2, e.y + e.h + 4, e.h * (big ? 1.3 : 1.6) / SPR.kfx.f[KF.aura].h, false, .5, false, 1); ctx.globalAlpha = 1;
 }
-function drawKanFlash(e, tt) { // over the body: the bead swelling at the blade, then the cross flash
+function drawKanFlash(e, tt) { // 간파 ring: a brush circle closes on the weak point; locked tight it turns gold — that is the moment
   if (!SPR.kfx) return; const pre = preFlash(e), on = isFlashing(e), big = e.type === "b", f = e.face || 1;
-  const tx = e.x + e.w / 2 + (big ? 0 : f * (e.w / 2 + 6)), ty = big ? e.y + e.h * .3 : e.y + e.h * .32;
-  if (!on) { if (e.flashOn) { e.flashOn = false; e.lastBlow = songPos; } }
-  if (pre && !on) { const sz = 6 + 16 * pre; drawSprite("kfx", KF.bead, tx, ty, sz / SPR.kfx.f[KF.bead].h, false, .5, false, .5); return; }
-  if (!on) return;
-  if (!e.flashOn) { e.flashOn = true; if (Math.hypot(e.x - P.x, e.y - P.y) < 520) { flashDim = .07; Music.sfx("clang"); } }
-  const t = blowAt(e), q = Math.max(0, Math.min(1, (songPos - (t - FLASH)) / FLASH)), mua = P && P.focus, pop = 1 + .35 * Math.max(0, 1 - q * 4);
-  const sz = (big ? 120 : 58) * (mua ? 1.35 : 1) * pop;
-  ctx.save(); ctx.translate(tx, ty); ctx.rotate(.15 * Math.sin(tt * 9));
-  drawSprite("kfx", KF.cross, 0, 0, sz / SPR.kfx.f[KF.cross].h, false, .5, false, .5);
-  ctx.rotate(-tt * 4); ctx.globalAlpha = .85; drawSprite("kfx", KF.star, 0, 0, sz * .55 / SPR.kfx.f[KF.star].h, false, .5, false, .5); ctx.restore(); ctx.globalAlpha = 1;
-  if (mua && P) { const px = P.x + P.w / 2, py = P.y + P.h / 2, L = Math.hypot(tx - px, ty - py);   // 무아경: a dotted stroke shows the way in
-    if (L < 360 && L > 30) { const g = SPR.kfx.f[KF.guide]; ctx.save(); ctx.translate(px, py); ctx.rotate(Math.atan2(ty - py, tx - px)); ctx.globalAlpha = .75; ctx.drawImage(SPR.kfx.img, g.x, g.y, g.w, g.h, 18, -5, L - 36, 10); ctx.restore(); ctx.globalAlpha = 1; } }
+  if (!on && e.flashOn) { e.flashOn = false; e.lastBlow = songPos; }
+  if (!pre && !on) return;
+  const cx = e.x + e.w / 2 + (big ? 0 : f * 2), cy = e.y + e.h * (big ? .38 : .42), mua = P && P.focus, rf = SPR.kfx.f[KF.ring];
+  const R0 = (big ? 170 : 96) * (mua ? 1.2 : 1), R1 = (big ? 62 : 30) * (mua ? 1.2 : 1);
+  ctx.save(); ctx.translate(cx, cy);
+  if (!on) {   // closing in: wide and faint, tightening, a second ring trailing behind it
+    const k = pre * pre, r = R0 + (R1 - R0) * k;
+    for (const [rr, a, sp] of [[r, .35 + .55 * pre, 1], [r * 1.35 + 10, .2 * pre, -1.4]]) { ctx.save(); ctx.rotate(tt * 2.4 * sp); ctx.globalAlpha = a; drawSprite("kfx", KF.ring, 0, 0, rr * 2 / rf.h, false, .5, false, .5); ctx.restore(); }
+    ctx.restore(); ctx.globalAlpha = 1; return;
+  }
+  if (!e.flashOn) { e.flashOn = true; if (Math.hypot(e.x - P.x, e.y - P.y) < 520) { flashDim = .06; Music.sfx("clang"); }
+    addFx("kfx", KF.flakes, cx, cy, R1 * 3.2, { life: .35, grow: .4, a: .8 }); }   // locking on: a spray of gold leaf
+  const t = blowAt(e), q = Math.max(0, Math.min(1, (songPos - (t - FLASH)) / FLASH)), r = R1 * (1 - .4 * q), pulse = 1 + .08 * Math.sin(tt * 40);
+  ctx.save(); ctx.rotate(-tt * 5); ctx.globalAlpha = 1; drawSprite("kfx", KF.ring, 0, 0, r * 2 * pulse / rf.h, false, .5, false, .5); ctx.restore();
+  ctx.strokeStyle = `rgba(232,184,74,${.9 - .4 * q})`; ctx.lineWidth = (big ? 4 : 2.6) * (mua ? 1.3 : 1); ctx.beginPath(); ctx.arc(0, 0, r * .86 * pulse, 0, Math.PI * 2); ctx.stroke();   // gold: now
+  ctx.strokeStyle = "rgba(195,22,28,.9)"; ctx.lineWidth = 1.6; ctx.beginPath(); ctx.arc(0, 0, r * .86, -Math.PI / 2, -Math.PI / 2 + Math.PI * 2 * (1 - q)); ctx.stroke();   // and how long it lasts
+  ctx.globalAlpha = .9; drawSprite("kfx", KF.star, 0, 0, r * .9 / SPR.kfx.f[KF.star].h, false, .5, false, .5);
+  ctx.restore(); ctx.globalAlpha = 1;
+  if (mua && P) { const px = P.x + P.w / 2, py = P.y + P.h / 2, L = Math.hypot(cx - px, cy - py);   // 무아경: a dotted stroke shows the way in
+    if (L < 360 && L > 30) { const g = SPR.kfx.f[KF.guide]; ctx.save(); ctx.translate(px, py); ctx.rotate(Math.atan2(cy - py, cx - px)); ctx.globalAlpha = .75; ctx.drawImage(SPR.kfx.img, g.x, g.y, g.w, g.h, 18, -5, L - 36 - r, 10); ctx.restore(); ctx.globalAlpha = 1; } }
 }
 const viaMua = () => !!(P && P.aimDash && !P.tapDash);   // the cut came out of 무아경
 function chainAdd(n) { if (!P) return; const g0 = Math.min(5, P.chain || 0); P.chain = (P.chain || 0) + n; P.chainPop = .25; if (Math.min(5, P.chain) > g0) Music.sfx("lantern"); }
