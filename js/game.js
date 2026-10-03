@@ -1749,9 +1749,9 @@ function hurtEnemy(e, strike, kind) {
   if (!e.alive || ghostly(e)) return;
   const kan = isFlashing(e); if (kan) { strike = true; e.kanpa = true; e.kanMua = viaMua(); if (run && mode !== "tutorial") run.kanpa = (run.kanpa || 0) + 1;
     const x = e.x + e.w / 2, y = e.y + e.h / 2, big = e.type === "b";   // 간파: the crossed cut, gold flakes, the world holds a beat
-    addFx("kfx", KF.xcut, x, y, big ? 150 : 90, { life: .4, grow: .15, rot: Math.random() * .6 - .3 }); addFx("kfx", KF.flakes, x, y, big ? 170 : 110, { life: .5, grow: .5 }); addFx("kring", KR.burst, x, y, big ? 150 : 76, { life: .4, grow: 1.6, a: .95 });
+    addFx("kfx", KF.xcut, x, y, big ? 120 : 64, { life: .4, grow: .15, rot: Math.random() * .6 - .3 }); addFx("kfx", KF.flakes, x, y, big ? 130 : 80, { life: .5, grow: .5 }); addFx("kring", KR.burst, x, y, big ? 110 : 54, { life: .4, grow: 1.6, a: .95 });
     hitstop = Math.max(hitstop, .1); shake = Math.max(shake, 7); }
-  else if (e.lastBlow != null && songPos - e.lastBlow < .3) { addFx("kfx", KF.fizzle, e.x + e.w / 2, e.y + e.h * .35, 46, { life: .45, grow: .2, ay: .5 }); addFx("kring", KR.drip, e.x + e.w / 2, e.y + e.h * .42, 40, { life: .5, grow: .1, a: .6 }); e.lastBlow = null; }   // just too late: a grey fizzle
+  else if (e.lastBlow != null && songPos - e.lastBlow < .3) { addFx("kfx", KF.fizzle, e.x + e.w / 2, e.y + e.h * .35, 46, { life: .45, grow: .2, ay: .5 }); addFx("kring", KR.drip, e.x + e.w / 2, e.y + e.h * .42, 30, { life: .5, grow: .1, a: .6 }); e.lastBlow = null; }   // just too late: a grey fizzle
   if (e.type === "a" && e.counter && kind === "il" && !kan && Math.sign(P.x + P.w / 2 - (e.x + e.w / 2)) === e.face) {   // 자객 받아치기: an 일섬 straight into his stance is turned on you
     addFx("mech", MECH.deflect, e.x + e.w / 2 + e.face * 14, e.y + 14, 60, { life: .3 }); Music.sfx("clang"); P.dashT = 0; lastHitDir = { x: e.face, y: -.4 }; die(); return; }   // 간파: any blow that lands on the glint
   if (e.ward && !strike) { // 무당's talisman takes the cut instead
@@ -1967,13 +1967,13 @@ function drawKanFlash(e, tt) { // 간파: a brush ring closes on the weak point;
   if ((!pre && !on) || !SPR.kring || omen("goyo")) return;   // 고요: the ring is not shown — only the sound gives it away
   const S = SPR.kring, ring = (i, r, a, rot = 0) => { ctx.save(); ctx.rotate(rot); ctx.globalAlpha = a; drawSprite("kring", i, 0, 0, r * 2 / S.f[i].h, false, .5, false, .5); ctx.restore(); };
   const cx = e.x + e.w / 2 + (big ? 0 : f * 2), cy = e.y + e.h * (big ? .38 : .42), mua = P && P.focus;
-  const R0 = (big ? 160 : 90) * (mua ? 1.15 : 1), R1 = (big ? 66 : 36) * (mua ? 1.15 : 1);
+  const R0 = (big ? 120 : 66) * (mua ? 1.15 : 1), R1 = (big ? 50 : 26) * (mua ? 1.15 : 1);
   ctx.save(); ctx.translate(cx, cy);
   if (!on) { const k = 1 - Math.pow(1 - pre, 2), r = R0 + (R1 - R0) * k;   // closing in
     ring(KR.dashed, r * 1.25 + 8, .25 * pre, tt * .8); ring(big ? KR.dial : KR.thin, r, .35 + .6 * pre, -tt * .5); ring(KR.dot, R1 * .22, .2 + .4 * pre);
   } else { const t = blowAt(e), q = Math.max(0, Math.min(1, (songPos - (t - FLASH)) / FLASH)), r = R1 * (1 - .3 * q), beat = 1 + .07 * Math.sin(tt * 36);   // bitten down: thick, dark, beating
     if (mua) ring(KR.thin, r * 1.55, .7, tt);
-    ring(KR.double, r * 1.1 * beat, .95, -tt * 2); ring(KR.dot, R1 * .26 * beat, .9); }
+    ring(KR.thin, r * beat, 1, -tt * 2); brushRing(0, 0, r * 1.18 * beat, "#17161a", big ? 3 : 2, 41); ring(KR.dot, R1 * .26 * beat, .9); }   // red ring bitten in by a black one
   ctx.restore(); ctx.globalAlpha = 1;
   if (mua && P && on) { const px = P.x + P.w / 2, py = P.y + P.h / 2, L = Math.hypot(cx - px, cy - py), g = SPR.kfx && SPR.kfx.f[KF.guide];   // 무아경: a dotted stroke shows the way in
     if (g && L < 360 && L > 30) { ctx.save(); ctx.translate(px, py); ctx.rotate(Math.atan2(cy - py, cx - px)); ctx.globalAlpha = .7; ctx.drawImage(SPR.kfx.img, g.x, g.y, g.w, g.h, 18, -5, L - 36 - R1, 10); ctx.restore(); ctx.globalAlpha = 1; } }
@@ -3337,7 +3337,7 @@ function drawBoss(e, pal, cx, feet) {
     else if (["charge", "pounce", "leap", "dance"].includes(e.act)) { ctx.globalAlpha = Math.min(1, (a + .2) * 1.6); brushLine(cx, f - 20, cx + e.face * 220, f - 20, SEAL, 9, false, sd); ctx.globalAlpha = 1; }
     else if (["volley", "fan", "fan2", "spit", "scrap", "foxfire"].includes(e.act)) { ctx.globalAlpha = Math.min(1, a + .4); const r = 6 + prog * 8; for (let i = 0; i < 4; i++) inkDab(cx + e.face * 26, e.y + 22, i * .8 + hrnd(sd, i), r * 2.2, r * 1.2, SEAL); ctx.globalAlpha = 1; }
     else if (e.act === "shcut" || e.act === "shstrike") { const w = e.act === "shstrike" ? 120 : 70; ctx.globalAlpha = a * 2.2; inkWash(e.face > 0 ? cx : cx - w, e.y - 20, w, e.h + 30, SEAL, sd); ctx.globalAlpha = 1; }
-    else if (["summon", "spirits", "illusion", "mask", "gamtu", "roar", "scream", "blink", "drum", "shblink"].includes(e.act)) { ctx.globalAlpha = Math.min(1, (a + .2) * 1.5); brushRing(cx, e.y + e.h / 2, 30 + prog * 40, JJOK, 4, sd); ctx.globalAlpha = 1; }
+    else if (["summon", "spirits", "illusion", "mask", "gamtu", "roar", "scream", "blink", "drum", "shblink"].includes(e.act)) { ctx.globalAlpha = Math.min(1, (a + .2) * 1.5); brushRing(cx, e.y + e.h / 2, 30 + prog * 40, "#17161a", 4, sd); ctx.globalAlpha = 1; }
   }
   if (e.raged && SPR.bvfx) { const fl = 1 + Math.sin(performance.now() / 90) * .05; ctx.globalAlpha = .55 + .15 * Math.sin(performance.now() / 140); spr("bvfx", BV.rage, cx, e.y + e.h * .45, e.h * 1.5 * fl); ctx.globalAlpha = 1; }   // 격노: a painted fire behind the body
   else if (e.raged) { const g = ctx.createRadialGradient(cx, e.y + e.h / 2, 6, cx, e.y + e.h / 2, Math.max(e.w, e.h)); g.addColorStop(0, `rgba(195,22,28,${.18 + .08 * Math.sin(performance.now() / 120)})`); g.addColorStop(1, "rgba(195,22,28,0)"); ctx.fillStyle = g; ctx.fillRect(cx - e.w - e.h, e.y - e.h, (e.w + e.h) * 2, e.h * 3); }   // 격노
@@ -3364,7 +3364,7 @@ function drawHazards(pal) {
   const tt = performance.now() / 1000;
   for (const z of haz) {
     if (z.kind === "ring") {
-      const r = (songPos - z.at) * z.speed; if (r < 0) { ctx.globalAlpha = .45; brushRing(z.x, z.y, 20, JJOK, 3, z.x); ctx.globalAlpha = 1; continue; }
+      const r = (songPos - z.at) * z.speed; if (r < 0) { ctx.globalAlpha = .45; brushRing(z.x, z.y, 20, "#17161a", 3, z.x); ctx.globalAlpha = 1; continue; }
       ctx.strokeStyle = `rgba(23,22,26,${.75 * (1 - r / z.max)})`; ctx.lineWidth = 10; ctx.beginPath(); ctx.arc(z.x, z.y, r, 0, 7); ctx.stroke();
       ctx.strokeStyle = `rgba(236,230,216,${.8 * (1 - r / z.max)})`; ctx.lineWidth = 2; ctx.beginPath(); ctx.arc(z.x, z.y, r, 0, 7); ctx.stroke(); continue;
     }
