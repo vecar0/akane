@@ -144,10 +144,10 @@ const CHOSIK = [
   { id: "d_sunbo", name: "순보", han: "瞬步", kind: "일섬", desc: "무아경을 풀 때 겨눈 쪽 가까이(7칸) 적이 있으면 그 등 뒤로 순간이동하며 벤다 — 우두머리에겐 온전한 일격이 아니고, 뒤에 잠깐 대시를 못 쓴다", icon: 850 },
   { id: "d_sun", name: "연환", han: "連環", kind: "일섬", desc: "일섬으로 적을 베면 공중 대시가 하나 더 쌓이고, 곧바로 다시 무아경에 든다 (대시를 누르면 날아간다)", icon: 4 },
   { id: "d_jeong", name: "정중동", han: "靜中動", kind: "일섬", desc: "무아경이 더 느리게 흐르고 기력이 덜 닳으며, 겨눈 쪽의 적에게 겨냥이 저절로 붙는다", icon: 106 },
-  { id: "d_pajuk", name: "파죽", han: "破竹", kind: "일섬", desc: "연속 처치가 이어질수록 일섬이 길고 넓어진다 — 등급마다 15%씩, 다섯 등급이면 1.75배", icon: 208 },
-  { id: "d_hyeol", name: "혈섬", han: "血閃", kind: "일섬", desc: "숨이 적을수록 일섬이 길고 넓어진다 — 숨 둘이면 1.4배, 하나면 1.8배", icon: 104 },
-  { id: "d_giseom", name: "기섬", han: "氣閃", kind: "일섬", desc: "일섬으로 벤 적마다 천고 기운이 두 배로 차고, 천고난무가 두 명을 더(열 명까지) 벤다", icon: 606 },
-  { id: "d_dangong", name: "단공", han: "斷空", kind: "일섬", desc: "일섬이 지나가는 길의 적 탄을 모두 베어 없앤다 — 튕길 수 없는 붉은 탄까지", icon: 102 },
+  { id: "d_pajuk", name: "파죽", han: "破竹", kind: "일섬", desc: "연속 처치가 이어질수록 일섬이 길고 넓어진다 — 등급마다 15%씩, 다섯 등급이면 1.75배", icon: 860 },
+  { id: "d_hyeol", name: "혈섬", han: "血閃", kind: "일섬", desc: "숨이 적을수록 일섬이 길고 넓어진다 — 숨 둘이면 1.4배, 하나면 1.8배", icon: 861 },
+  { id: "d_giseom", name: "기섬", han: "氣閃", kind: "일섬", desc: "일섬으로 벤 적마다 천고 기운이 두 배로 차고, 천고난무가 두 명을 더(열 명까지) 벤다", icon: 862 },
+  { id: "d_dangong", name: "단공", han: "斷空", kind: "일섬", desc: "일섬이 지나가는 길의 적 탄을 모두 베어 없앤다 — 튕길 수 없는 붉은 탄까지", icon: 863 },
   { id: "d_charge", name: "축기", han: "蓄氣", kind: "일섬", desc: "0.8초를 꽉 채워 놓으면 대시가 멈춘 자리에서 참격파가 겨눈 쪽으로 멀리 날아가 일격으로 벤다. 너무 일찍 놓으면 대시가 짧다", icon: 506 },
   { id: "d_bounce", name: "반섬", han: "反閃", kind: "일섬", desc: "일섬이 벽이나 바닥에 부딪히면 한 번 튕겨 나가며 계속 벤다", icon: 508 },
   { id: "d_chain", name: "뇌인", han: "雷引", kind: "일섬", desc: "일섬으로 적을 쓰러뜨리면 번개가 가장 가까운 적 하나에게 튀어 함께 벤다", icon: 606 },
@@ -166,20 +166,20 @@ const CHOSIK = [
   { id: "p_quick", name: "속사", han: "速射", kind: "일섬", only: "posu", desc: "장전이 한 박자로 줄고, 일발로 적을 쓰러뜨리면 곧바로 장전된다", icon: 794 },
   { id: "p_charge", name: "착검 돌격", han: "着劍突擊", kind: "일섬", only: "posu", desc: "쏜 뒤 반동으로 물러나는 대신, 총검을 앞세워 쏜 쪽으로 돌진하며 벤다", icon: 767 },
   // 방어 — pick one: what happens when a blow finds you (every character)
-  { id: "d_reflect", name: "역탄", han: "逆彈", kind: "방어", desc: "튕기기 판정이 두 배 너그러워지고, 튕겨 낸 탄은 쏜 적에게 되날아가 일격으로 벤다 (일섬이 스친 탄도 되돌아간다)", icon: 507 },
-  { id: "d_gihyeol", name: "기혈", han: "氣血", kind: "방어", desc: "천고 기운이 절반 넘게 차 있으면, 맞아도 숨 대신 천고 기운을 모두 잃는다", icon: 303 },
-  { id: "d_gise", name: "기세", han: "氣勢", kind: "방어", desc: "연속 처치가 3등급 이상이면, 맞아도 숨 대신 연속 처치가 끊긴다", icon: 207 },
-  { id: "d_nakbeop", name: "낙법", han: "落法", kind: "방어", desc: "구덩이나 가시에 빠져도 숨을 잃지 않고 마지막으로 디딘 땅으로 돌아온다 (관문마다 두 번)", icon: 205 },
-  { id: "d_ganggi", name: "호신강기", han: "護身罡氣", kind: "방어", desc: "숨을 잃는 순간 둘레의 적 탄이 모두 사라지고, 1.5초 동안 몸에 닿는 탄을 베어 낸다", icon: 848 },
-  { id: "d_janmyeong", name: "잔명", han: "殘命", kind: "방어", desc: "숨을 모두 잃을 일격을 관문마다 한 번 버티고 숨 하나로 일어난다", icon: 8 },
+  { id: "d_reflect", name: "역탄", han: "逆彈", kind: "방어", desc: "튕기기 판정이 두 배 너그러워지고, 튕겨 낸 탄은 쏜 적에게 되날아가 일격으로 벤다 (일섬이 스친 탄도 되돌아간다)", icon: 864 },
+  { id: "d_gihyeol", name: "기혈", han: "氣血", kind: "방어", desc: "천고 기운이 절반 넘게 차 있으면, 맞아도 숨 대신 천고 기운을 모두 잃는다", icon: 865 },
+  { id: "d_gise", name: "기세", han: "氣勢", kind: "방어", desc: "연속 처치가 3등급 이상이면, 맞아도 숨 대신 연속 처치가 끊긴다", icon: 866 },
+  { id: "d_nakbeop", name: "낙법", han: "落法", kind: "방어", desc: "구덩이나 가시에 빠져도 숨을 잃지 않고 마지막으로 디딘 땅으로 돌아온다 (관문마다 두 번)", icon: 867 },
+  { id: "d_ganggi", name: "호신강기", han: "護身罡氣", kind: "방어", desc: "숨을 잃는 순간 둘레의 적 탄이 모두 사라지고, 1.5초 동안 몸에 닿는 탄을 베어 낸다", icon: 868 },
+  { id: "d_janmyeong", name: "잔명", han: "殘命", kind: "방어", desc: "숨을 모두 잃을 일격을 관문마다 한 번 버티고 숨 하나로 일어난다", icon: 869 },
   // 간파 — pick one: what reading a blow gives back (every character)
   { id: "d_myeong", name: "명경지수", han: "明鏡止水", kind: "간파", desc: "간파의 원이 0.15초 더 오래 맞물려 있다 — 손으로도 받아치기 쉬워진다", icon: 842 },
   { id: "d_beat", name: "간섬", han: "看閃", kind: "간파", desc: "간파하면 공중 대시가 하나 더 쌓이고, 천고 기운이 두 배로 찬다", icon: 208 },
-  { id: "d_zanshin", name: "잔심", han: "殘心", kind: "간파", desc: "간파하면 0.7초 동안 둘레(8칸)의 다른 적들도 빈틈을 드러낸다 — 그 사이 베면 그것도 간파다", icon: 850 },
+  { id: "d_zanshin", name: "잔심", han: "殘心", kind: "간파", desc: "간파하면 0.7초 동안 둘레(8칸)의 다른 적들도 빈틈을 드러낸다 — 그 사이 베면 그것도 간파다", icon: 870 },
   { id: "d_tan", name: "탄베기", han: "斬彈", kind: "간파", desc: "간파하는 순간 둘레의 적 탄이 모두 베여 사라진다", icon: 102 },
   { id: "d_freeze", name: "정지", han: "停止", kind: "간파", desc: "간파하면 1.2초 동안 모든 적 탄이 그 자리에 멈춘다", icon: 302 },
   { id: "d_ward", name: "검막", han: "劍幕", kind: "간파", desc: "간파한 뒤 1.5초 동안 몸 둘레로 날아드는 탄을 베어 낸다", icon: 848 },
-  { id: "d_breathe", name: "기공", han: "氣功", kind: "간파", desc: "간파하면 무아경 기력이 가득 차고, 연속 처치가 두 등급 오른다", icon: 303 },
+  { id: "d_breathe", name: "기공", han: "氣功", kind: "간파", desc: "간파하면 무아경 기력이 가득 차고, 연속 처치가 두 등급 오른다", icon: 871 },
   { id: "d_breath", name: "혈로", han: "血路", kind: "간파", desc: "간파 다섯 번마다 숨 하나를 되찾는다", icon: 104 },
   { id: "d_calm", name: "평정", han: "平靜", kind: "간파", desc: "숨이 하나만 남으면 간파의 원이 두 배 오래 맞물리고, 무아경이 두 배 오래 이어진다", icon: 303 },
   // 이동 — pick two
@@ -189,8 +189,8 @@ const CHOSIK = [
   { id: "d_wall", name: "벽호공", han: "壁虎功", kind: "이동", desc: "벽을 두 배 오래 타고, 벽에 붙어서도 무아경에 들 수 있다", icon: 206 },
   { id: "d_bisang", name: "비상", han: "飛上", kind: "이동", desc: "벽을 차고 뛰면 공중 대시가 다시 차고, 하나 더 쌓인다", icon: 844 },
   { id: "d_kite", name: "연 입경", han: "鳶入境", kind: "이동", desc: "연으로 솟구치면 곧바로 무아경에 든다 (대시를 누르면 날아간다)", icon: 300 },
-  { id: "d_jilbo", name: "질풍보", han: "疾風步", kind: "이동", desc: "연속 처치 등급마다 8%씩 빨리 달린다 — 다섯 등급이면 1.4배", icon: 300 },
-  { id: "d_cheonbo", name: "천보", han: "天步", kind: "이동", desc: "천고 기운이 절반 넘게 차 있으면 공중 대시가 하나 더 생긴다", icon: 844 },
+  { id: "d_jilbo", name: "질풍보", han: "疾風步", kind: "이동", desc: "연속 처치 등급마다 8%씩 빨리 달린다 — 다섯 등급이면 1.4배", icon: 872 },
+  { id: "d_cheonbo", name: "천보", han: "天步", kind: "이동", desc: "천고 기운이 절반 넘게 차 있으면 공중 대시가 하나 더 생긴다", icon: 873 },
   { id: "d_glide", name: "활공", han: "滑空", kind: "이동", desc: "떨어질 때 점프를 누르고 있으면 천천히 미끄러진다", icon: 205 },
   { id: "p_rocket", name: "포 반동", han: "砲反動", kind: "이동", only: "posu", desc: "반동이 1.4배 세다 — 땅에서 아래로 쏘면 높이 솟구친다", icon: 771 },
   { id: "m_cloud", name: "구름 걸음", han: "雲步", kind: "이동", only: "munyeo", desc: "공중 도약을 할 때마다 무아경이 0.3초 더 이어진다 (다음 무아경 한 번)", icon: 721 },
@@ -323,12 +323,11 @@ function regainAir() { P.airDash = Math.max(P.airDash, baseAir()); P.dashCd = 0;
 function counterCut(e) { // 환도 받아치기: a read blow answered by stepping through to the foe's back
   P.countered = true; const x0 = P.x + P.w / 2, y0 = P.y + P.h / 2, ex = e.x + e.w / 2, side = Math.sign(ex - x0) || P.face;
   moveX(P, ex + side * (e.w / 2 + 20) - P.w / 2 - P.x); P.face = -side; P.vx = 0; P.invT = Math.max(P.invT || 0, .45); regainAir();
-  trailFx(x0, y0, P.x + P.w / 2, P.y + P.h / 2, 6, .4); addFx("kfx", KF.xcut, ex, e.y + e.h / 2, e.type === "b" ? 110 : 64, { life: .35, grow: .2, rot: side * .4 });
+  trailFx(x0, y0, P.x + P.w / 2, P.y + P.h / 2, 6, .4, WF2.smear); addFx("wfx", WF2.xcut, ex, e.y + e.h / 2, e.type === "b" ? 120 : 70, { life: .35, grow: .2, rot: side * .3 });
   hitstop = Math.max(hitstop, .07); shake = Math.max(shake, 6); Music.sfx("strike");
 }
 function quakeSlam() { // 월도 낙월: the plunge meets the ground — a ring of force that stills and clears
-  const cx = P.x + P.w / 2, f = P.y + P.h; addFx("bvfx", BV.quake, cx, f - 16, 130, { life: .5, grow: .3, ay: .8 }); ringFx(cx, f - 10, 120, "rgba(23,22,26,.7)", .4);
-  trailFx(cx - 120, f - 2, cx + 120, f - 2, 5, .45);
+  const cx = P.x + P.w / 2, f = P.y + P.h; addFx("wfx", WF2.quake, cx, f + 4, 92, { life: .5, grow: .2, ay: 1 });
   for (const e of enemies) if (e.alive && !ghostly(e) && Math.abs(e.x + e.w / 2 - cx) < 130 && Math.abs(e.y + e.h - f) < 70) { e.stunT = Math.max(e.stunT || 0, e.type === "b" ? .3 : .8); if (e.type !== "b") hurtEnemy(e, false); }
   for (const b of bullets) if (!b.friendly && Math.hypot(b.x - cx, b.y - f) < 150) { b.life = 0; addFx("hud", HUD.spark, b.x, b.y, 18, { life: .2 }); }
   shake = Math.max(shake, 11); hitstop = Math.max(hitstop, .06); Music.sfx("kill"); buzz(25);
@@ -392,7 +391,7 @@ function loadSheet(n) { // one atlas: frames JSON + image (ink-inverted copy for
 function bossSheets(kind) { const B = BOSSES[kind]; if (!B) return []; const out = ["bossfx", "bcal", "bvfx", "bname", B.sheet];
   for (const v of Object.values(BOSS_POSE[kind] || {})) out.push(v[0]); for (const a of BOSS_ANIM[kind] || []) out.push(a[0]); return out; }
 function needSheets(list) { for (const n of list) loadSheet(n); }   // phones: only the hand being played and the guardian being fought are held in memory
-for (const n of ["hero", "hero2", "foes", "objects", "ui", "fx", "hud", "hudsolid", "props", "props2", "rocks", "pines", "slabs", "pillars", "rogue", "roguea", "rogue2", "rogue3", "rogue4", "foes2", "bossA", "bossB", "bossfx", "bossC", "bossD", "bossE", "bossF", "hero3", "herofx", "slashfx", "perkfx", "weapons", "chars", "misc", "arms", "ic0", "ic1", "ic2", "ic3", "ic4", "ic5", "ic6", "ic7", "ic8", "ic9", "ic10", "ic11", "ic12", "ic13", "ic14", "ic15", "mu", "po", "mfx", "pfx", "vis", "guide", "mv0", "mv1", "mv2", "bcal", "bvfx", "bname", "mvrun", "mech", "foes3", "kfx", "kring"]) if (!LAZY_SHEETS.has(n)) loadSheet(n);
+for (const n of ["hero", "hero2", "foes", "objects", "ui", "fx", "hud", "hudsolid", "props", "props2", "rocks", "pines", "slabs", "pillars", "rogue", "roguea", "rogue2", "rogue3", "rogue4", "foes2", "bossA", "bossB", "bossfx", "bossC", "bossD", "bossE", "bossF", "hero3", "herofx", "slashfx", "perkfx", "weapons", "chars", "misc", "arms", "ic0", "ic1", "ic2", "ic3", "ic4", "ic5", "ic6", "ic7", "ic8", "ic9", "ic10", "ic11", "ic12", "ic13", "ic14", "ic15", "mu", "po", "mfx", "pfx", "vis", "guide", "mv0", "mv1", "mv2", "bcal", "bvfx", "bname", "mvrun", "mech", "foes3", "kfx", "kring", "wfx", "ic16"]) if (!LAZY_SHEETS.has(n)) loadSheet(n);
 function inkInverted(img) { // night palette: grey ink becomes bone white, coloured accents stay as they are
   const c = document.createElement("canvas"); c.width = img.width; c.height = img.height; const g = c.getContext("2d"); g.drawImage(img, 0, 0);
   const id = g.getImageData(0, 0, c.width, c.height), d = id.data;
@@ -437,7 +436,7 @@ function applyUiSprites() { // brush-painted UI pieces become CSS images
   if (SPR.slashfx && !root.getPropertyValue("--chosik-505")) for (let i = 5; i < 9; i++) root.setProperty("--chosik-50" + i, url("slashfx", i));
   if (SPR.perkfx && !root.getPropertyValue("--chosik-600")) for (let i = 0; i < 7; i++) root.setProperty("--chosik-60" + i, url("perkfx", i));
   if (SPR.rogue3 && !root.getPropertyValue("--chosik-200")) for (let i = 0; i < 9; i++) root.setProperty("--chosik-" + (200 + i), url("rogue3", i));
-  for (let k = 0; k < 16; k++) if (SPR["ic" + k] && !root.getPropertyValue("--chosik-" + (700 + k * 10))) for (let i = 0; i < 9; i++) root.setProperty("--chosik-" + (700 + k * 10 + i), url("ic" + k, i));   // 무녀·포수 and the new 비급
+  for (let k = 0; k < 17; k++) if (SPR["ic" + k] && !root.getPropertyValue("--chosik-" + (700 + k * 10))) for (let i = 0; i < SPR["ic" + k].f.length; i++) root.setProperty("--chosik-" + (700 + k * 10 + i), url("ic" + k, i));   // 무녀·포수 and the new 비급
   if (SPR.rogue4 && !root.getPropertyValue("--chosik-300")) for (let i = 0; i < 9; i++) root.setProperty("--chosik-" + (300 + i), url("rogue4", i));
   if (SPR.calli && !document.body.classList.contains("ui-cal")) {
     root.setProperty("--cal-title", url("calli", CAL.title)); root.setProperty("--cal-end", url("calli", CAL.end)); root.setProperty("--cal-clear", url("calli", CAL.clear));
@@ -1294,14 +1293,14 @@ function shot(d, arrow) {
     P.arrow = true; if (master) { strike = true; regainAir(); }
   } else if (full) {   // 발도: a full draw lunges forward cutting; drawn to the second ring it is the 일격 and the air comes back
     const onBeat = master; P.iaiCut = onBeat; if (onBeat) { strike = true; regainAir(); } P.dashCd = 0; P.slashDir = d; P.tapDash = !onBeat;
-    startDash({ x: Math.abs(d.x) > .2 ? Math.sign(d.x) : P.face, y: Math.abs(d.x) > .2 ? 0 : 0 }, true); P.dashT = onBeat ? .22 : .16; P.trail = trailFx(P.x + P.w / 2, P.y + P.h / 2, P.x + P.w / 2, P.y + P.h / 2, onBeat ? 7 : 4, onBeat ? .55 : .35);
+    startDash({ x: Math.abs(d.x) > .2 ? Math.sign(d.x) : P.face, y: Math.abs(d.x) > .2 ? 0 : 0 }, true); P.dashT = onBeat ? .22 : .16; P.trail = trailFx(P.x + P.w / 2, P.y + P.h / 2, P.x + P.w / 2, P.y + P.h / 2, onBeat ? 9 : 5, onBeat ? .55 : .35, onBeat ? WF2.iai : WF2.streak);
     ringFx(P.x + P.w / 2, P.y + P.h / 2, onBeat ? 70 : 46, onBeat ? "rgba(195,22,28,.9)" : "rgba(23,22,26,.5)", .3); if (onBeat) shake = Math.max(shake, 6);
   }
   run.slashes++; if (strike) run.strikes++;
   P.windBack = false; P.slashDir = d; P.slashT = P.slashDur = (req.dash ? 0.22 : WP.dur); P.slashCd = (has("yeongyeok") ? Math.min(.08, WP.cd) : WP.cd) * (oath("hyeon") ? .5 : 1) + (has("geommak") ? .1 : 0); P.strike = strike; P.clanged = new Set(); P.hitSet = new Set(); P.countered = false;
   if (wrule() === "woldo" && !P.onGround && d.y > .5) { P.slam = true; P.vy = Math.max(P.vy, 760); }   // 낙월: the downward cut drives you down
   if (wk() === "ssang" && strike) { const cx = P.x + P.w / 2 + d.x * 34, cy = P.y + P.h / 2 + d.y * 26;   // 몰아치기: the fifth cut crosses
-    addFx("kfx", KF.xcut, cx, cy, 100, { life: .35, grow: .25, rot: Math.random() * .5 - .25 }); for (const b of bullets) if (!b.friendly && Math.hypot(b.x - cx, b.y - cy) < 120) { b.life = 0; addFx("hud", HUD.spark, b.x, b.y, 18, { life: .2 }); } shake = Math.max(shake, 6); }
+    addFx("wfx", WF2.xcut, cx, cy, 100, { life: .35, grow: .25, rot: Math.random() * .5 - .25 }); for (const b of bullets) if (!b.friendly && Math.hypot(b.x - cx, b.y - cy) < 120) { b.life = 0; addFx("hud", HUD.spark, b.x, b.y, 18, { life: .2 }); } shake = Math.max(shake, 6); }
   if (strike && has("bangyeok")) { const cx = P.x + P.w / 2, cy = P.y + P.h / 2;   // 반격: the shots around you die and their shooters answer for them
     for (const b of bullets) if (!b.friendly && Math.hypot(b.x - cx, b.y - cy) < 110) { b.life = 0; const o = b.owner; if (o && o.alive) { beams.push({ x0: cx, y0: cy, x1: o.x + o.w / 2, y1: o.y + o.h / 2, t: 0, life: .2 }); hurtEnemy(o, o.type !== "b"); } }
     for (const e of enemies) if (e.alive && e.fireAt != null && Math.abs(e.fireAt - songPos) < .3 && Math.hypot(e.x + e.w / 2 - cx, e.y + e.h / 2 - cy) < 240) { e.fireAt = null; hurtEnemy(e, true); }
@@ -1352,6 +1351,11 @@ const RAGE_ADD = { sumun: ["volley", "summon"], gumiho: ["illusion", "foxfire"],
 // painted boss-fight sheets: stamps and words (bcal), effects (bvfx), each guardian's name in brush (bname)
 const BC = { gyeoljeon: 0, tobeol: 1, gyeoknu: 2, ganpa: 3, stroke: 4, redBurst: 5, inkBurst: 6, talisman: 7, enso: 8 };
 const BV = { rage: 0, quake: 1, curtain: 2, dizzy: 3, impact: 4, warn: 5, crescent: 6, dissolve: 7, ring: 8 };
+const WF2 = { streak: 0, xcut: 1, quake: 2, fall: 3, iai: 4, smear: 5, crescent: 6, mark: 7, burst: 8 };   // weapon moves, painted: the trail, the cross, the ground blow, the sky stroke, the one draw, the afterimage, the sweep, the mark, the burst
+function wfxLine(i, x0, y0, x1, y1, h) { // a painted streak laid along a segment
+  const S = SPR.wfx; if (!S) return false; const f = S.f[i], L = Math.hypot(x1 - x0, y1 - y0); if (L < 2) return true;
+  ctx.save(); ctx.translate((x0 + x1) / 2, (y0 + y1) / 2); ctx.rotate(Math.atan2(y1 - y0, x1 - x0)); ctx.drawImage(S.img, f.x, f.y, f.w, f.h, -L / 2, -h / 2, L, h); ctx.restore(); return true;
+}
 const KF = { bead: 0, cross: 1, star: 2, xcut: 3, guide: 4, aura: 5, fizzle: 6, flakes: 7, ring: 8 };   // 간파 sheet: the gathering bead, the cross flash, the crossed cut, the guide, the aura, the fizzle
 let flashDim = 0;
 const KR = { thin: 0, lock: 1, dashed: 2, burst: 3, dot: 4, indigo: 5, double: 6, drip: 7, dial: 8 };   // 간파 rings: no gold until the kill
@@ -1384,7 +1388,7 @@ function drawCutLines() { // a short wet cut of blood across the body, drawn in 
   ctx.globalAlpha = 1;
 }
 function ringFx(x, y, r, col, life) { rings.push({ x, y, r, col, t: 0, life }); }
-function trailFx(x0, y0, x1, y1, w, life) { const t = { x0, y0, x1, y1, w, t: 0, life, seed: (Math.random() * 99) | 0 }; trails.push(t); return t; }
+function trailFx(x0, y0, x1, y1, w, life, fr = WF2.streak) { const t = { x0, y0, x1, y1, w, t: 0, life, fr, seed: (Math.random() * 99) | 0 }; trails.push(t); return t; }
 function stepKegs() { // 화약통: each keg bursts a beat after it was set down
   for (const k of kegs) if (songPos >= k.at) { k.done = true; const r = 100; fireFx(k.x, k.y - 12, r * .8); if (SPR.pfx) addFx("pfx", 2, k.x, k.y - 14, r * 1.5, { life: .55, grow: .35, ay: .5 }); ringFx(k.x, k.y - 12, r, "rgba(60,52,48,.7)", .4); shake = Math.max(shake, 7); Music.sfx("kill");
     for (const e of enemies) if (e.alive && !ghostly(e) && Math.hypot(e.x + e.w / 2 - k.x, e.y + e.h / 2 - k.y + 12) < r + Math.max(e.w, e.h) / 2) { hurtEnemy(e, false); e.stunT = Math.max(e.stunT || 0, .5); } }
@@ -2059,23 +2063,25 @@ function stepChungo(rdt) {
     P.aimDash = true; P.aimedUntil = songPos + .6; for (const e of c.ts) { hurtEnemy(e, 2); if (!e.alive) bleed(e.x + e.w / 2, e.y + e.h / 2, { x: (Math.random() - .5) * 2, y: -.5 }, true); } P.aimDash = false;
     const last = c.ts[c.ts.length - 1], side = Math.sign(last.x + last.w / 2 - c.pts[0].x) || P.face, nx = last.x + last.w / 2 + side * (last.w / 2 + 16) - P.w / 2, ny = last.y + last.h - P.h - .01;
     if (!rectSolid(nx, ny, P.w, P.h)) { P.x = nx; P.y = ny; P.face = -side; } P.vy = -200; regainAir();
-    if (c.w === "woldo") for (const e of c.ts) addFx("bvfx", BV.quake, e.x + e.w / 2, e.y + e.h - 14, 110, { life: .5, grow: .3, ay: .8 });   // 낙월: each lands like a blow from above
-    if (c.w === "ssang") for (const e of c.ts) addFx("kfx", KF.xcut, e.x + e.w / 2, e.y + e.h / 2, 80, { life: .35, grow: .25 });
+    if (c.w === "woldo") for (const e of c.ts) addFx("wfx", WF2.quake, e.x + e.w / 2, e.y + e.h + 4, 70, { life: .5, grow: .2, ay: 1 });   // 낙월: each lands like a blow from above
+    for (const e of c.ts) addFx("wfx", c.w === "ssang" ? WF2.xcut : WF2.burst, e.x + e.w / 2, e.y + e.h / 2, c.w === "ssang" ? 90 : 76, { life: .4, grow: .3, rot: Math.random() * 6.28 });
     shake = c.w === "woldo" ? 22 : 18; flash = c.w === "baldo" ? .5 : .35; killCam = Math.max(killCam, .7); Music.jing(); Music.sfx("strike"); }
   if (c.t > n * lay + .9) chungoFx = null;
 }
-function drawChungo(tt) { // the strokes, laid in order — each weapon writes its own: 환도 joins foe to foe, 쌍검 crosses each, 월도 drives down from the sky, 발도 waits and draws one line
-  const c = chungoFx; if (!c) return; const n = c.pts.length - 1, lay = .09, fade = c.done ? Math.max(0, 1 - (c.t - (n * lay + .25)) / .65) : 1, w = c.w;
-  ctx.save(); ctx.lineCap = "round"; ctx.globalAlpha = fade;
-  if (w === "baldo") {   // 일도: marks only, then a single line through them all
-    for (let i = 0; i < n && c.t >= i * lay; i++) { const b = c.pts[i + 1]; ctx.fillStyle = SEAL; ctx.beginPath(); ctx.arc(b.x, b.y, c.done ? 2 : 3 + Math.sin(tt * 30), 0, Math.PI * 2); ctx.fill(); }
+function drawChungo(tt) { // painted, laid in order — each weapon writes its own: 환도 joins foe to foe, 쌍검 crosses each, 월도 drives down from the sky, 발도 waits and draws one line
+  const c = chungoFx; if (!c) return; const n = c.pts.length - 1, lay = .09, fade = c.done ? Math.max(0, 1 - (c.t - (n * lay + .25)) / .65) : 1, w = c.w, S = SPR.wfx;
+  const mark = (x, y) => { if (!S || !drawSprite("wfx", WF2.mark, x, y, (20 + Math.sin(tt * 30) * 2) / S.f[WF2.mark].h, false, .5, false, .5)) { ctx.fillStyle = SEAL; ctx.beginPath(); ctx.arc(x, y, 3, 0, 7); ctx.fill(); } };
+  const line = (fr, x0, y0, x1, y1, h, sd) => { if (!wfxLine(fr, x0, y0, x1, y1, h)) inkLine(x0, y0, x1, y1, h / 6, sd); };
+  ctx.save(); ctx.globalAlpha = fade;
+  if (w === "baldo") {   // 일도: marks only, then a single drawn cut through them all
+    for (let i = 0; i < n && c.t >= i * lay; i++) if (!c.done) mark(c.pts[i + 1].x, c.pts[i + 1].y);
     if (c.done) { const a = c.pts[0], far = c.pts.reduce((m, q) => Math.hypot(q.x - a.x, q.y - a.y) > Math.hypot(m.x - a.x, m.y - a.y) ? q : m, a), dx = far.x - a.x, dy = far.y - a.y, L = Math.hypot(dx, dy) || 1;
-      inkLine(a.x - dx / L * 60, a.y - dy / L * 60, far.x + dx / L * 90, far.y + dy / L * 90, 10, 31); }
+      line(WF2.iai, a.x - dx / L * 60, a.y - dy / L * 60, far.x + dx / L * 90, far.y + dy / L * 90, 70, 31); }
   } else for (let i = 0; i < n; i++) { const k = Math.max(0, Math.min(1, (c.t - i * lay) / lay)); if (!k) break; const a = c.pts[i], b = c.pts[i + 1];
-    if (w === "woldo") { const top = b.y - 170; inkLine(b.x, top, b.x, top + (b.y + 24 - top) * k, c.done ? 8 : 6, i * 13 + 5); }   // 낙월: from the sky straight down
-    else { inkLine(a.x, a.y, a.x + (b.x - a.x) * k, a.y + (b.y - a.y) * k, c.done ? 7 : 5, i * 13 + 5);
-      if (w === "ssang" && k >= 1) { const r = 30; inkLine(b.x - r, b.y - r, b.x + r, b.y + r, 4, i * 7 + 1); inkLine(b.x + r, b.y - r, b.x - r, b.y + r, 4, i * 7 + 2); } }   // 쌍검: each one crossed
-    if (k >= 1 && !c.done) { ctx.fillStyle = SEAL; ctx.beginPath(); ctx.arc(b.x, b.y, 3 + Math.sin(tt * 30), 0, Math.PI * 2); ctx.fill(); } }
+    if (w === "woldo") { if (S) { const f = S.f[WF2.fall], hh = 190; ctx.save(); ctx.globalAlpha = fade * k; drawSprite("wfx", WF2.fall, b.x, b.y + 30 - (1 - k) * 80, hh / f.h, false, .5, false, 1); ctx.restore(); } else inkLine(b.x, b.y - 170, b.x, b.y + 24, 6, i); }   // 낙월: from the sky straight down
+    else { line(WF2.streak, a.x, a.y, a.x + (b.x - a.x) * k, a.y + (b.y - a.y) * k, c.done ? 34 : 24, i * 13 + 5);
+      if (w === "ssang" && k >= 1 && S) drawSprite("wfx", WF2.xcut, b.x, b.y, 70 / S.f[WF2.xcut].h, i % 2 === 1, .5, false, .5); }   // 쌍검: each one crossed
+    if (k >= 1 && !c.done) mark(b.x, b.y); }
   ctx.restore(); ctx.globalAlpha = 1;
 }
 function breakTarget(g) { // 과녁: the cut gives the air dash back, and the target hangs again a moment later
@@ -2281,7 +2287,7 @@ function bossPerform(e, a, I) {
 }
 function stepBoss(e, dt, pcx, pcy, dist, live) {
   const B = BOSSES[e.kind], bl = Music.beatLen, c = cyc() + 1, I = { pcx, pcy, bl, c };   // guardians fight one tier above the turn
-  e.emergeT = Math.max(0, (e.emergeT || 0) - dt); e.stagT = Math.max(0, (e.stagT || 0) - dt); e.swingT = Math.max(0, (e.swingT || 0) - dt); e.walkT = Math.max(0, (e.walkT || 0) - dt); e.invisT = Math.max(0, (e.invisT || 0) - dt);
+  e.emergeT = Math.max(0, (e.emergeT || 0) - dt); e.stagT = Math.max(0, (e.stagT || 0) - dt); e.swingT = Math.max(0, (e.swingT || 0) - dt); e.walkT = Math.max(0, (e.walkT || 0) - dt); e.landT = Math.max(0, (e.landT || 0) - dt); e.turnT = Math.max(0, (e.turnT || 0) - dt); e.invisT = Math.max(0, (e.invisT || 0) - dt);
   if (!e.awake) { if (!(live && dist < 470)) return; e.awake = true; Music.jing(); e.fightBreath = run.breath; sealArena(e, true); e.hpShow = e.hp;
     const seen = (LV.introSeen = LV.introSeen || new Set()).has(e.kind); LV.introSeen.add(e.kind);
     if (!seen && mode !== "tutorial") bossIntro = { t: 0, e }; else toast(josa(B.name, "이", "가") + " 길을 막는다");
@@ -2290,7 +2296,7 @@ function stepBoss(e, dt, pcx, pcy, dist, live) {
   const deadly = () => { if (live && hurtsPlayer() && overlap(e, P)) { lastHitDir = { x: Math.sign(pcx - ecx) || 1, y: -.3 }; die(); } };
   if (e.air) { // leaping: arc under gravity, deadly on contact, shake on landing
     e.vy += 1900 * dt; moveX(e, e.vx * dt);
-    if (moveY(e, e.vy * dt) && e.vy > 0) { e.air = false; e.vx = 0; e.vy = 0; shake = 8; addFx("bvfx", BV.quake, e.x + e.w / 2, e.floor - 16, 60, { life: .45, grow: .2, ay: .8 }); addFx("hud", HUD.dust, e.x + e.w / 2, e.y + e.h, 80, { life: .4, ay: 1 });
+    if (moveY(e, e.vy * dt) && e.vy > 0) { e.air = false; e.vx = 0; e.vy = 0; e.landT = .22; e.mv = 0; shake = 8; addFx("bvfx", BV.quake, e.x + e.w / 2, e.floor - 16, 60, { life: .45, grow: .2, ay: .8 }); addFx("hud", HUD.dust, e.x + e.w / 2, e.y + e.h, 80, { life: .4, ay: 1 });
       if (e.kind === "baekho") addHaz("claw", e.x - 50, e.y + e.h - 60, e.w + 100, 60, songPos, songPos + .12);
       if (e.kind === "haetae") { addHaz("fire", e.x - 40, e.floor - 22, e.w + 80, 22, songPos, songPos + bl * 1.5); if (c >= 1) waves(e, 330); }
       if (e.kind === "gumiho" && c >= 1) for (let i = 0; i < 4; i++) { const t = -Math.PI * (i + .5) / 4; bullets.push({ x: e.x + e.w / 2, y: e.y + 10, vx: Math.cos(t) * 170, vy: Math.sin(t) * 170, owner: e, friendly: false, life: 3, orb: true, home: .6 }); }
@@ -2308,13 +2314,17 @@ function stepBoss(e, dt, pcx, pcy, dist, live) {
     e.danceT -= dt; e.face = Math.sign(pcx - ecx) || e.face; const ahead = ecx + e.face * (e.w / 2 + 4);
     if (groundPt(ahead, e.y + e.h + 4)) moveX(e, e.face * (e.mask === 1 ? 300 : 220) * dt); deadly();
   } else if (!e.act) {
-    if (e.stagT <= 0 && !e.hidden) e.face = Math.sign(pcx - ecx) || e.face;
-    if (B.fly && !e.hidden) { // hover a little way off, bobbing
-      const tx = pcx - e.face * 200, ty = e.floor - 95 - e.h / 2 + Math.sin(songPos * 2) * 14;
-      e.x += Math.max(-140 * dt, Math.min(140 * dt, tx - ecx)); e.y += Math.max(-120 * dt, Math.min(120 * dt, ty - (e.y + e.h / 2)));
-    } else if (!B.still && dist > 110 && e.stagT <= 0) {
-      const ahead = ecx + e.face * (e.w / 2 + 4), sp = (B.speed || 55) * 1.25 * (e.hp <= e.maxHp / 2 ? 1.3 : 1) * (e.invisT > 0 ? 2 : 1) * (e.mask === 1 ? 1.6 : 1) + 10 * c;
-      if (groundPt(ahead, e.y + e.h + 4) && !solidPt(ahead, e.y + e.h - 10)) { moveX(e, e.face * sp * dt); e.walkT = .12; e.wph = (e.wph || 0) + sp * dt / Math.max(22, e.w * .55); }
+    if (e.stagT <= 0 && !e.hidden) { const want = Math.sign(pcx - ecx) || e.face;   // it turns only once you have stayed behind it a moment, and the turn takes a beat
+      if (want !== e.face && Math.abs(pcx - ecx) > 24) { if ((e.turnWait = (e.turnWait || 0) + dt) > .2) { e.face = want; e.turnT = .16; e.turnWait = 0; e.mv = (e.mv || 0) * .3; } } else e.turnWait = 0; }
+    if (B.fly && !e.hidden) { // hover a little way off, bobbing — eased, never on rails
+      const tx = pcx - e.face * 200, ty = e.floor - 95 - e.h / 2 + Math.sin(songPos * 2) * 14, f = Math.min(1, dt * 2.4);
+      e.fvx = (e.fvx || 0) + (Math.max(-160, Math.min(160, (tx - ecx) * 2)) - (e.fvx || 0)) * f; e.fvy = (e.fvy || 0) + (Math.max(-130, Math.min(130, (ty - (e.y + e.h / 2)) * 2)) - (e.fvy || 0)) * f;
+      e.x += e.fvx * dt; e.y += e.fvy * dt;
+    } else if (!B.still) {   // walking eases in and out instead of starting and stopping dead
+      const sp = (B.speed || 55) * 1.25 * (e.hp <= e.maxHp / 2 ? 1.3 : 1) * (e.invisT > 0 ? 2 : 1) * (e.mask === 1 ? 1.6 : 1) + 10 * c, go = dist > 110 && e.stagT <= 0 && !(e.turnT > 0) && !(e.landT > 0);
+      e.mv = (e.mv || 0) + Math.max(-sp * 4 * dt, Math.min(sp * 4 * dt, (go ? sp : 0) - (e.mv || 0)));
+      const ahead = ecx + e.face * (e.w / 2 + 4);
+      if (e.mv > 4 && groundPt(ahead, e.y + e.h + 4) && !solidPt(ahead, e.y + e.h - 10)) { moveX(e, e.face * e.mv * dt); e.walkT = .12; e.wph = (e.wph || 0) + e.mv * dt / Math.max(22, e.w * .55); } else if (!go) e.mv = Math.max(0, e.mv - sp * 6 * dt); else e.mv = 0;
     }
     if (live && songPos >= e.nextAt && e.stagT <= 0) {
       if (!e.raged && e.hp <= e.maxHp / 2) { e.raged = true; roar = { t: 0, e }; P.focus = false; Music.muffle(false); P.dashT = 0; shake = 14; Music.sfx("kill"); Music.jing();
@@ -2796,7 +2806,7 @@ function render(rdt) {
       for (let i = 0; i < e.maxHp; i++) { ctx.fillStyle = i < e.hp ? SEAL : "rgba(80,74,70,.35)"; ctx.beginPath(); ctx.arc(cx + (i - (e.maxHp - 1) / 2) * 7, top, 2.6, 0, 7); ctx.fill(); }
     }
   }
-  for (const t of trails) { ctx.globalAlpha = Math.max(0, 1 - t.t / t.life); inkLine(t.x0, t.y0, t.x1, t.y1, t.w, t.seed); } ctx.globalAlpha = 1;
+  for (const t of trails) { ctx.globalAlpha = Math.max(0, 1 - t.t / t.life); if (!wfxLine(t.fr, t.x0, t.y0, t.x1, t.y1, t.w * 6)) inkLine(t.x0, t.y0, t.x1, t.y1, t.w, t.seed); } ctx.globalAlpha = 1;
   drawChungo(tt);
   for (const b of bullets) {
     if (b.talisman) { ctx.save(); ctx.translate(b.x, b.y); ctx.rotate(b.ang + Math.sin(b.t * 9) * .15); ctx.globalAlpha = Math.min(1, b.life * 4);   // 부적: yellow paper, vermilion seal strokes
@@ -3448,7 +3458,10 @@ function drawBoss(e, pal, cx, feet) {
   if (!SPR[sheet]) { sheet = B.sheet; fr = atk ? B.atk : B.idle; kAnim = 0; }
   const k = kAnim || kOf(B.sheet, B.idle, B.draw) * (SHEET_SC[B.sheet] || 1) / (SHEET_SC[sheet] || 1), spin = e.danceT > 0 && !PO.spec ? Math.sin(now / 50) : 1;
   const breathe = !atk && !(e.stagT > 0) && !kAnim ? 1 + Math.sin(now / 420 + e.id) * .015 : 1;   // idle: a slow breath so it never stands frozen
-  ctx.save(); ctx.translate(cx, feet); ctx.scale(1, breathe); if (e.stagT > 0 && B.stag == null && !PO.hurt) ctx.rotate(-.12 * e.face); if (e.kind === "jangseung" && e.act) ctx.translate(Math.sin(now / 30) * 1.5, 0);
+  const wind = e.act && songPos < e.hitAt ? Math.max(0, Math.min(1, 1 - (e.hitAt - songPos) / Math.max(.2, e.hitAt - (e.actFrom ?? e.hitAt - 1)))) : 0, rel = e.swingT > 0 ? Math.min(1, e.swingT / .25) : 0;
+  const land = e.landT > 0 ? e.landT / .22 : 0, turn = e.turnT > 0 ? Math.sin(Math.PI * e.turnT / .16) : 0, mvK = Math.min(1, (e.mv || 0) / 120);
+  const sxB = (1 + .05 * wind + .06 * land) * (1 - .22 * turn), syB = breathe * (1 - .05 * wind - .1 * land + .04 * rel);   // gather (squat), release (stretch), land (squash), turn (pinch)
+  ctx.save(); ctx.translate(cx + (e.hitT > 0 ? (Math.random() - .5) * 4 : 0) + e.face * 7 * rel, feet); ctx.rotate(e.face * (-.06 * wind + .05 * rel + .035 * mvK)); ctx.scale(sxB, syB); if (e.stagT > 0 && B.stag == null && !PO.hurt) ctx.rotate(-.12 * e.face); if (e.kind === "jangseung" && e.act) ctx.translate(Math.sin(now / 30) * 1.5, 0);
   if (!drawSprite(sheet, fr, 0, 0, k, (e.face < 0) !== (spin < 0), .5, pal.night)) { ctx.fillStyle = "#222"; ctx.fillRect(-e.w / 2, -e.h, e.w, e.h); }
   ctx.restore();
   if (e.kind === "talchum") { ctx.fillStyle = SEAL; ctx.font = `400 13px "Song Myung", serif`; ctx.textAlign = "center"; ctx.fillText(MASKS[e.mask || 0], cx, e.y - 34); ctx.textAlign = "left"; }
