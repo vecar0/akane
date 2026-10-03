@@ -146,7 +146,7 @@ const CHOSIK = [
   { id: "d_jeong", name: "정중동", han: "靜中動", kind: "일섬", desc: "무아경이 더 느리게 흐르고 기력이 덜 닳으며, 겨눈 쪽의 적에게 겨냥이 저절로 붙는다", icon: 106 },
   { id: "d_pajuk", name: "파죽", han: "破竹", kind: "일섬", desc: "연속 처치가 이어질수록 일섬이 길고 넓어진다 — 등급마다 15%씩, 다섯 등급이면 1.75배", icon: 208 },
   { id: "d_hyeol", name: "혈섬", han: "血閃", kind: "일섬", desc: "숨이 적을수록 일섬이 길고 넓어진다 — 숨 둘이면 1.4배, 하나면 1.8배", icon: 104 },
-  { id: "d_giseom", name: "기섬", han: "氣閃", kind: "일섬", desc: "일섬으로 벤 적마다 천고 기운이 두 배로 차고, 천고일섬이 두 명을 더(열 명까지) 벤다", icon: 606 },
+  { id: "d_giseom", name: "기섬", han: "氣閃", kind: "일섬", desc: "일섬으로 벤 적마다 천고 기운이 두 배로 차고, 북울림이 두 명을 더(열 명까지) 벤다", icon: 606 },
   { id: "d_dangong", name: "단공", han: "斷空", kind: "일섬", desc: "일섬이 지나가는 길의 적 탄을 모두 베어 없앤다 — 튕길 수 없는 붉은 탄까지", icon: 102 },
   { id: "d_charge", name: "축기", han: "蓄氣", kind: "일섬", desc: "0.8초를 꽉 채워 놓으면 대시가 멈춘 자리에서 참격파가 겨눈 쪽으로 멀리 날아가 일격으로 벤다. 너무 일찍 놓으면 대시가 짧다", icon: 506 },
   { id: "d_bounce", name: "반섬", han: "反閃", kind: "일섬", desc: "일섬이 벽이나 바닥에 부딪히면 한 번 튕겨 나가며 계속 벤다", icon: 508 },
@@ -1486,6 +1486,18 @@ function brushLine(x0, y0, x1, y1, col, w, dashed, seed = 0) { // dashed: a trai
     inkDab(x0 + dx * t - Math.sin(a) * off, y0 + dy * t + Math.cos(a) * off, a + (r2 - .5) * .18, (dashed ? 15 : 14) * (.8 + r1 * .5), w * taper * (.85 + r2 * .5), col); }
   ctx.globalAlpha = a0;
 }
+function inkRing(x, y, r, w, seed) { // a thin dry-brush circle: a few black hairs that never quite close, a red thread laid inside them
+  const a0 = ctx.globalAlpha, st = hrnd(seed, 1) * 6.28; ctx.lineCap = "round"; ctx.strokeStyle = "#17161a";
+  for (let k = 0; k < 4; k++) { ctx.globalAlpha = a0 * (.45 + hrnd(seed + k, 5) * .5); ctx.lineWidth = w * (.28 + hrnd(seed + k, 6) * .22);
+    ctx.beginPath(); ctx.arc(x, y, r + (k - 1.5) * w * .3, st + hrnd(seed + k, 3) * .35, st + 6.0 - hrnd(seed + k, 4) * .45); ctx.stroke(); }
+  ctx.globalAlpha = a0; ctx.strokeStyle = SEAL; ctx.lineWidth = w * .42; ctx.beginPath(); ctx.arc(x, y, Math.max(1, r - w * .55), st + .5, st + 5.9); ctx.stroke(); ctx.lineCap = "butt";
+}
+function inkLine(x0, y0, x1, y1, w, seed) { // the same brush drawn straight: black hairs either side of a red thread
+  const a0 = ctx.globalAlpha, dx = x1 - x0, dy = y1 - y0, L = Math.hypot(dx, dy) || 1, nx = -dy / L, ny = dx / L; ctx.lineCap = "round"; ctx.strokeStyle = "#17161a";
+  for (let k = 0; k < 4; k++) { const o = (k - 1.5) * w * .3, s0 = hrnd(seed + k, 3) * .06, s1 = 1 - hrnd(seed + k, 4) * .08; ctx.globalAlpha = a0 * (.45 + hrnd(seed + k, 5) * .5); ctx.lineWidth = w * (.28 + hrnd(seed + k, 6) * .22);
+    ctx.beginPath(); ctx.moveTo(x0 + dx * s0 + nx * o, y0 + dy * s0 + ny * o); ctx.lineTo(x0 + dx * s1 + nx * o, y0 + dy * s1 + ny * o); ctx.stroke(); }
+  ctx.globalAlpha = a0; ctx.strokeStyle = SEAL; ctx.lineWidth = w * .42; ctx.beginPath(); ctx.moveTo(x0 + dx * .04, y0 + dy * .04); ctx.lineTo(x0 + dx * .97, y0 + dy * .97); ctx.stroke(); ctx.lineCap = "butt";
+}
 function brushRing(x, y, r, col, w, seed = 0) { // a circle swept by a dry brush: parallel hairs that start and stop raggedly, never quite closing
   if (SPR.guide) { const [, , ri, inv] = GSET(col); guideSprite(ri, x, y, hrnd(seed, 1) * 6.28, r * 2.3, r * 2.3, inv); return; }
   const a0 = ctx.globalAlpha; ctx.strokeStyle = col; ctx.lineCap = "round";
@@ -1787,11 +1799,11 @@ function hurtEnemy(e, strike, kind) {
       if ((e.guardT || 0) > songPos) { e.hitT = .1; Music.sfx("clang"); addFx("hud", HUD.spark, e.x + e.w / 2, e.y + e.h * .4, 40, { life: .25 }); return; }
       e.softN = songPos - (e.softAt ?? -9) < 1.6 ? (e.softN || 0) + 1 : 1; e.softAt = songPos;
       if (e.softN >= 4) { e.softN = 0; e.guardT = songPos + 1.3; toast("막아 낸다 · 일섬으로 뚫어라"); } }
-    const aimed = kan || heavy, read = kan, mua = kan && e.kanMua; e.kanpa = false;   // 간파 breaks the blow; 천고일섬 cuts deep; 일섬 bites harder than a plain cut
+    const aimed = kan || heavy, read = kan, mua = kan && e.kanMua; e.kanpa = false;   // 간파 breaks the blow; 북울림 cuts deep; 일섬 bites harder than a plain cut
     e.hp -= kan ? 4 : heavy ? 3 : strike ? 2 : il ? 2 : 1; e.hitT = .22;
     addFx("bvfx", BV.impact, e.x + e.w / 2 + (Math.random() - .5) * e.w * .4, e.y + e.h * (.3 + Math.random() * .3), aimed ? 120 : strike ? 80 : 54, { life: .28, grow: .25, rot: Math.random() * 6.28, a: .9 });
     if (il) addQi(4);
-    if (read) { regainAir(); addQi((has("d_beat") ? 2 : 1) * (mua ? 2 : 1) * 15); P.ki = Math.min(1, (P.ki || 0) + .5); chainAdd(mua ? 2 : 1); kanPerks(e); if (mua) killCam = Math.max(killCam, .3); banner("看破", JJOK, "간파 — 기술을 끊었다"); hitstop = Math.max(hitstop, .12); shake = Math.max(shake, 9); haz = haz.filter(z => z.kind === "ring"); }
+    if (read) { regainAir(); addQi((has("d_beat") ? 2 : 1) * (mua ? 2 : 1) * 15); P.ki = Math.min(1, (P.ki || 0) + .5); chainAdd(mua ? 2 : 1); kanPerks(e); if (mua) killCam = Math.max(killCam, .3); banner("간파", JJOK, "기술을 끊었다"); hitstop = Math.max(hitstop, .12); shake = Math.max(shake, 9); haz = haz.filter(z => z.kind === "ring"); }
     if (aimed) { e.stagT = read ? 1.1 : .4; e.act = null; e.suck = false; e.chargeT = 0; e.danceT = 0; e.swoopT = 0; e.nextAt = songPos + 2 * Music.beatLen; if (e.hidden) { e.hidden = false; e.x = e.tx - e.w / 2; } }
     addFx("fx", FX.drops, e.x + e.w / 2, e.y + 30, 30, { life: .4, rot: Math.random() * 6.28 });
     hitstop = Math.max(hitstop, .05); Music.sfx("clang"); shake = Math.max(shake, 4);
@@ -1823,7 +1835,7 @@ function killEnemy(e) {
     for (const b of bullets) if (b.owner === e && !b.friendly) b.life = 0;
     if (e.type === "k") { for (const o of enemies) if (o.alive && o !== e && Math.hypot(o.x - e.x, o.y - e.y) < 320) { o.stunT = Math.max(o.stunT || 0, 1.2); o.fireAt = null; o.swingAt = null; o.thrustAt = null; o.dashAt = null; }   // the drum falls silent: everyone near falters
       ringFx(e.x + e.w / 2, e.y + e.h / 2, 160, "rgba(39,70,106,.7)", .45); addQi(15); }
-    if (mua) addFx("bcal", BC.ganpa, e.x + e.w / 2, e.y - 16, 32, { life: .55, grow: .15, ay: .5 }); hitstop = Math.max(hitstop, .06);
+    hitstop = Math.max(hitstop, .06);
     if (mua) killCamOn(e); }
   if (P && ((P.aimDash && !P.tapDash) || (P.aimedUntil || 0) > songPos) && state === "play") {
     addQi(has("d_giseom") ? 18 : 9); run.aimK = (run.aimK || 0) + 1; P.ki = Math.min(1, (P.ki || 0) + .3); // what an aimed-dash kill gives back
@@ -1998,22 +2010,21 @@ function drawKanFlash(e, tt) { // 간파: one brush ring shrinks onto the weak p
   if (!on && e.flashOn) { e.flashOn = false; e.lastBlow = songPos; }
   if (on && !e.flashOn) { e.flashOn = true; if (Math.hypot(e.x - P.x, e.y - P.y) < 520) { flashDim = .04; Music.sfx("clang"); } }
   if ((!pre && !on) || !SPR.kring || omen("goyo")) return;   // 고요: the ring is not shown — only the sound gives it away
-  const S = SPR.kring, t = blowAt(e), u = e.openT > songPos ? .75 + .25 * (1 - (e.openT - songPos) / .7) : Math.max(0, Math.min(1, (songPos - (t - FLASH - CLOSE)) / (CLOSE + FLASH)));   // 0 → 1 over the whole approach
-  const cx = e.x + e.w / 2 + (big ? 0 : (e.face || 1) * 2), cy = e.y + e.h * (big ? .38 : .42), R0 = (big ? 96 : 52) * (P && P.focus ? 1.12 : 1), r = Math.max(2.5, R0 * (1 - u));
+  const t = blowAt(e), u = e.openT > songPos ? .75 + .25 * (1 - (e.openT - songPos) / .7) : Math.max(0, Math.min(1, (songPos - (t - FLASH - CLOSE)) / (CLOSE + FLASH)));   // 0 → 1 over the whole approach
+  const cx = e.x + e.w / 2 + (big ? 0 : (e.face || 1) * 2), cy = e.y + e.h * (big ? .38 : .42), R0 = (big ? 92 : 50) * (P && P.focus ? 1.12 : 1), r = Math.max(2.5, R0 * (1 - u));
   ctx.save(); ctx.translate(cx, cy);
-  if (r > 7) { ctx.globalAlpha = on ? 1 : .35 + .55 * pre; drawSprite("kring", KR.thin, 0, 0, r * 2 / S.f[KR.thin].h, false, .5, false, .5);
-    if (on) { ctx.globalAlpha = 1; brushRing(0, 0, r * 1.16, "#17161a", big ? 2.6 : 1.8, 41); } }   // bitten in black: strike now
-  ctx.globalAlpha = on ? 1 : .5; ctx.fillStyle = SEAL; ctx.beginPath(); ctx.arc(0, 0, on ? Math.max(2.2, 3.2 - u) : 1.6, 0, Math.PI * 2); ctx.fill();   // and the point it closes to
+  if (r > 6) { ctx.globalAlpha = on ? 1 : .3 + .6 * Math.max(pre, u); inkRing(0, 0, r, big ? 2.4 : 1.7, (e.id || 1) * 7); }   // black hairs, a red thread inside: the same ring all the way down
+  ctx.globalAlpha = on ? 1 : .5; ctx.fillStyle = SEAL; ctx.beginPath(); ctx.arc(0, 0, on ? Math.max(1.8, 2.8 - u) : 1.4, 0, Math.PI * 2); ctx.fill();   // and the point it closes to
   ctx.restore(); ctx.globalAlpha = 1;
 }
 const viaMua = () => !!(P && P.aimDash && !P.tapDash);   // the cut came out of 무아경
 function chainAdd(n) { if (!P) return; const g0 = Math.min(5, P.chain || 0); P.chain = (P.chain || 0) + n; P.chainPop = .25; if (Math.min(5, P.chain) > g0) Music.sfx("lantern"); }
 function addQi(n) { // 천고 기운: won by fighting well — 일섬, 간파, 과녁
   if (mode === "tutorial" || !run) return; const before = run.qi || 0; run.qi = Math.min(100, before + n * (oath("jangdan") ? 2 : 1) * (1 + .15 * Math.min(8, (P && P.chain) || 0)));
-  if (before < 100 && run.qi >= 100) { toast("천고 기운이 찼다 · 무아경에 들었다 풀면 천고일섬"); Music.jing(); }
+  if (before < 100 && run.qi >= 100) { toast("천고 기운이 찼다 · 무아경에 들었다 풀면 북울림"); Music.jing(); }
 }
 let chungoFx = null;
-function chungo() { // 천고일섬: the full drum. Time stops; ink lines are laid from foe to foe; then, all at once, they fall
+function chungo() { // 북울림: the full drum. Time stops; ink lines are laid from foe to foe; then, all at once, they fall
   const cx = P.x + P.w / 2, cy = P.y + P.h / 2, d = a => Math.hypot(a.x + a.w / 2 - cx, a.y + a.h / 2 - cy);
   const ts = enemies.filter(e => e.alive && !ghostly(e) && !e.hidden && d(e) < 480).sort((a, b) => d(a) - d(b)).slice(0, has("d_giseom") ? 10 : 8);
   if (!ts.length) return false;
@@ -2035,8 +2046,7 @@ function drawChungo(tt) { // the strokes, laid in order, black under red; when t
   const c = chungoFx; if (!c) return; const n = c.pts.length - 1, lay = .09, fade = c.done ? Math.max(0, 1 - (c.t - (n * lay + .25)) / .65) : 1;
   ctx.save(); ctx.lineCap = "round";
   for (let i = 0; i < n; i++) { const k = Math.max(0, Math.min(1, (c.t - i * lay) / lay)); if (!k) break; const a = c.pts[i], b = c.pts[i + 1], x = a.x + (b.x - a.x) * k, y = a.y + (b.y - a.y) * k;
-    ctx.globalAlpha = .85 * fade; ctx.strokeStyle = "#17161a"; ctx.lineWidth = c.done ? 9 : 6; ctx.beginPath(); ctx.moveTo(a.x, a.y); ctx.lineTo(x, y); ctx.stroke();
-    ctx.globalAlpha = fade; ctx.strokeStyle = SEAL; ctx.lineWidth = c.done ? 3.4 : 2; ctx.beginPath(); ctx.moveTo(a.x, a.y); ctx.lineTo(x, y); ctx.stroke();
+    ctx.globalAlpha = fade; inkLine(a.x, a.y, x, y, c.done ? 7 : 5, i * 13 + 5);
     if (k >= 1 && !c.done) { ctx.fillStyle = SEAL; ctx.beginPath(); ctx.arc(b.x, b.y, 3 + Math.sin(tt * 30), 0, Math.PI * 2); ctx.fill(); } }
   ctx.restore(); ctx.globalAlpha = 1;
 }
@@ -2279,7 +2289,7 @@ function stepBoss(e, dt, pcx, pcy, dist, live) {
       if (groundPt(ahead, e.y + e.h + 4) && !solidPt(ahead, e.y + e.h - 10)) { moveX(e, e.face * sp * dt); e.walkT = .12; e.wph = (e.wph || 0) + sp * dt / Math.max(22, e.w * .55); }
     }
     if (live && songPos >= e.nextAt && e.stagT <= 0) {
-      if (!e.raged && e.hp <= e.maxHp / 2) { e.raged = true; banner("激怒", SEAL, `${josa(B.name, "이", "가")} 격노했다 — 새 기술이 섞인다`); shake = 14; flash = .25; Music.jing();
+      if (!e.raged && e.hp <= e.maxHp / 2) { e.raged = true; banner("격노", SEAL, `${josa(B.name, "이", "가")} 격노했다 — 새 기술이 섞인다`); shake = 14; flash = .25; Music.jing();
         for (let i = 0; i < 3; i++) bleed(ecx + (i - 1) * 24, e.y + 20 + i * 10, { x: i - 1, y: -.5 }, true); }
       const pool = e.raged ? [...B.pool(c), ...(RAGE_ADD[e.kind] || [])] : B.pool(c); let a = pool[(e.n = (e.n || 0) + 1) % pool.length];
       if ((a === "slam" || a === "club" || a === "inhale") && dist > 280) a = e.kind === "sumun" ? (c >= 1 ? "volley" : "charge") : e.kind === "dokkaebi" ? "coins" : "scrap";
@@ -2988,7 +2998,7 @@ function drawBeatBar(pal) {
     ctx.drawImage(im, bf.x + bf.w - cap, bf.y, cap, bf.h, bx + bw - capW, y - 30, capW, bh);
   }
   else uiPatch(5, mx - 46, y - 30, gap * ahead + 92, 60, pal.night ? .5 : .9);
-  // 천고 기운: five drums light up as the fight is won by 일섬; all five lit, the great drum calls for 천고일섬
+  // 천고 기운: five drums light up as the fight is won by 일섬; all five lit, the great drum calls for 북울림
   const qi = (run && run.qi) || 0, full = qi >= 100 && mode !== "tutorial", ph = ((pos / bl) % 1 + 1) % 1, beatK = Math.max(0, .2 - Math.min(ph, 1 - ph)) * 1.2;   // the drums still nod to the music
   for (let i = 0; i <= ahead; i++) {
     const x = mx + i * gap, big = i === ahead, lit = Math.max(0, Math.min(1, (qi - i * 20) / 20)), sz = (big ? 42 : 30) * (1 + (lit >= 1 ? beatK : 0) + (full && big ? .12 + beatK : 0));
@@ -3310,7 +3320,7 @@ function drawNewFoe(e, pal, cx) {
 function drawCombatHud(pal) { // 기력 under the 숨, the chain's numeral at the right
   if (!P || !run || (state !== "play" && state !== "pause")) return;
   ctx.setTransform(DPR, 0, 0, DPR, 0, 0);
-  if (chungoFx && !chungoFx.done) { ctx.fillStyle = "rgba(14,10,12,.38)"; ctx.fillRect(0, 0, W, H); }   // 천고일섬: the world goes dark while the strokes are laid
+  if (chungoFx && !chungoFx.done) { ctx.fillStyle = "rgba(14,10,12,.38)"; ctx.fillRect(0, 0, W, H); }   // 북울림: the world goes dark while the strokes are laid
   if (flashDim > 0) { ctx.fillStyle = `rgba(20,10,12,${flashDim * 3})`; ctx.fillRect(0, 0, W, H); flashDim = Math.max(0, flashDim - 1 / 60); }   // the screen draws a breath as a glint opens
   if (mode !== "tutorial") { const ki = Math.max(0, Math.min(1, P.ki ?? 1)), bx = 18, by = 54, bw = 104, bh = 10, f = SPR.mech && SPR.mech.f[MECH.bar];
     const low = ki < .25 && Math.sin(performance.now() / 90) > 0;
@@ -3333,29 +3343,29 @@ function drawBossCards(pal) { // screen-space: the guardian's entrance, the big 
   const halo = pal.night ? "rgba(20,18,20,.75)" : "rgba(242,239,230,.88)";
   if (bossIntro) { const t = bossIntro.t, kind = bossIntro.e.kind, B = BOSSES[kind], inA = Math.min(1, t / .25), out = Math.max(0, (t - 1.35) / .35), a = inA * (1 - out), bar = H * .13 * a;
     ctx.fillStyle = "#0e0d10"; ctx.fillRect(0, 0, W, bar); ctx.fillRect(0, H - bar, W, bar);
-    ctx.globalAlpha = a; const sx = W / 2 + (1 - Math.min(1, t / .5)) * 40, cy = H * .46, nh = Math.min(96, H * .24);
+    ctx.globalAlpha = a; const sx = W / 2 + (1 - Math.min(1, t / .5)) * 30, cy = H * .46, fs = Math.round(Math.min(44, H * .11)), ink = "#17161a", paper = "rgba(242,239,230,.9)";
     const sw = Math.min(1, t / .35);   // the red stroke is laid first, the name written over it
-    ctx.save(); ctx.beginPath(); ctx.rect(sx - W, 0, W + (sw - .5) * W * 1.2, H); ctx.clip(); if (!spr("bcal", BC.stroke, sx, cy + nh * .52, nh * .5)) brushLine(sx - 150, cy + 30, sx + 150, cy + 30, SEAL, 7, false, 77); ctx.restore();
-    const ni = BNAME[kind], nw = sprW("bname", ni, nh);
-    if (ni != null && nw) { const bx = sx, glow = Math.min(1, Math.max(0, (t - .15) / .3)); ctx.globalAlpha = a * glow; spr("bname", ni, bx, cy, nh); ctx.globalAlpha = a; }
-    else { ctx.fillStyle = pal.text; ctx.font = `400 52px "Song Myung", serif`; ctx.fillText(B.han, sx, cy); }
-    ctx.font = `400 22px "Song Myung", serif`; ctx.lineWidth = 5; ctx.strokeStyle = halo; ctx.fillStyle = pal.text; ctx.strokeText(B.name, sx, cy + nh * .9); ctx.fillText(B.name, sx, cy + nh * .9);
-    ctx.font = `400 15px "Song Myung", serif`; ctx.lineWidth = 4; ctx.strokeText(B.line || "", W / 2, cy + nh * .9 + 28); ctx.fillText(B.line || "", W / 2, cy + nh * .9 + 28);
-    const st = Math.min(1, Math.max(0, (t - .5) / .15)); if (st > 0) { ctx.save(); ctx.translate(sx + Math.max(nw, 120) / 2 + 34, cy - nh * .38); ctx.rotate(-.1); const k = 1.7 - .7 * st; ctx.scale(k, k); ctx.globalAlpha = a * st;
-      ctx.fillStyle = "#f2efe6"; ctx.fillRect(-21, -21, 42, 42); if (!spr("bcal", BC.gyeoljeon, 0, 0, 52)) { ctx.fillStyle = SEAL; ctx.fillRect(-20, -20, 40, 40); } ctx.restore(); if (st < 1) shake = Math.max(shake, 3); }
+    ctx.save(); ctx.beginPath(); ctx.rect(sx - W, 0, W + (sw - .5) * W * 1.2, H); ctx.clip(); if (!spr("bcal", BC.stroke, sx, cy + fs * .55, fs * .42)) brushLine(sx - 110, cy + 22, sx + 110, cy + 22, SEAL, 5, false, 77); ctx.restore();
+    const glow = Math.min(1, Math.max(0, (t - .15) / .3)); ctx.font = `400 ${fs}px "Song Myung", serif`; const tw = ctx.measureText(B.name).width;
+    ctx.globalAlpha = a * glow; ctx.lineWidth = 6; ctx.strokeStyle = paper; ctx.fillStyle = ink; ctx.strokeText(B.name, sx, cy); ctx.fillText(B.name, sx, cy);   // the name, in 한글, large and black
+    const ni = BNAME[kind]; ctx.globalAlpha = a * glow * .8; if (ni == null || !spr("bname", ni, sx, cy - fs * .95, fs * .42)) { ctx.font = `400 ${Math.round(fs * .36)}px "Song Myung", serif`; ctx.fillStyle = ink; ctx.fillText(B.han, sx, cy - fs * .95); }   // 한자 small above it
+    ctx.globalAlpha = a; ctx.font = `400 14px "Song Myung", serif`; ctx.lineWidth = 4; ctx.strokeStyle = halo; ctx.fillStyle = pal.text; ctx.strokeText(B.line || "", W / 2, cy + fs * .9 + 12); ctx.fillText(B.line || "", W / 2, cy + fs * .9 + 12);
+    const st = Math.min(1, Math.max(0, (t - .5) / .15)); if (st > 0) { ctx.save(); ctx.translate(sx + tw / 2 + 26, cy - fs * .35); ctx.rotate(-.1); const k = 1.5 - .5 * st; ctx.scale(k, k); ctx.globalAlpha = a * st;
+      if (!spr("bcal", BC.gyeoljeon, 0, 0, 34)) { ctx.fillStyle = SEAL; ctx.fillRect(-14, -14, 28, 28); } ctx.restore(); if (st < 1) shake = Math.max(shake, 2); }
     ctx.globalAlpha = 1; }
-  if (bossBanner) { const t = bossBanner.t, a = Math.min(1, t / .12) * Math.min(1, (1.3 - t) / .35), k = 1 + Math.max(0, .25 - t) * 1.6, fr = { "激怒": BC.gyeoknu, "看破": BC.ganpa }[bossBanner.text], mfr = bossBanner.text === "天鼓" ? MECH.chungo : null;
+  if (bossBanner) { const t = bossBanner.t, a = Math.min(1, t / .12) * Math.min(1, (1.3 - t) / .35), k = 1 + Math.max(0, .25 - t) * 1.6, big = Math.round(Math.min(40, H * .1));
     ctx.save(); ctx.globalAlpha = a; ctx.translate(W / 2, H * .34); ctx.scale(k, k);
-    if (!(mfr != null && spr("mech", mfr, 0, 0, Math.min(140, H * .34))) && (fr == null || !spr("bcal", fr, 0, 0, Math.min(130, H * .32)))) { ctx.font = `400 58px "Song Myung", serif`; ctx.lineWidth = 7; ctx.strokeStyle = halo; ctx.strokeText(bossBanner.text, 0, 0); ctx.fillStyle = bossBanner.col; ctx.fillText(bossBanner.text, 0, 0); }
-    if (bossBanner.sub) { ctx.font = `400 15px "Song Myung", serif`; ctx.lineWidth = 4; ctx.strokeStyle = halo; ctx.fillStyle = pal.text; ctx.strokeText(bossBanner.sub, 0, Math.min(130, H * .32) * .5 + 16); ctx.fillText(bossBanner.sub, 0, Math.min(130, H * .32) * .5 + 16); } ctx.restore(); }
+    ctx.font = `400 ${big}px "Song Myung", serif`; ctx.lineWidth = 6; ctx.strokeStyle = "rgba(242,239,230,.9)"; ctx.strokeText(bossBanner.text, 0, 0); ctx.fillStyle = "#17161a"; ctx.fillText(bossBanner.text, 0, 0);
+    if (bossBanner.col === SEAL) { ctx.fillStyle = SEAL; ctx.fillRect(-big * .9, big * .55, big * 1.8, 2.5); }   // a red underline when it rages
+    if (bossBanner.sub) { ctx.font = `400 14px "Song Myung", serif`; ctx.lineWidth = 4; ctx.strokeStyle = halo; ctx.fillStyle = pal.text; ctx.strokeText(bossBanner.sub, 0, big * .6 + 16); ctx.fillText(bossBanner.sub, 0, big * .6 + 16); } ctx.restore(); }
   if (bossOut) { const t = bossOut.t, a = Math.min(1, t / .2) * Math.min(1, (2.2 - t) / .5), st = Math.min(1, Math.max(0, (t - .35) / .18));
     ctx.fillStyle = `rgba(120,10,16,${.18 * a})`; ctx.fillRect(0, 0, W, H);
-    if (st > 0) { ctx.save(); ctx.globalAlpha = a * .5; ctx.translate(W / 2, H * .42); ctx.rotate(.4); spr("bcal", BC.inkBurst, 0, 0, 250 * (.7 + .3 * st)); ctx.restore();
-      ctx.save(); ctx.globalAlpha = a; ctx.translate(W / 2, H * .42); ctx.rotate(-.08); ctx.scale(2.2 - 1.2 * st, 2.2 - 1.2 * st);
-      ctx.fillStyle = "#f2efe6"; ctx.fillRect(-44, -44, 88, 88); if (!spr("bcal", BC.tobeol, 0, 0, 110)) { ctx.fillStyle = SEAL; ctx.fillRect(-46, -46, 92, 92); } ctx.restore();
-      ctx.globalAlpha = a; const ni = BNAME[bossOut.kind];
-      if (ni != null && SPR.bname) { spr("bname", ni, W / 2 - 34, H * .42 + 84, 30); ctx.font = `400 18px "Song Myung", serif`; ctx.fillStyle = pal.text; ctx.lineWidth = 4; ctx.strokeStyle = halo; ctx.textAlign = "left"; ctx.strokeText(`${bossOut.name} 처치`, W / 2 - 34 + sprW("bname", ni, 30) / 2 + 10, H * .42 + 85); ctx.fillText(`${bossOut.name} 처치`, W / 2 - 34 + sprW("bname", ni, 30) / 2 + 10, H * .42 + 85); }
-      else { ctx.fillStyle = pal.text; ctx.font = `400 18px "Song Myung", serif`; ctx.fillText(`${bossOut.name} ${bossOut.han} 처치`, W / 2, H * .42 + 84); }
+    if (st > 0) { ctx.save(); ctx.globalAlpha = a * .5; ctx.translate(W / 2, H * .42); ctx.rotate(.4); spr("bcal", BC.inkBurst, 0, 0, 180 * (.7 + .3 * st)); ctx.restore();
+      ctx.save(); ctx.globalAlpha = a; ctx.translate(W / 2, H * .42); ctx.rotate(-.08); ctx.scale(1.8 - .8 * st, 1.8 - .8 * st);
+      if (!spr("bcal", BC.tobeol, 0, 0, 72)) { ctx.fillStyle = SEAL; ctx.fillRect(-30, -30, 60, 60); } ctx.restore();
+      ctx.globalAlpha = a; const ni = BNAME[bossOut.kind], ny = H * .42 + 62;   // 한글 large and black, the 한자 small above
+      ctx.font = `400 24px "Song Myung", serif`; ctx.lineWidth = 5; ctx.strokeStyle = "rgba(242,239,230,.9)"; ctx.fillStyle = "#17161a"; ctx.strokeText(`${bossOut.name} 처치`, W / 2, ny); ctx.fillText(`${bossOut.name} 처치`, W / 2, ny);
+      ctx.globalAlpha = a * .75; if (ni == null || !spr("bname", ni, W / 2, ny + 24, 15)) { ctx.font = `400 12px "Song Myung", serif`; ctx.fillText(bossOut.han || "", W / 2, ny + 24); } ctx.globalAlpha = a;
       ctx.globalAlpha = 1; if (st < 1) shake = Math.max(shake, 6); } }
   ctx.textAlign = "left"; ctx.textBaseline = "alphabetic"; ctx.setTransform(1, 0, 0, 1, 0, 0);
 }
@@ -3846,7 +3856,7 @@ $("bInstall").addEventListener("click", async () => { if (!installEvt) return; i
 const standalone = matchMedia("(display-mode: standalone)").matches || matchMedia("(display-mode: fullscreen)").matches || navigator.standalone;
 
 
-if (location.hash === "#debug") window.__dbg = { tp(tx, ty) { P.x = tx * T + 7; P.y = (ty + 1) * T - 30; P.vx = P.vy = 0; }, get state() { return state; }, get P() { return P; }, get LV() { return LV; }, get state2() { return state; }, get SC() { return LV.scenery; }, get E() { return enemies; }, get run() { return run; }, set hs(v) { hitstop = v; }, kill(e) { killEnemy(e); }, hurt(e, s, k) { hurtEnemy(e, s, k); }, die(k, d) { die(k, d); }, get songPos() { return songPos; }, get FLASH() { return FLASH; }, get hold() { return bulletHold; }, get bolts() { return bolts; }, get rings() { return rings; }, get B() { return bullets; }, get beams() { return beams; }, flashing: e => isFlashing(e) };
+if (location.hash === "#debug") window.__dbg = { tp(tx, ty) { P.x = tx * T + 7; P.y = (ty + 1) * T - 30; P.vx = P.vy = 0; }, get state() { return state; }, get P() { return P; }, get LV() { return LV; }, get state2() { return state; }, get SC() { return LV.scenery; }, get E() { return enemies; }, get run() { return run; }, set hs(v) { hitstop = v; }, kill(e) { killEnemy(e); }, hurt(e, s, k) { hurtEnemy(e, s, k); }, die(k, d) { die(k, d); }, banner(a, b, c) { banner(a, b === "red" ? SEAL : JJOK, c); }, chungo() { chungo(); }, get songPos() { return songPos; }, get FLASH() { return FLASH; }, get hold() { return bulletHold; }, get bolts() { return bolts; }, get rings() { return rings; }, get B() { return bullets; }, get beams() { return beams; }, flashing: e => isFlashing(e) };
 window.addEventListener("pointerdown", () => Music.unlock(), { once: true, capture: true });   // first tap anywhere starts the sound
 resize();
 toMenu();
